@@ -6,7 +6,9 @@ const edgeColor = "rgb(50, 125, 200)";
 const arrayBoundaryWidth = "3";
 const edgeWidth = "4";
 const textSize = "20";
-const textOffset = 2;
+const textOffset = 2
+const vertexDistance = 80;
+const clusterDistanceScalar = 1.5;
 
 function hsvToRgb(h, s, v) 
 {
@@ -60,6 +62,14 @@ class Node
 	{
 		return this.type;
 	}
+	getID()
+	{
+		return this.id;
+	}
+	getParent()
+	{
+		return this.parentNode;
+	}
 	getLeaves()
 	{
 		let res = [];
@@ -99,12 +109,20 @@ class Edge
 
 class HierarchicallyClusteredGraphDrawer
 {
-	constructor()
+	constructor(H)
 	{
+		this.H = H;
+		this.nodeOrder = null;
 	}
-	addConstraints()
+	addOrderConstraints(orderString)
 	{
 		//TODO: Include output from Annika and Marialena
+		this.nodeOrder = [];
+		let idOrder = orderString.split(" ");
+		for (let i = 0; i < idOrder.length; i++)
+		{
+			this.nodeOrder.push(this.H.getNodeByID(idOrder[i]));
+		}
 	}
 	drawSquare(x,y)
 	{
@@ -117,6 +135,15 @@ class HierarchicallyClusteredGraphDrawer
 		square.setAttribute("stroke-width", arrayBoundaryWidth);	
 		return square;
 	}
+	defineSquareShape(svg,defs) 
+	{	
+		const square = document.createElementNS(svgNS, "polygon");
+		square.setAttribute("id", "squareShape");
+		square.setAttribute("points",`${-cellSize/2},0 0,${cellSize/2} ${cellSize/2},0 0,${-cellSize/2}`);
+		square.setAttribute("stroke", cellboundaryColor);
+		square.setAttribute("stroke-width", arrayBoundaryWidth);
+		defs.appendChild(square);
+	}
 	drawNode(id,x,y,svg)
 	{
 		const label = document.createElementNS(svgNS, "text");
@@ -127,31 +154,60 @@ class HierarchicallyClusteredGraphDrawer
 		label.setAttribute("text-anchor", "middle");          // center horizontally
 		label.setAttribute("alignment-baseline", "middle");   // center vertically	
 		label.textContent = id;   
-		let square = this.drawSquare(x,y);
+		//let square = this.drawSquare(x,y);
+		//square.setAttribute("fill", nodeColor);
+		let square = document.createElementNS(svgNS, "use");
+		square.setAttributeNS("http://www.w3.org/1999/xlink", "href", "#squareShape");
+		square.setAttribute("x", x);
+		square.setAttribute("y", y);
 		square.setAttribute("fill", nodeColor);
 		svg.appendChild(square);
 		svg.appendChild(label);
 	}
-	drawCluster(cluster,H,offsetX,offsetY,svg)
+	drawCluster(cluster,offsetX,offsetY,svg,xCoordMap,yCoordMap,widthMap,xCoordReferenceMap,yCoordReferenceMap)
 	{
-		let x = offsetX;
-		let xcoordMap = new Map();
-		for (let child of cluster.getChildren())
+		let numberOfChildren = cluster.getChildren().length;
+		let x = offsetX - (cluster.getChildren().length-1)*0.5*cellSize;
+		xCoordMap.set(cluster,offsetX);
+		yCoordMap.set(cluster,offsetY);
+		console.log(numberOfChildren*cellSize);
+		widthMap.set(cluster,numberOfChildren*cellSize);
+		let children = [];
+		let unsortedChildren = cluster.getChildren();
+		while (unsortedChildren.length > 0)
+		{
+			let nextChild = unsortedChildren.at(0);
+			let lowestX = xCoordMap.get(nextChild);
+			for (let i = 1; i < unsortedChildren.length; i++)
+			{
+				let potentialChild = unsortedChildren.at(i);
+				let potentialX = xCoordMap.get(potentialChild);
+				if (potentialX < lowestX)
+				{
+					lowestX = potentialX;
+					nextChild = potentialChild;
+				}
+			}
+			children.push(nextChild);
+			unsortedChildren = unsortedChildren.filter(child => child !== nextChild);
+		}
+		for (let child of children)
 		{
 			this.drawNode(child.id,x,offsetY,svg);
-			xcoordMap.set(child,x);
+			xCoordReferenceMap.set(child,x);
+			yCoordReferenceMap.set(child,offsetY);
 			x = x + cellSize;
 		}
 		for (let child1 of cluster.getChildren())
 		{
 			for (let child2 of cluster.getChildren())
 			{
-				let x1 = xcoordMap.get(child1);
-				let x2 = xcoordMap.get(child2);
+				let x1 = xCoordReferenceMap.get(child1);
+				let x2 = xCoordReferenceMap.get(child2);
 				if (x1 < x2)
 				{
 					let potentialEdges = child1.getLeaves().length*child2.getLeaves().length;
-					let actualEdges = H.getNumberOfEdges(child1,child2);	
+					let actualEdges = this.H.getNumberOfEdges(child1,child2);	
 					let xDist = x2 - x1;
 					this.drawClusterEdge(actualEdges/potentialEdges,x1+xDist/2,offsetY-xDist/2,svg);
 				}
@@ -160,9 +216,13 @@ class HierarchicallyClusteredGraphDrawer
 	}
 	drawClusterEdge(connectivity,x,y,svg)
 	{
-		let square = this.drawSquare(x,y);
+		//let square = this.drawSquare(x,y);
+		let square = document.createElementNS(svgNS, "use");
+		square.setAttributeNS("http://www.w3.org/1999/xlink", "href", "#squareShape");
+		square.setAttribute("x", x);
+		square.setAttribute("y", y);
 		let mapValue = connectivity*0.4;
-		const [r, g, b] = hsvToRgb(175, 0.7, 0.95-mapValue);
+		let [r, g, b] = hsvToRgb(175, 0.7, 0.95-mapValue);
 		if (connectivity === 0)
 		{
 			r = 255;
@@ -172,17 +232,27 @@ class HierarchicallyClusteredGraphDrawer
 		square.setAttribute("fill", "rgb("+ r +"," + g + "," +  b + ")");
 		svg.appendChild(square);
 	}
-	drawLinearLayout(H,offsetX,offsetY,svg)
+	drawLinearLayout(offsetX,offsetY,svg,xCoordMap,yCoordMap,widthMap)
 	{
-		let xCoordMap = new Map(); 
 		const nodes = document.createElementNS(svgNS, "g");
-		for (let vertex of H.getVertices())
+		if (this.nodeOrder === null)
+		{
+			this.nodeOrder = [];
+			for (let vertex of this.H.getVertices())
+			{
+				this.nodeOrder.push(vertex);
+			}
+		}
+		console.log(this.nodeOrder);
+		for (let vertex of this.nodeOrder)
 		{
 			this.drawNode(vertex.id,offsetX,offsetY,nodes);
 			xCoordMap.set(vertex,offsetX);
-			offsetX += 1.5*cellSize;
+			yCoordMap.set(vertex,offsetY);
+			widthMap.set(vertex,cellSize);
+			offsetX += vertexDistance;
 		}
-		for (let edge of H.getEdges())
+		for (let edge of this.H.getEdges())
 		{
 			let x1 = xCoordMap.get(edge.getSource());
 			let x2 = xCoordMap.get(edge.getTarget());
@@ -197,6 +267,43 @@ class HierarchicallyClusteredGraphDrawer
 		}
 		svg.appendChild(nodes);
 	}
+	drawClusterInclusions(svg,xCoordMap,yCoordMap,widthMap,xCoordReferenceMap,yCoordReferenceMap,clusterDistance)
+	{
+		for (let node of this.H.getNodes())
+		{
+			if (node.getParent() !== null)
+			{
+				const referenceX = xCoordReferenceMap.get(node);
+				const referenceY = yCoordReferenceMap.get(node);
+				const topLeftX = referenceX - cellSize/2;
+				const topRightX = referenceX + cellSize/2;
+				const topY = referenceY;
+				const x = xCoordMap.get(node);
+				const y = yCoordMap.get(node);
+				const width = widthMap.get(node);
+				const bottomLeftX = x - width/2;
+				const bottomRightX = x + width/2;
+				const bottomY = y;
+				const belowTopY = topY + clusterDistance/2;
+				const aboveBottomY = bottomY - clusterDistance/2;
+				//console.log(node);
+				//console.log(width);
+				const path = document.createElementNS(svgNS, "path");
+				path.setAttribute(
+				  "d",
+				  `M ${topLeftX} ${topY} ` +                     // Move to P0
+				  `C ${bottomLeftX} ${belowTopY}, ${bottomLeftX} ${aboveBottomY}, ${bottomLeftX} ${bottomY} ` + // Bezier to P1
+				  `L ${bottomRightX} ${bottomY} ` +                     // Line to P2
+				  `C ${bottomRightX} ${aboveBottomY}, ${bottomRightX} ${belowTopY}, ${topRightX} ${topY} ` + // Bezier to P3
+				  `L ${topLeftX} ${topY} Z`                      // Line back to P0 and close
+				);
+
+				path.setAttribute("stroke", "none");
+				path.setAttribute("fill", "lightblue");
+				svg.appendChild(path);
+			}
+		}
+	}
 	drawEdge(x1,x2,y,svg)
 	{
 		const path = document.createElementNS(svgNS, "path");
@@ -210,20 +317,47 @@ class HierarchicallyClusteredGraphDrawer
 		path.setAttribute("fill", "none");
 		return path;
 	}
-	draw(H)
+	draw()
 	{
 		const svg = document.createElementNS(svgNS, "svg");
+		const defs = document.createElementNS(svgNS, "defs");
+		this.defineSquareShape(svg,defs);
+		svg.appendChild(defs);
 		svg.setAttribute("viewBox", "0 0 1920 1080");
 		svg.setAttribute("width", "1920");
 		svg.setAttribute("height", "1080");
+		let clusterLayers = this.H.getClusterLayers();
+		let depth = clusterLayers.length;
+		let clusterHeight = this.H.getMaxChildren()*cellSize;
+		let clusterDistance = clusterHeight*clusterDistanceScalar;
 		let offsetX = cellSize/2;
-		let offsetY = 100;
-		for (let cluster of H.getClusters())
+		let offsetY = clusterHeight;
+		let xCoordMap = new Map(); 
+		let yCoordMap = new Map();
+		let widthMap = new Map();
+		let xCoordReferenceMap = new Map();
+		let yCoordReferenceMap = new Map();
+		const linearLayoutGroup = document.createElementNS(svgNS, "g");
+		this.drawLinearLayout(offsetX,offsetY+depth*clusterDistance,linearLayoutGroup,xCoordMap,yCoordMap,widthMap);
+		const clusterGroup = document.createElementNS(svgNS, "g");
+		for (let i = depth-1; i >= 0; i--)
 		{
-			this.drawCluster(cluster,H,offsetX,offsetY,svg);
-			offsetX = offsetX + cluster.children.length*cellSize + cellSize+2;
+			for (let cluster of clusterLayers.at(i))
+			{
+				let x = 0;
+				for (let child of cluster.getChildren())
+				{
+					x = x + xCoordMap.get(child);
+				}
+				x = x/cluster.getChildren().length;
+				xCoordMap.set(cluster,x);
+				this.drawCluster(cluster,x,offsetY+i*clusterDistance,clusterGroup,xCoordMap,yCoordMap,widthMap,xCoordReferenceMap,yCoordReferenceMap);
+				offsetX = offsetX + cluster.children.length*cellSize + cellSize+2;
+			}
 		}
-		this.drawLinearLayout(H,cellSize/2,200,svg);
+		this.drawClusterInclusions(svg,xCoordMap,yCoordMap,widthMap,xCoordReferenceMap,yCoordReferenceMap,clusterDistance)
+		svg.appendChild(linearLayoutGroup);
+		svg.appendChild(clusterGroup);
 		document.body.appendChild(svg);
 	}
 }
@@ -261,6 +395,17 @@ class HierarchicallyClusteredGraph
 	{
 		return this.nodes;
 	}
+	getNodeByID(id)
+	{
+		for (let node of this.nodes)
+		{
+			if (node.getID() === id)
+			{
+				return node;
+			}
+		}
+		return null;
+	}
 	getVertices()
 	{
 		let vertices = [];
@@ -272,6 +417,48 @@ class HierarchicallyClusteredGraph
 			}
 		}
 		return vertices;
+	}
+	getClusterLayers()
+	{
+		let clusterLayers = [];
+		let nextLayer = [];
+		for (let cluster of this.getClusters())
+		{
+			if (cluster.getParent() === null)
+			{
+				nextLayer.push(cluster);
+			}
+		}
+		while (nextLayer.length > 0)
+		{
+			let currentLayer = nextLayer;
+			clusterLayers.push(nextLayer);
+			nextLayer = [];
+			for (let cluster of currentLayer)
+			{
+				for (let child of cluster.getChildren())
+				{
+					if (child.getNodeType() === NodeType.Cluster)
+					{
+						nextLayer.push(child);
+					}
+				}
+			}
+		}
+		console.log(clusterLayers);
+		return clusterLayers;
+	}
+	getMaxChildren()
+	{
+		let res = 0;
+		for (let cluster of this.getClusters())
+		{
+			if (cluster.getChildren().length > res)
+			{
+				res = cluster.getChildren().length;
+			}
+		}
+		return res;
 	}
 	getClusters()
 	{
@@ -353,8 +540,9 @@ async function main()
 {
     let H = new HierarchicallyClusteredGraph();
     await H.readFromJSON("./sample.json"); // wait for JSON to load
-    let HD = new HierarchicallyClusteredGraphDrawer();
-    HD.draw(H); // now nodes are loaded, getClusters() will return the correct clusters
+    let HD = new HierarchicallyClusteredGraphDrawer(H);
+	HD.addOrderConstraints("5 8 7 6 4 9 2 3 1");
+    HD.draw(); // now nodes are loaded, getClusters() will return the correct clusters
 }
 
 main();
