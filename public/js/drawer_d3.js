@@ -114,8 +114,8 @@ export class HierarchicallyClusteredGraphDrawer {
     for (let i = 0; i < children.length; i++) {
       for (let j = i + 1; j < children.length; j++) {
         adjacencyData.push({
-          child1: children[i],
-          child2: children[j],
+          source: children[i],
+          target: children[j],
           x1: startX + i * cellSize,
           x2: startX + j * cellSize,
         });
@@ -139,10 +139,10 @@ export class HierarchicallyClusteredGraphDrawer {
 
     // Set color and text for each adjacency cell based on its data
     adjCells.each((d, i, nodes) => {
-      const cell = d3.select(nodes[i]);
-      const actualEdges = this.H.getNumberOfEdges(d.child1, d.child2);
+      const adjCell = d3.select(nodes[i]);
+      const actualEdges = this.H.getNumberOfEdges(d.source, d.target);
       const potentialEdges =
-        d.child1.getLeaves().length * d.child2.getLeaves().length;
+        d.source.getLeaves().length * d.target.getLeaves().length;
       const connectivity =
         potentialEdges > 0 ? actualEdges / potentialEdges : 0;
       const mapValue = connectivity * 0.4;
@@ -152,19 +152,35 @@ export class HierarchicallyClusteredGraphDrawer {
         [r, g, b] = [255, 255, 255];
       }
 
-      cell
+      const cellColor = `rgb(${r},${g},${b})`;
+
+      adjCell
         .append("use")
         .attr("href", "#squareShape")
-        .attr("fill", `rgb(${r},${g},${b})`);
+        .attr("fill", cellColor);
 
-      cell
+      // Bind a richer data object to the group element for listeners to access the color and nodes
+      adjCell.datum({
+        color: cellColor,
+        source: d.source,
+        target: d.target,
+        actualEdges: actualEdges,
+        potentialEdges: potentialEdges,
+      });
+
+      adjCell
         .append("text")
         .attr("y", textOffset)
         .attr("fill", "black") // Black text for better contrast
         .attr("font-size", smallTextSize)
         .attr("text-anchor", "middle")
         .attr("alignment-baseline", "middle")
+        .attr("pointer-events", "none")
         .text(`${actualEdges}/${potentialEdges}`);
+
+      adjCell
+        .on("mouseover", listeners.mouseEntersAdjCell)
+        .on("mouseleave", listeners.mouseLeavesAdjCell);
     });
   }
 
