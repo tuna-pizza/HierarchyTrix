@@ -21,10 +21,10 @@ async function getOrder(instance) {
 
 async function main() {
   let H = new HierarchicallyClusteredGraph();
-  await H.readFromJSON("sample"); // wait for JSON to load
+  await H.readFromJSON("graph_1"); // wait for JSON to load
   let HD = new HierarchicallyClusteredGraphDrawer(H);
   //let order = "5 8 7 6 4 9 2 3 1";
-  let order = await getOrder("sample");
+  let order = await getOrder("graph_1");
   if (order) {
     HD.addOrderConstraints(order); // set node order
   }

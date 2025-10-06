@@ -323,21 +323,51 @@ export class HierarchicallyClusteredGraphDrawer {
   }
 
   draw() {
-    const svg = d3
-      .create("svg:svg")
-      .attr("viewBox", "0 0 1920 1080")
-      .attr("width", "1920")
-      .attr("height", "1080");
-
-    const defs = svg.append("defs");
-    this.defineSquareShape(defs);
-
+    // Determine the necessary dimensions
+    if (this.nodeOrder === null) {
+      this.nodeOrder = this.H.getVertices();
+    }
+    const numVertices = this.nodeOrder.length;
     const clusterLayers = this.H.getClusterLayers();
     const depth = clusterLayers.length;
     const clusterHeight = this.H.getMaxChildren() * cellSize;
     const clusterDistance = clusterHeight * clusterDistanceScalar;
     const initialOffsetX = cellSize / 2;
     const initialOffsetY = clusterHeight;
+
+    // 1. Calculate the X-coordinate of the center of the last node
+    const lastNodeCenterX = initialOffsetX + (numVertices - 1) * vertexDistance;
+
+    // The required width is the position of the last node's right edge plus padding
+    const minRequiredWidth = lastNodeCenterX + cellSize / 2;
+
+    // 2. Calculate the maximum possible distance between any two leaf nodes.
+    // This is the distance between the center of the first and the last node.
+    const maxHorizontalDistance = (numVertices - 1) * vertexDistance;
+
+    // The height of the largest arc will be maxHorizontalDistance / 2.
+    const maxArcHeight = maxHorizontalDistance / 2;
+
+    // The Y-coordinate of the linear layout.
+    const linearLayoutY = initialOffsetY + depth * clusterDistance;
+
+    // 3. Calculate the new minimum required height for the viewBox.
+    // It must cover the linear layout Y, plus the max arc height, plus padding.
+    const minRequiredHeight = linearLayoutY + maxArcHeight;
+
+    // Add padding for scrollbar visibility and general aesthetics
+    const padding = 50;
+    const viewBoxWidth = minRequiredWidth + padding;
+    const viewBoxHeight = minRequiredHeight + padding; // Use the new minRequiredHeight
+
+    const svg = d3
+      .create("svg:svg")
+      .attr("viewBox", `0 0 ${viewBoxWidth} ${viewBoxHeight}`)
+      .attr("width", `${viewBoxWidth}px`)
+      .attr("height", `${viewBoxHeight}px`);
+
+    const defs = svg.append("defs");
+    this.defineSquareShape(defs);
 
     // Maps to store calculated coordinates and sizes
     const xCoordMap = new Map();
@@ -350,7 +380,7 @@ export class HierarchicallyClusteredGraphDrawer {
     this.drawLinearLayout(
       svg,
       initialOffsetX,
-      initialOffsetY + depth * clusterDistance,
+      linearLayoutY, // Pass the calculated Y position
       xCoordMap,
       yCoordMap,
       widthMap
@@ -394,6 +424,14 @@ export class HierarchicallyClusteredGraphDrawer {
       clusterDistance
     );
 
-    d3.select("body").append(() => svg.node());
+    const container = d3
+      .select("body") // Select the body or a specific placeholder element (e.g., d3.select("#visualization-container"))
+      .append("div")
+      .style("overflow", "auto") // Add scrollbar
+      // Remove the fixed 'height: 100vh' so the container only takes up the necessary space
+      // and flows beneath elements above it.
+      .style("max-height", "80vh"); // Optional: Add a max-height (e.g., 80% of viewport) to ensure vertical scrolling for large graphs.
+
+    container.append(() => svg.node());
   }
 }
