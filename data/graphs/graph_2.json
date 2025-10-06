@@ -11,18 +11,8 @@
       "type": "cluster"
     },
     {
-      "id": "C",
-      "parent": "A",
-      "type": "cluster"
-    },
-    {
       "id": "D",
       "parent": "A",
-      "type": "cluster"
-    },
-    {
-      "id": "E",
-      "parent": "B",
       "type": "cluster"
     },
     {
@@ -62,7 +52,7 @@
     },
     {
       "id": "8",
-      "parent": "E",
+      "parent": "B",
       "type": "leaf"
     },
     {
