@@ -14,7 +14,7 @@ const textSize = "20";
 const smallTextSize = "12";
 const textOffset = 2;
 const vertexDistance = 80;
-const clusterDistanceScalar = 1.5;
+const clusterDistanceScalar = 1;
 
 export class HierarchicallyClusteredGraphDrawer {
   constructor(H) {
@@ -30,7 +30,7 @@ export class HierarchicallyClusteredGraphDrawer {
     }
   }
 
-  defineSquareShape(defs) {
+  defineNodeShapes(defs) {
     defs
       .append("polygon")
       .attr("id", "squareShape")
@@ -42,6 +42,12 @@ export class HierarchicallyClusteredGraphDrawer {
       )
       .attr("stroke", cellboundaryColor)
       .attr("stroke-width", arrayBoundaryWidth);
+	defs // <--- START NEW CODE
+      .append("circle")
+      .attr("id", "circleShape")
+      .attr("r", cellSize / 2) // Radius is half the cell size
+      .attr("stroke", cellboundaryColor)
+      .attr("stroke-width", arrayBoundaryWidth); // <--- END NEW CODE
   }
 
   drawCluster(
@@ -224,7 +230,9 @@ export class HierarchicallyClusteredGraphDrawer {
       })
       .attr("stroke", edgeColor)
       .attr("stroke-width", edgeWidth)
-      .attr("fill", "none");
+      .attr("fill", "none")
+      .on("mouseover", listeners.mouseEntersEdge)
+      .on("mouseleave", listeners.mouseLeavesEdge);
 
     // --- Draw nodes using a data join ---
     const nodeCells = svg
@@ -238,7 +246,7 @@ export class HierarchicallyClusteredGraphDrawer {
 
     nodeCells
       .append("use")
-      .attr("href", "#squareShape")
+      .attr("href", "#circleShape")
       .attr("fill", nodeColor);
 
     nodeCells
@@ -280,24 +288,50 @@ export class HierarchicallyClusteredGraphDrawer {
         if (
           [referenceX, referenceY, x, y, width].every((v) => v !== undefined)
         ) {
-          const topLeftX =
+			
+		  
+		  const topLeftX =
             referenceX - cellSize / 2 - parseInt(arrayBoundaryWidth, 10); //
           const topRightX =
             referenceX + cellSize / 2 + parseInt(arrayBoundaryWidth, 10); //
-          const upperMiddleLeftX =
+	      const topY = referenceY; //
+		  const bottomLeftX = x - width / 2 - parseInt(arrayBoundaryWidth, 10); //
+          const bottomRightX = x + width / 2 + parseInt(arrayBoundaryWidth, 10); //
+		  const bottomY = y; //
+		   const upperMiddleLeftX =
             referenceX - cellSize / 2 + 2.5 * parseInt(arrayBoundaryWidth, 10); //
           const upperMiddleRightX =
             referenceX + cellSize / 2 - 2.5 * parseInt(arrayBoundaryWidth, 10); //
-          const topY = referenceY; //
-          const bottomLeftX = x - width / 2 - parseInt(arrayBoundaryWidth, 10); //
-          const bottomRightX = x + width / 2 + parseInt(arrayBoundaryWidth, 10); //
           const lowerMiddleLeftX = x - width / 3; //
           const lowerMiddleRightX = x + width / 3; //
-          const bottomY = y; //
           const belowTopY = topY + 0.4 * clusterDistance; //
-          const aboveBottomY = bottomY - 0.6 * clusterDistance; //
-
-          const pathString = `M ${topLeftX} ${topY} C ${upperMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${bottomLeftX} ${bottomY} L ${bottomRightX} ${bottomY} C ${lowerMiddleRightX} ${aboveBottomY}, ${upperMiddleRightX} ${belowTopY}, ${topRightX} ${topY} L ${topLeftX} ${topY} Z`; //
+		  let currentBottomY = topY + clusterDistance;
+		  let currentTopY = topY;
+          const aboveBottomY = currentBottomY - 0.6 * clusterDistance; //
+		  const verticalSpan = Math.abs(bottomY - topY)/clusterDistance; 
+		  let currentBottomLeftX = lowerMiddleLeftX;
+		  if (verticalSpan === 1)
+		  {
+			  currentBottomLeftX = bottomLeftX;
+		  }
+		  let leftPath = `C ${upperMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${currentBottomLeftX} ${currentBottomY}`;
+		  let rightPath = `C ${lowerMiddleRightX} ${aboveBottomY}, ${upperMiddleRightX} ${belowTopY}, ${topRightX} ${currentTopY}`;
+		  for (let i = 1; i < verticalSpan; i++)
+		  {
+			  currentBottomY = currentBottomY + clusterDistance;
+			  currentTopY = currentTopY + clusterDistance;
+			  const belowTopY = currentTopY + 0.4 * clusterDistance; //
+			  const aboveBottomY = currentBottomY - 0.6 * clusterDistance; //
+			  if (verticalSpan === i+1)
+			  {
+				  currentBottomLeftX = bottomLeftX;
+			  }
+			  leftPath = leftPath + `\nC ${lowerMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${currentBottomLeftX} ${currentBottomY}`;
+			  rightPath = `C ${lowerMiddleRightX} ${aboveBottomY}, ${lowerMiddleRightX} ${belowTopY}, ${lowerMiddleRightX} ${currentTopY}\n` + rightPath;
+		  }
+		  
+          const pathString = `M ${topLeftX} ${topY}` + leftPath + `L ${bottomRightX} ${bottomY}` + rightPath + `L ${topLeftX} ${topY} 
+		  Z`; //
 
           // 2. Push an object containing the node and its path string.
           pathData.push({
@@ -332,7 +366,7 @@ export class HierarchicallyClusteredGraphDrawer {
     const depth = clusterLayers.length;
     const clusterHeight = this.H.getMaxChildren() * cellSize;
     const clusterDistance = clusterHeight * clusterDistanceScalar;
-    const initialOffsetX = cellSize / 2;
+    const initialOffsetX = cellSize;
     const initialOffsetY = clusterHeight;
 
     // 1. Calculate the X-coordinate of the center of the last node
@@ -367,7 +401,7 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("height", `${viewBoxHeight}px`);
 
     const defs = svg.append("defs");
-    this.defineSquareShape(defs);
+    this.defineNodeShapes(defs);
 
     // Maps to store calculated coordinates and sizes
     const xCoordMap = new Map();
@@ -430,7 +464,7 @@ export class HierarchicallyClusteredGraphDrawer {
       .style("overflow", "auto") // Add scrollbar
       // Remove the fixed 'height: 100vh' so the container only takes up the necessary space
       // and flows beneath elements above it.
-      .style("max-height", "80vh"); // Optional: Add a max-height (e.g., 80% of viewport) to ensure vertical scrolling for large graphs.
+      .style("max-height", "95vh"); // Optional: Add a max-height (e.g., 80% of viewport) to ensure vertical scrolling for large graphs.
 
     container.append(() => svg.node());
   }
