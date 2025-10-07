@@ -42,7 +42,7 @@ export class HierarchicallyClusteredGraphDrawer {
       )
       .attr("stroke", cellboundaryColor)
       .attr("stroke-width", arrayBoundaryWidth);
-	defs // <--- START NEW CODE
+    defs // <--- START NEW CODE
       .append("circle")
       .attr("id", "circleShape")
       .attr("r", cellSize / 2) // Radius is half the cell size
@@ -288,49 +288,53 @@ export class HierarchicallyClusteredGraphDrawer {
         if (
           [referenceX, referenceY, x, y, width].every((v) => v !== undefined)
         ) {
-			
-		  
-		  const topLeftX =
+          const topLeftX =
             referenceX - cellSize / 2 - parseInt(arrayBoundaryWidth, 10); //
           const topRightX =
             referenceX + cellSize / 2 + parseInt(arrayBoundaryWidth, 10); //
-	      const topY = referenceY; //
-		  const bottomLeftX = x - width / 2 - parseInt(arrayBoundaryWidth, 10); //
+          const topY = referenceY; //
+          const bottomLeftX = x - width / 2 - parseInt(arrayBoundaryWidth, 10); //
           const bottomRightX = x + width / 2 + parseInt(arrayBoundaryWidth, 10); //
-		  const bottomY = y; //
-		   const upperMiddleLeftX =
+          const bottomY = y; //
+          const upperMiddleLeftX =
             referenceX - cellSize / 2 + 2.5 * parseInt(arrayBoundaryWidth, 10); //
           const upperMiddleRightX =
             referenceX + cellSize / 2 - 2.5 * parseInt(arrayBoundaryWidth, 10); //
           const lowerMiddleLeftX = x - width / 3; //
           const lowerMiddleRightX = x + width / 3; //
           const belowTopY = topY + 0.4 * clusterDistance; //
-		  let currentBottomY = topY + clusterDistance;
-		  let currentTopY = topY;
+          let currentBottomY = topY + clusterDistance;
+          let currentTopY = topY;
           const aboveBottomY = currentBottomY - 0.6 * clusterDistance; //
-		  const verticalSpan = Math.abs(bottomY - topY)/clusterDistance; 
-		  let currentBottomLeftX = lowerMiddleLeftX;
-		  if (verticalSpan === 1)
-		  {
-			  currentBottomLeftX = bottomLeftX;
-		  }
-		  let leftPath = `C ${upperMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${currentBottomLeftX} ${currentBottomY}`;
-		  let rightPath = `C ${lowerMiddleRightX} ${aboveBottomY}, ${upperMiddleRightX} ${belowTopY}, ${topRightX} ${currentTopY}`;
-		  for (let i = 1; i < verticalSpan; i++)
-		  {
-			  currentBottomY = currentBottomY + clusterDistance;
-			  currentTopY = currentTopY + clusterDistance;
-			  const belowTopY = currentTopY + 0.4 * clusterDistance; //
-			  const aboveBottomY = currentBottomY - 0.6 * clusterDistance; //
-			  if (verticalSpan === i+1)
-			  {
-				  currentBottomLeftX = bottomLeftX;
-			  }
-			  leftPath = leftPath + `\nC ${lowerMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${currentBottomLeftX} ${currentBottomY}`;
-			  rightPath = `C ${lowerMiddleRightX} ${aboveBottomY}, ${lowerMiddleRightX} ${belowTopY}, ${lowerMiddleRightX} ${currentTopY}\n` + rightPath;
-		  }
-		  
-          const pathString = `M ${topLeftX} ${topY}` + leftPath + `L ${bottomRightX} ${bottomY}` + rightPath + `L ${topLeftX} ${topY} 
+          const verticalSpan = Math.abs(bottomY - topY) / clusterDistance;
+          let currentBottomLeftX = lowerMiddleLeftX;
+          if (verticalSpan === 1) {
+            currentBottomLeftX = bottomLeftX;
+          }
+          let leftPath = `C ${upperMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${currentBottomLeftX} ${currentBottomY}`;
+          let rightPath = `C ${lowerMiddleRightX} ${aboveBottomY}, ${upperMiddleRightX} ${belowTopY}, ${topRightX} ${currentTopY}`;
+          for (let i = 1; i < verticalSpan; i++) {
+            currentBottomY = currentBottomY + clusterDistance;
+            currentTopY = currentTopY + clusterDistance;
+            const belowTopY = currentTopY + 0.4 * clusterDistance; //
+            const aboveBottomY = currentBottomY - 0.6 * clusterDistance; //
+            if (verticalSpan === i + 1) {
+              currentBottomLeftX = bottomLeftX;
+            }
+            leftPath =
+              leftPath +
+              `\nC ${lowerMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${currentBottomLeftX} ${currentBottomY}`;
+            rightPath =
+              `C ${lowerMiddleRightX} ${aboveBottomY}, ${lowerMiddleRightX} ${belowTopY}, ${lowerMiddleRightX} ${currentTopY}\n` +
+              rightPath;
+          }
+
+          const pathString =
+            `M ${topLeftX} ${topY}` +
+            leftPath +
+            `L ${bottomRightX} ${bottomY}` +
+            rightPath +
+            `L ${topLeftX} ${topY} 
 		  Z`; //
 
           // 2. Push an object containing the node and its path string.
@@ -366,8 +370,10 @@ export class HierarchicallyClusteredGraphDrawer {
     const depth = clusterLayers.length;
     const clusterHeight = this.H.getMaxChildren() * cellSize;
     const clusterDistance = clusterHeight * clusterDistanceScalar;
+
+    // Initial Y offset to safely fit the top cluster
     const initialOffsetX = cellSize;
-    const initialOffsetY = clusterHeight;
+    const initialOffsetY = 5 * cellSize;
 
     // 1. Calculate the X-coordinate of the center of the last node
     const lastNodeCenterX = initialOffsetX + (numVertices - 1) * vertexDistance;
@@ -376,29 +382,30 @@ export class HierarchicallyClusteredGraphDrawer {
     const minRequiredWidth = lastNodeCenterX + cellSize / 2;
 
     // 2. Calculate the maximum possible distance between any two leaf nodes.
-    // This is the distance between the center of the first and the last node.
     const maxHorizontalDistance = (numVertices - 1) * vertexDistance;
 
     // The height of the largest arc will be maxHorizontalDistance / 2.
     const maxArcHeight = maxHorizontalDistance / 2;
 
-    // The Y-coordinate of the linear layout.
+    // The Y-coordinate of the linear layout (center of leaf nodes).
     const linearLayoutY = initialOffsetY + depth * clusterDistance;
 
     // 3. Calculate the new minimum required height for the viewBox.
-    // It must cover the linear layout Y, plus the max arc height, plus padding.
+    // The lowest point is linearLayoutY + maxArcHeight.
+    // --- FIX: Removed the redundant + cellSize/2 to reduce bottom padding ---
     const minRequiredHeight = linearLayoutY + maxArcHeight;
 
-    // Add padding for scrollbar visibility and general aesthetics
-    const padding = 50;
+    // Use minimal padding only for the viewBox edges
+    const padding = 2;
     const viewBoxWidth = minRequiredWidth + padding;
-    const viewBoxHeight = minRequiredHeight + padding; // Use the new minRequiredHeight
+    const viewBoxHeight = minRequiredHeight + padding;
 
     const svg = d3
       .create("svg:svg")
       .attr("viewBox", `0 0 ${viewBoxWidth} ${viewBoxHeight}`)
-      .attr("width", `${viewBoxWidth}px`)
-      .attr("height", `${viewBoxHeight}px`);
+      .style("width", "100%")
+      .style("max-height", "100vh")
+      .style("display", "block");
 
     const defs = svg.append("defs");
     this.defineNodeShapes(defs);
@@ -407,14 +414,14 @@ export class HierarchicallyClusteredGraphDrawer {
     const xCoordMap = new Map();
     const yCoordMap = new Map();
     const widthMap = new Map();
-    const xCoordReferenceMap = new Map(); // For child nodes within clusters
-    const yCoordReferenceMap = new Map(); // For child nodes within clusters
+    const xCoordReferenceMap = new Map();
+    const yCoordReferenceMap = new Map();
 
     // --- Draw the bottom linear layout of leaf nodes ---
     this.drawLinearLayout(
       svg,
       initialOffsetX,
-      linearLayoutY, // Pass the calculated Y position
+      linearLayoutY,
       xCoordMap,
       yCoordMap,
       widthMap
@@ -458,14 +465,7 @@ export class HierarchicallyClusteredGraphDrawer {
       clusterDistance
     );
 
-    const container = d3
-      .select("body") // Select the body or a specific placeholder element (e.g., d3.select("#visualization-container"))
-      .append("div")
-      .style("overflow", "auto") // Add scrollbar
-      // Remove the fixed 'height: 100vh' so the container only takes up the necessary space
-      // and flows beneath elements above it.
-      .style("max-height", "95vh"); // Optional: Add a max-height (e.g., 80% of viewport) to ensure vertical scrolling for large graphs.
-
-    container.append(() => svg.node());
+    // Append the fluid SVG.
+    d3.select("body").append(() => svg.node());
   }
 }
