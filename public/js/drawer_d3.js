@@ -4,10 +4,10 @@ import * as listeners from "./listeners.js";
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
 const cellSize = 40;
-const nodeColor = "black";
-const cellboundaryColor = "darkgray";
-const treecolor = "lightblue";
-const edgeColor = "rgb(50, 125, 200)";
+const nodeColor = "var(--node-color)";
+const cellboundaryColor = "var(--cell-boundary-color)";
+const treecolor = "var(--tree-color)";
+const edgeColor = "var(--edge-color)";
 const arrayBoundaryWidth = "3";
 const edgeWidth = "4";
 const textSize = "20";
@@ -15,6 +15,8 @@ const smallTextSize = "12";
 const textOffset = 2;
 const vertexDistance = 80;
 const clusterDistanceScalar = 1;
+const adjColorLow = "var(--adj-color-low)";
+const adjColorHigh = "var(--adj-color-high)";
 
 export class HierarchicallyClusteredGraphDrawer {
   constructor(H) {
@@ -142,23 +144,36 @@ export class HierarchicallyClusteredGraphDrawer {
         const y = -xDist / 2;
         return `translate(${x}, ${y})`;
       });
+	  
+	   // CRITICAL FIX: Resolve CSS variables to actual color strings before creating the D3 scale.
+		const bodyElement = d3.select("body").node();
+		const computedStyle = getComputedStyle(bodyElement);
 
-    // Set color and text for each adjacency cell based on its data
-    adjCells.each((d, i, nodes) => {
+		// Read the actual color strings from the CSS variables defined in index.html
+		const resolvedAdjColorLow = computedStyle.getPropertyValue('--adj-color-low').trim();
+		const resolvedAdjColorHigh = computedStyle.getPropertyValue('--adj-color-high').trim();
+
+		// NEW D3 COLOR SCALE: D3 can now interpolate (mix) between these two resolved HSL color strings.
+		const colorScale = d3.scaleLinear()
+			.domain([0, 1]) // Connectivity ranges from 0 (min) to 1 (max)
+			.range([resolvedAdjColorLow, resolvedAdjColorHigh]); 
+
+      // Set color and text for each adjacency cell based on its data
+	  adjCells.each((d, i, nodes) => {
       const adjCell = d3.select(nodes[i]);
       const actualEdges = this.H.getNumberOfEdges(d.source, d.target);
       const potentialEdges =
         d.source.getLeaves().length * d.target.getLeaves().length;
       const connectivity =
         potentialEdges > 0 ? actualEdges / potentialEdges : 0;
-      const mapValue = connectivity * 0.4;
-      let [r, g, b] = hsvToRgb(175, 0.7, 0.95 - mapValue);
-
+      let cellColor;
       if (connectivity === 0) {
-        [r, g, b] = [255, 255, 255];
+          // Pure white for cells with zero potential connections
+          cellColor = "rgb(255, 255, 255)"; 
+      } else {
+          // Use the D3 scale to get the color mixture based on connectivity
+          cellColor = colorScale(connectivity); 
       }
-
-      const cellColor = `rgb(${r},${g},${b})`;
 
       adjCell
         .append("use")

@@ -1,6 +1,6 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
-const inclusionColor = "lightblue"; // Original color from drawer_d3.js (treecolor)
+const inclusionColor = "var(--tree-color)"; // Original color from drawer_d3.js (treecolor)
 
 export function mouseEntersNodeCell() {
   const nodeCell = d3.select(this);
@@ -77,7 +77,7 @@ export function mouseEntersNodeCell() {
     .filter((d) => allRelevantNodes.has(d)) // Include the hovered node, its descendants, AND its ancestors
     .attr("opacity", 1)
     .selectAll("use")
-    .attr("fill", "black");
+    .attr("fill", "var(--node-color)");
 
   // Step 3: Highlight the OTHER ENDPOINTS in the linear layout (EXTERNAL NODES)
   // These are the leaves connected by an edge but not part of the hovered cluster's leaves
@@ -86,7 +86,7 @@ export function mouseEntersNodeCell() {
     .filter((d) => connectedLeafIDs.has(d.getID()) && !leafIDs.has(d.getID())) // Is connected AND is external
     .attr("opacity", 1)
     .selectAll("use")
-    .attr("fill", "black");
+    .attr("fill", "var(--node-color)");
 
   // Step 4: Highlight all relevant edges (incident to a leaf node in the hovered cluster)
   allEdges
@@ -145,7 +145,7 @@ export function mouseLeavesNodeCell() {
   d3.selectAll("g.node-cell")
     .attr("opacity", 1)
     .selectAll("use")
-    .attr("fill", "black"); // Restore to default node color
+    .attr("fill", "var(--node-color)"); // Restore to default node color
 
   // 2. Restore all adjacency cells
   d3.selectAll(".adjacency g.adjacency-cell")
@@ -159,7 +159,7 @@ export function mouseLeavesNodeCell() {
   d3.select(".linear-edges")
     .selectAll("path.edge")
     .attr("opacity", 1)
-    .attr("stroke", "rgb(50, 125, 200)");
+    .attr("stroke", "var(--edge-color)");
 
   // 4. Restore all inclusion bands
   d3.select(".cluster-inclusions")
@@ -256,14 +256,14 @@ export function mouseEntersAdjCell() {
     .filter((d) => sourceLeaves.has(d.getID()) || targetLeaves.has(d.getID()))
     .attr("opacity", 1)
     .selectAll("use")
-    .attr("fill", "black");
+    .attr("fill", "var(--node-color)");
 
   // f) Highlight the source and target nodes defining the hovered cell (hierarchy view) <--- FIX
   allNodes
     .filter((d) => d === data.source || d === data.target)
     .attr("opacity", 1)
     .selectAll("use")
-    .attr("fill", "black");
+    .attr("fill", "var(--node-color)");
 
   // g) Highlight only the relevant edges
   allEdges
@@ -293,13 +293,13 @@ export function mouseLeavesAdjCell() {
   d3.selectAll("g.node-cell")
     .attr("opacity", 1)
     .selectAll("use")
-    .attr("fill", "black"); // Restore to default node color
+    .attr("fill", "var(--node-color)"); // Restore to default node color
 
   // 3. Restore all linear edges
   d3.select(".linear-edges")
     .selectAll("path.edge")
     .attr("opacity", 1)
-    .attr("stroke", "rgb(50, 125, 200)")
+    .attr("stroke", "var(--edge-color)")
     .attr("stroke-width", "4");
 
   // 4. Restore all inclusion bands
@@ -351,7 +351,7 @@ export function mouseEntersEdge() {
   // a) Highlight the hovered edge
   d3.select(this)
     .attr("opacity", 1)
-    .attr("stroke", "rgb(50, 125, 200)")
+    .attr("stroke", "var(--edge-color)")
     .attr("stroke-width", "6");
 
   // b) Highlight the endpoint leaf nodes (linear layout/hierarchy view)
@@ -359,7 +359,7 @@ export function mouseEntersEdge() {
     .filter((d) => d === sourceNode || d === targetNode)
     .attr("opacity", 1)
     .selectAll("use")
-    .attr("fill", "black");
+    .attr("fill", "var(--node-color)");
 
   // c) Highlight the ancestor inclusion bands (i.e., C1-P1, P1-G1, etc.)
   allInclusions
@@ -380,7 +380,7 @@ export function mouseEntersEdge() {
     .filter((d) => d.getNodeType() !== 0 && ancestorNodes.has(d)) // Filter for non-leaf nodes that are in the ancestor set
     .attr("opacity", 1)
     .selectAll("use")
-    .attr("fill", "black");
+    .attr("fill", "var(--node-color)");
 }
 
 export function mouseLeavesEdge() {
@@ -396,13 +396,13 @@ export function mouseLeavesEdge() {
   d3.selectAll("g.node-cell")
     .attr("opacity", 1)
     .selectAll("use")
-    .attr("fill", "black");
+    .attr("fill", "var(--node-color)");
 
   // 3. Restore all linear edges
   d3.select(".linear-edges")
     .selectAll("path.edge")
     .attr("opacity", 1)
-    .attr("stroke", "rgb(50, 125, 200)")
+    .attr("stroke", "var(--edge-color)")
     .attr("stroke-width", "4");
 
   // 4. Restore all inclusion bands
