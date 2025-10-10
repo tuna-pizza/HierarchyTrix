@@ -144,11 +144,36 @@
            opacity: 0.5; /* Always start disabled visually */
       }
 
+	.k00l90z-mode .modal-content-container {
+          /* Use sharp corners for the 90s look */
+          border-radius: 0 !important; 
+          /* Create a neon glow effect using multiple shadows */
+          box-shadow: 0 0 8px var(--color-secondary), 
+                      0 0 15px var(--color-secondary), 
+                      0 0 25px #FF00FF !important; 
+          /* Thicker border using the secondary neon color */
+          border: 2px solid var(--color-secondary) !important; 
+      }
+      
+      .k00l90z-mode #instance-id-input {
+          /* Sharp corners for the ID input field */
+          border-radius: 0 !important;
+          /* Optional: Add a subtle inner shadow for a screen look */
+          box-shadow: inset 0 0 5px rgba(0, 255, 255, 0.5); 
+      }
+      
+      .k00l90z-mode #custom-modal h2 {
+          /* Ensure the checkmark and text are bright neon */
+          color: var(--color-primary); 
+          text-shadow: 0 0 5px var(--color-primary);
+      }
+
       /* Modal Styles */
       #custom-modal .modal-content-container {
           background-color: var(--color-background-medium); 
           color: var(--color-text-header); 
           border: 1px solid var(--color-secondary); 
+		  font-family: var(--font-main);
       }
       #custom-modal h2 {
           color: var(--color-primary);
@@ -169,7 +194,30 @@
           color: var(--color-text-button);
           font-family: var(--font-main);
       }
+      body {
+        /* Default Theme Colors */
+        --node-color: black;
+        --cell-boundary-color: darkgray;
+        --tree-color: lightblue;
+        --edge-color: rgb(50, 125, 200);
+		--adj-color-low: hsl(175, 70%, 95%);  /* Light default cyan/blue */
+		--adj-color-high: hsl(175, 70%, 55%);
+      }
+
+      /* K00L90Z Theme Overrides */
+      body.k00l90z-mode {
+        --node-color: #FF00FF;        /* Magenta nodes */
+        --cell-boundary-color: #00FFFF; /* Cyan boundaries */
+        --tree-color: yellow;         /* Magenta cluster bands */
+        --edge-color: #00FFFF;         /* Cyan edges */
+		--adj-color-low: hsl(300, 80%, 95%);  /* Light 90s purple */
+		--adj-color-high: hsl(300, 80%, 55%); /* Dark 90s purple */
+      }
       
+      /* Optional: Darken text in k00l90z mode for better contrast against bright nodes */
+      body.k00l90z-mode text {
+        fill: #000 !important; 
+      }
     </style>
 	
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -612,7 +660,8 @@
                   width: 80%; 
                   max-width: 400px; 
                   border-radius: 8px; 
-                  box-shadow: 0 4px 8px rgba(0,0,0,0.4);">
+                  box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+				  ">
 
         <h2 style="margin-top: 0;">✅ Success!</h2>
         <p style="margin-bottom: 20px;">Your new graph instance is ready. Copy the ID below:</p>
