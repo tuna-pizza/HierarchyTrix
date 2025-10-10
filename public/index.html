@@ -4,11 +4,644 @@
     <title>HierarchyTrix</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+	
+    <style>
+      /* --- 1. DEFINE DEFAULT VARIABLES --- */
+      :root {
+          --color-primary: #4caf50; /* Green (Upload/Go) */
+          --color-secondary: #3a75a0; /* Blue (Instance/Sample) */
+          --color-tertiary: #FFD700; /* Yellow (Save Viz) */
+          --color-background-dark: #222;
+          --color-background-medium: #333;
+          --color-text-header: white;
+          --color-text-input: white;
+          --color-text-button: white; /* Consistent button text color */
+          --color-button-disabled: #555;
+          --font-main: sans-serif;
+      }
+
+      /* --- 2. 90s THEME VARIABLES (Override) --- */
+      .k00l90z-mode {
+          /* 90s K00L Font: Monospace/Pixelated look */
+          --font-main: 'VT323', monospace; 
+          
+          /* High-Contrast, Neon/Vaporwave Colors */
+          --color-primary: #00FFFF; /* Aqua/Cyan */
+          --color-secondary: #FF00FF; /* Magenta/Fuchsia */
+          --color-tertiary: #FF00FF;
+          --color-background-dark: #111133; /* Dark Blue/Purple */
+          --color-background-medium: #222255; 
+          --color-text-header: #FFD700; /* Gold/Bright Yellow */
+          --color-text-input: #00FFFF;
+          --color-text-button: #111133; /* Dark text on neon buttons */
+          --color-button-disabled: #00FFFF;
+      }
+
+      /* Apply 90s Font to body */
+      .k00l90z-mode, .k00l90z-mode body {
+          font-family: var(--font-main) !important;
+          background-color: var(--color-background-dark); 
+          color: var(--color-text-header);
+      }
+
+      /* --- 3. APPLY VARIABLES TO ELEMENTS --- */
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--color-background-dark);
+        color: var(--color-text-header);
+        padding: 10px 20px;
+        font-family: var(--font-main);
+      }
+      h1 {
+        margin: 0;
+        font-size: 1.2rem;
+      }
+      #uploadButton {
+        background: var(--color-primary);
+        border: none;
+        color: var(--color-text-button);
+        padding: 8px 14px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        font-family: var(--font-main);
+      }
+      #uploadButton:hover {
+        /* Keep a slight darker shade for hover in default mode */
+        background: var(--color-primary); 
+        filter: brightness(90%); 
+      }
+      
+      /* Instance Input Styling */
+      #instance-id-input-header {
+           padding: 6px; 
+		   border: 1px solid var(--color-primary); 
+		   background: var(--color-background-medium);
+		   color: var(--color-text-input);
+		   border-radius: 4px; 
+		   width: 120px; 
+		   font-size: 0.9rem;
+		   font-family: var(--font-main);
+      }
+      
+      /* Instance Buttons (Go & Sample) */
+      #sample-button, #go-to-instance-button {
+           background: var(--color-secondary);
+		   border: none; 
+		   color: var(--color-text-button);
+		   padding: 8px 10px; 
+		   border-radius: 6px; 
+		   cursor: pointer; 
+		   font-weight: bold;
+		   font-size: 0.9rem;
+		   font-family: var(--font-main);
+      }
+      
+      /* Dropdown Styles */
+      #sample-dropdown {
+          background-color: var(--color-background-medium);
+		  border: 1px solid var(--color-primary);
+      }
+      #sample-dropdown a {
+          color: var(--color-text-header); 
+          font-family: var(--font-main);
+      }
+      
+      /* Save Viz Button */
+      #saveVizButton {
+          background: var(--color-tertiary);
+		  border: none;
+		  color: var(--color-text-button);
+		  padding: 8px 14px;
+		  border-radius: 6px;
+		  cursor: pointer;
+		  font-weight: bold;
+		  font-family: var(--font-main);
+      }
+      #save-viz-dropdown {
+          background-color: var(--color-background-medium); 
+		  border: 1px solid var(--color-tertiary); 
+      }
+      #save-viz-dropdown a {
+          color: var(--color-text-header); 
+          font-family: var(--font-main);
+      }
+
+      /* Download Button */
+      #downloadButton {
+          background: var(--color-button-disabled); 
+		   border: none;
+		   color: var(--color-text-header);
+		   padding: 8px 14px;
+		   border-radius: 6px;
+		   cursor: not-allowed;
+		   font-weight: bold;
+		   font-family: var(--font-main);
+           opacity: 0.5; /* Always start disabled visually */
+      }
+
+      /* Modal Styles */
+      #custom-modal .modal-content-container {
+          background-color: var(--color-background-medium); 
+          color: var(--color-text-header); 
+          border: 1px solid var(--color-secondary); 
+      }
+      #custom-modal h2 {
+          color: var(--color-primary);
+      }
+      #instance-id-input {
+          border: 1px solid var(--color-primary); 
+          background-color: var(--color-background-dark); 
+          color: var(--color-text-input); 
+          font-family: var(--font-main);
+      }
+      #stay-button {
+          background-color: var(--color-button-disabled); 
+          color: var(--color-text-button);
+          font-family: var(--font-main);
+      }
+      #go-button {
+          background-color: var(--color-primary); 
+          color: var(--color-text-button);
+          font-family: var(--font-main);
+      }
+      
+    </style>
+	
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+	
     <script type="module" src="js/client.js" defer></script>
   </head>
   <body>
-    Quando Alessandra si sente cattiva, lei si chiama Henry. Quando si sente
-    male, lei si chiama Marialena.
-    <br />
+    <header>
+    <h1>HierarchyTrix</h1>
+		<div style="display: flex; gap: 15px; align-items: center;"> 
+			
+			<button id="uploadButton">Upload JSON</button>
+			<input
+				type="file"
+				id="fileInput"
+				accept=".json"
+				style="display: none"
+			/>
+
+			<div id="instance-selector" style="display: flex; align-items: center; gap: 5px; position: relative;">
+				
+				<input 
+					type="text" 
+					id="instance-id-input-header" 
+					placeholder="Instance ID" 
+					style="">
+						   
+				<div id="samples-popover-container" style="position: relative;">
+					<button id="sample-button" 
+							title="Select a sample ID"
+							style="">
+								   &#x25BC;
+					</button>
+					
+					<div id="sample-dropdown" 
+						 style="display: none; 
+								position: absolute; 
+								top: 100%; 
+								left: -126px; 
+								width: 175px; 
+								box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+								z-index: 200;">
+						<a data-instance="sample" href="#" style="padding: 8px 10px; text-decoration: none; display: block; font-size: 0.9rem;">sample</a>
+						<a data-instance="graph_1" href="#" style="padding: 8px 10px; text-decoration: none; display: block; font-size: 0.9rem;">graph_1</a>
+						<a data-instance="graph_2" href="#" style="padding: 8px 10px; text-decoration: none; display: block; font-size: 0.9rem;">graph_2</a>
+						<a data-instance="graph_3" href="#" style="padding: 8px 10px; text-decoration: none; display: block; font-size: 0.9rem;">graph_3</a>
+					</div>
+				</div>
+
+				<button id="go-to-instance-button" 
+						style="">Go</button>
+			</div>
+						   
+			<div id="save-viz-container" style="position: relative;">
+				<button id="saveVizButton" 
+						title="Save current visualization"
+						style="">Save Visualization</button>
+							   
+				<div id="save-viz-dropdown" 
+					 style="display: none; 
+							position: absolute; 
+							top: 100%; 
+							right: 0; 
+							min-width: 150px;
+							box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+							z-index: 200;">
+					<a data-format="svg" href="#" style="padding: 8px 10px; text-decoration: none; display: block; font-size: 0.9rem;">Save as SVG</a>
+					<a data-format="png" href="#" style="padding: 8px 10px; text-decoration: none; display: block; font-size: 0.9rem;">Save as PNG</a>
+					<a data-format="pdf" href="#" style="padding: 8px 10px; text-decoration: none; display: block; font-size: 0.9rem;">Save as PDF</a>
+				</div>
+			</div>
+
+			<button id="downloadButton" 
+					data-active-color="#4CAF50" 
+					style="">Download JSON</button>
+		</div>
+	</header>
+
+    <div style="padding: 20px;">
+      Quando Alessandra si sente cattiva, lei si chiama Henry. Quando si sente
+      male, lei si chiama Marialena.
+      <br />
+    </div>
+
+    <script>
+	  // Function to handle all visualization downloads
+		function saveVisualization(format) {
+			const svgElement = document.querySelector('svg'); 
+			if (!svgElement) {
+				alert("No graph visualization found to save.");
+				return;
+			}
+			
+			// Define a high-resolution scaling factor (3x resolution)
+			const SCALE_FACTOR = 3; 
+
+			// Get Visualization Dimensions (original size)
+			const viewBox = svgElement.viewBox.baseVal;
+			let originalWidth = viewBox.width || svgElement.getBoundingClientRect().width;
+			let originalHeight = viewBox.height || svgElement.getBoundingClientRect().height;
+
+			if (originalWidth <= 0 || originalHeight <= 0) {
+				alert("Cannot determine visualization dimensions. Please ensure the graph is fully loaded.");
+				return;
+			}
+
+			const urlParams = new URLSearchParams(window.location.search);
+			const instanceId = urlParams.get('instance') || 'visualization';
+			
+			const serializer = new XMLSerializer();
+			let svgString = serializer.serializeToString(svgElement);
+			
+			// --- SVG Download (Vector) ---
+			if (format === 'svg') {
+				const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+				const url = URL.createObjectURL(blob);
+				
+				const link = document.createElement('a');
+				link.href = url;
+				link.download = `${instanceId}.svg`;
+				link.click();
+				URL.revokeObjectURL(url);
+				
+			} 
+			// --- Rasterized PNG/PDF Download (High Resolution) ---
+			else if (format === 'png' || format === 'pdf') {
+				const canvas = document.createElement('canvas');
+				const ctx = canvas.getContext('2d');
+				const img = new Image();
+				
+				// Calculate High Resolution dimensions
+				const hiResWidth = originalWidth * SCALE_FACTOR;
+				const hiResHeight = originalHeight * SCALE_FACTOR;
+
+				// Encode SVG string to base64 Data URL
+				const svgUrl = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
+
+				img.onload = function() {
+					// Set canvas size to the HIGH RESOLUTION dimensions
+					canvas.width = hiResWidth;
+					canvas.height = hiResHeight;
+					
+					// Draw the image onto the canvas at high resolution
+					ctx.drawImage(img, 0, 0, hiResWidth, hiResHeight); 
+					
+					if (format === 'png') {
+						// PNG Download
+						const pngUrl = canvas.toDataURL('image/png');
+						const link = document.createElement('a');
+						link.href = pngUrl;
+						link.download = `${instanceId}.png`;
+						link.click();
+						
+					} else if (format === 'pdf') {
+						// PDF Download (Rasterized)
+						if (typeof window.jspdf !== 'undefined' && window.jspdf.jsPDF) {
+							const { jsPDF } = window.jspdf;
+							
+							// Set PDF page size to the ORIGINAL dimensions
+							const pdf = new jsPDF({
+								orientation: originalWidth > originalHeight ? 'l' : 'p',
+								unit: 'px',
+								format: [originalWidth, originalHeight] 
+							});
+							
+							// Add the high-resolution canvas image to the PDF, 
+							// fitting it into the ORIGINAL page dimensions for high-DPI output.
+							const pngDataUrl = canvas.toDataURL('image/png');
+							pdf.addImage(pngDataUrl, 'PNG', 0, 0, originalWidth, originalHeight);
+							pdf.save(`${instanceId}.pdf`);
+						} else {
+							alert("jsPDF library not loaded. Cannot save as PDF.");
+						}
+					}
+				};
+				img.src = svgUrl;
+			}
+		}
+	
+	  document.addEventListener('DOMContentLoaded', () => {
+		// Initialization MUST happen inside DOMContentLoaded to ensure elements exist.
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentInstanceId = urlParams.get('instance');
+        let currentTheme = urlParams.get('theme'); // Use let as we may override it below
+
+        let isK00lModeActive = false;
+        
+        // --- EASTER EGG CLIENT-SIDE CHECK (Theme Activation) ---
+        // Activate k00l mode if theme parameter is explicitly set, OR if instance is k00l90z
+        if (currentTheme === "k00l90z" || (currentInstanceId && currentInstanceId.toLowerCase() === "k00l90z")) {
+            document.body.classList.add('k00l90z-mode');
+            isK00lModeActive = true;
+            currentTheme = 'k00l90z'; // Ensure currentTheme is correctly set
+        }
+        
+        // Handle the "k00l90z" instance input separately for display
+        if (currentInstanceId && currentInstanceId.toLowerCase() === "k00l90z") {
+            const instanceIdInputHeader = document.getElementById("instance-id-input-header");
+            if (instanceIdInputHeader) {
+                instanceIdInputHeader.value = "K00L 90Z MODE";
+            }
+        }
+        // --- END EASTER EGG CHECK ---
+
+
+		const uploadButton = document.getElementById("uploadButton");
+		const fileInput = document.getElementById("fileInput");
+		
+		 // New Instance Selector Elements
+		const instanceIdInputHeader = document.getElementById("instance-id-input-header");
+		const goToInstanceButton = document.getElementById("go-to-instance-button");
+		const sampleButton = document.getElementById("sample-button");
+		const sampleDropdown = document.getElementById("sample-dropdown");
+		const downloadButton = document.getElementById("downloadButton");
+
+		const saveVizButton = document.getElementById("saveVizButton");
+		const saveVizDropdown = document.getElementById("save-viz-dropdown");
+
+		// New Modal Elements
+		const modal = document.getElementById("custom-modal");
+		const instanceIdInput = document.getElementById("instance-id-input");
+		const goButton = document.getElementById("go-button");
+		const stayButton = document.getElementById("stay-button");
+
+		// Check for critical null elements just in case the HTML structure is missing
+		if (!uploadButton || !fileInput) {
+			console.error("Critical upload UI elements missing!");
+			return;
+		}
+
+		uploadButton.addEventListener("click", () => {
+		  fileInput.click();
+		});
+		
+		if (saveVizButton && saveVizDropdown) {
+        // Toggle visibility
+        saveVizButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const isVisible = saveVizDropdown.style.display === 'block';
+            saveVizDropdown.style.display = isVisible ? 'none' : 'block';
+        });
+
+        // Handle clicks on the format links
+        saveVizDropdown.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', (event) => {
+                event.preventDefault(); 
+                
+                const format = link.getAttribute('data-format');
+                saveVisualization(format);
+                
+                // Hide the dropdown after selection
+                saveVizDropdown.style.display = 'none';
+            });
+        });
+
+        // Hide the dropdown if the user clicks anywhere else on the page
+        document.addEventListener('click', (event) => {
+            if (!saveVizDropdown.contains(event.target) && event.target !== saveVizButton) {
+                saveVizDropdown.style.display = 'none';
+            }
+        });
+    }
+		
+		fileInput.addEventListener("change", async () => {
+		  const file = fileInput.files[0];
+		  if (!file) return;
+
+		  const formData = new FormData();
+		  formData.append("file", file);
+
+		  try {
+			const res = await fetch("/api/upload", {
+			  method: "POST",
+			  body: formData,
+			});
+
+			const data = await res.json();
+
+			if (!res.ok || !data.success) {
+			  alert("❌ Upload failed: " + (data.message || "Unknown error"));
+			} else {
+			  const instanceId = data.filename.replace('.json', '');
+			  
+			  // CRITICAL CHECK: If modal elements are still null, alert and stop.
+			  if (!modal || !instanceIdInput || !goButton || !stayButton) {
+				  alert("Configuration Error: The custom modal elements were not found in the HTML.");
+				  return;
+			  }
+			  
+			  // --- CUSTOM MODAL LOGIC ---
+			  
+			  // 1. Set the ID value and show the modal
+			  instanceIdInput.value = instanceId;
+			  modal.style.display = "block";
+
+			  // 2. Automatically select the text for quick Ctrl+C
+			  instanceIdInput.select();
+			  instanceIdInput.setSelectionRange(0, 99999); // For mobile compatibility
+
+			  // 3. Define button actions (using .onclick to ensure a fresh handler each time)
+			  
+			  // Go Button: Navigate to the new instance
+			  goButton.onclick = () => {
+				modal.style.display = "none";
+				let newUrl = `?instance=${instanceId}`;
+				if (isK00lModeActive) { // Persist 90s theme
+					newUrl += '&theme=k00l90z';
+				}
+				window.location.href = newUrl; 
+			  };
+
+			  // Stay Button: Close the modal and stay on the current page
+			  stayButton.onclick = () => {
+				modal.style.display = "none";
+			  };
+			  
+			  // --- END CUSTOM MODAL LOGIC ---
+			}
+		  } catch (err) {
+			alert("⚠️ Network or server error: " + err.message);
+		  }
+
+		  // Reset input, falls gleiche Datei nochmal gewählt wird
+		  fileInput.value = "";
+		});
+		
+
+		
+		if (downloadButton) {
+			// This logic handles activation/deactivation and download link setting
+			
+			// We MUST use the CSS variable here, not the hardcoded attribute
+			const activeColor = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim();
+			
+			if (currentInstanceId && currentInstanceId.toLowerCase() !== "k00l90z") {
+				
+				// 1. Visually activate the button
+				downloadButton.style.opacity = 1;
+				downloadButton.style.cursor = 'pointer';
+				downloadButton.style.background = activeColor; // Use the currently active primary color
+				downloadButton.removeAttribute('title');
+				
+				// 2. Set the download handler
+				downloadButton.addEventListener('click', () => {
+					const downloadUrl = `/api/download/${currentInstanceId}.json`;
+					// Trigger the download
+					window.open(downloadUrl, '_blank');
+				});
+				
+			} else {
+				// Ensure the button is fully disabled if no instance is loaded OR if k00l90z mode is active
+				downloadButton.style.opacity = 0.5;
+				downloadButton.style.cursor = 'not-allowed';
+				// Restore disabled color using the variable
+				const disabledColor = getComputedStyle(document.documentElement).getPropertyValue('--color-button-disabled').trim();
+				downloadButton.style.background = disabledColor; 
+				downloadButton.setAttribute('title', 'Load an instance first to enable download.');
+				
+				// Remove any previous event listeners (optional, but clean)
+				downloadButton.onclick = null; 
+			}
+		}
+		
+		// --- NEW LOGIC: Sample Dropdown Toggle & Population ---
+		if (sampleButton && sampleDropdown && instanceIdInputHeader) {
+			// Toggle visibility
+			sampleButton.addEventListener('click', (event) => {
+				event.stopPropagation();
+				const isVisible = sampleDropdown.style.display === 'block';
+				sampleDropdown.style.display = isVisible ? 'none' : 'block';
+			});
+
+			// Handle clicks on the sample links
+			sampleDropdown.querySelectorAll('a').forEach(link => {
+				link.addEventListener('click', (event) => {
+					event.preventDefault(); // <-- IMPORTANT: Stop navigation
+					
+					const instanceId = link.getAttribute('data-instance');
+					
+					// 1. Put the text in the textbox
+					instanceIdInputHeader.value = instanceId;
+					
+					// 2. Hide the dropdown
+					sampleDropdown.style.display = 'none';
+
+					// Optional: Focus the "Go" button for quick selection
+					goToInstanceButton.focus();
+				});
+			});
+
+			// Hide the dropdown if the user clicks anywhere else on the page
+			document.addEventListener('click', (event) => {
+				if (!sampleDropdown.contains(event.target) && event.target !== sampleButton) {
+					sampleDropdown.style.display = 'none';
+				}
+			});
+		}
+		
+		if (goToInstanceButton && instanceIdInputHeader) {
+			goToInstanceButton.addEventListener('click', () => {
+				const instanceId = instanceIdInputHeader.value.trim();
+				
+				if (!instanceId) {
+					alert("Please enter a valid Instance ID.");
+					return;
+				}
+                
+                // If the user attempts to 'Go' to k00l90z, only apply the theme to the current page/instance
+                if (instanceId.toLowerCase() === "k00l90z") {
+                    // Get the real current instance ID from the URL, or empty string if none is loaded.
+                    const realInstance = urlParams.get('instance') || '';
+                    
+                    // Reload the page with the current instance and the new theme parameter
+                    window.location.href = `?instance=${realInstance}&theme=k00l90z`;
+                    return; // Stop here
+                }
+                
+                // For all other instances, navigate as normal, persisting theme if active
+				let newUrl = `?instance=${instanceId}`;
+				if (isK00lModeActive) { 
+					newUrl += '&theme=k00l90z';
+				}
+				window.location.href = newUrl;
+			});
+		}
+        
+        // Expose the current theme to the module script
+        window.currentAppTheme = currentTheme;
+
+	  }); // <-- End of DOMContentLoaded listener
+	</script>
+
+
+    <div id="custom-modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6);">
+      <div class="modal-content-container" style=" 
+                  margin: 15% auto; 
+                  padding: 20px; 
+                  border: 1px solid #555; 
+                  width: 80%; 
+                  max-width: 400px; 
+                  border-radius: 8px; 
+                  box-shadow: 0 4px 8px rgba(0,0,0,0.4);">
+
+        <h2 style="margin-top: 0;">✅ Success!</h2>
+        <p style="margin-bottom: 20px;">Your new graph instance is ready. Copy the ID below:</p>
+        
+        <input type="text" id="instance-id-input" value="" readonly 
+               style="width: 95%; 
+                      padding: 10px; 
+                      margin-bottom: 20px; 
+                      font-weight: bold; 
+                      font-family: monospace; 
+                      border-radius: 4px;">
+
+        <div style="display: flex; justify-content: space-between;">
+          <button id="stay-button" 
+                  style="padding: 10px 15px; 
+                         border: none; 
+                         border-radius: 5px; 
+                         cursor: pointer; 
+                         transition: background-color 0.2s;">Stay Here</button>
+
+          <button id="go-button" 
+                  style="padding: 10px 15px; 
+                         border: none; 
+                         border-radius: 5px; 
+                         cursor: pointer; 
+                         font-weight: bold;
+                         transition: background-color 0.2s;">Go to New Instance</button>
+        </div>
+      </div>
+    </div>
   </body>
 </html>
