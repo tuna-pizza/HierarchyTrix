@@ -472,9 +472,35 @@ draw() {
     this.zoomGroup.select("g.linear-edges").remove();
     const edgesGroup = this.zoomGroup.append("g").attr("class", "linear-edges");
 
+    // === FILTER OUT EDGES INSIDE SAME LAST-LEVEL CLUSTER ===
+
+    let filteredEdges = this.H.getEdges(); // default: all edges
+
+    if (clusterLayers.length > 0) {
+        const lastLevelClusters = clusterLayers.at(-1);
+        const clusterMap = new Map();
+
+        // Map each leaf to its cluster ID
+        lastLevelClusters.forEach(cluster => {
+            cluster.getChildren().forEach(child => {
+                if (!child.getChildren || child.getChildren().length === 0) {
+                    clusterMap.set(child.getID(), cluster.getID());
+                }
+            });
+        });
+
+        // Filter edges: remove only those within same cluster
+        filteredEdges = this.H.getEdges().filter(edge => {
+            const srcCluster = clusterMap.get(edge.getSource().getID());
+            const tgtCluster = clusterMap.get(edge.getTarget().getID());
+            return !(srcCluster && tgtCluster && srcCluster === tgtCluster);
+        });
+    }
+
+    // === DRAW FILTERED EDGES ===
     edgesGroup
         .selectAll("path.edge")
-        .data(this.H.getEdges())
+        .data(filteredEdges)
         .join("path")
         .attr("class", "edge")
         .attr("d", (d) => {
@@ -491,7 +517,7 @@ draw() {
 
             const xDist = tempX2 - tempX1;
 
-            // Draw a cubic Bèzier curve
+            // Draw a cubic Bézier curve
             return `M ${x1} ${y} C ${x1} ${y + xDist / 2}, ${x2} ${y + xDist / 2}, ${x2} ${y}`;
         })
         .attr("stroke", edgeColor)
