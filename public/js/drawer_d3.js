@@ -13,372 +13,365 @@ const edgeWidth = "4";
 const textSize = "20";
 const smallTextSize = "12";
 const textOffset = 2;
-const vertexDistance = 80;
+const vertexDistance = 60; // Reduced from 80 to 60
 const clusterDistanceScalar = 1;
-const adjColorLow = "var(--adj-color-low)";
-const adjColorHigh = "var(--adj-color-high)";
 
 export class HierarchicallyClusteredGraphDrawer {
-  constructor(H) {
-    this.H = H;
-    this.nodeOrder = null;
-  }
+  constructor(H) {
+    this.H = H;
+    this.nodeOrder = null;
+    this.svg = null;
+    this.zoomGroup = null;
+    this.d3zoom = null;
+    this.currentTransform = null;
+  }
 
-  addOrderConstraints(orderString) {
-    this.nodeOrder = [];
-    let idOrder = orderString.split(" ");
-    for (let i = 0; i < idOrder.length; i++) {
-      this.nodeOrder.push(this.H.getNodeByID(idOrder[i]));
-    }
-  }
+  addOrderConstraints(orderString) {
+    this.nodeOrder = [];
+    let idOrder = orderString.split(" ");
+    for (let i = 0; i < idOrder.length; i++) {
+      this.nodeOrder.push(this.H.getNodeByID(idOrder[i]));
+    }
+  }
 
-  defineNodeShapes(defs) {
-    defs
-      .append("polygon")
-      .attr("id", "squareShape")
-      .attr(
-        "points",
-        `${-cellSize / 2},0 0,${cellSize / 2} ${cellSize / 2},0 0,${
-          -cellSize / 2
-        }`
-      )
-      .attr("stroke", cellboundaryColor)
-      .attr("stroke-width", arrayBoundaryWidth);
-    defs // <--- START NEW CODE
-      .append("circle")
-      .attr("id", "circleShape")
-      .attr("r", cellSize / 2) // Radius is half the cell size
-      .attr("stroke", cellboundaryColor)
-      .attr("stroke-width", arrayBoundaryWidth); // <--- END NEW CODE
-  }
+  defineNodeShapes(defs) {
+    defs
+      .append("polygon")
+      .attr("id", "diamondShape")
+      .attr(
+        "points",
+        `${-cellSize / 2},0 0,${cellSize / 2} ${cellSize / 2},0 0,${-cellSize / 2}`
+      )
+      .attr("stroke", cellboundaryColor)
+      .attr("stroke-width", arrayBoundaryWidth);
+  }
 
-  drawCluster(
-    cluster,
-    offsetX,
-    offsetY,
-    clusterGroup,
-    xCoordMap,
-    yCoordMap,
-    widthMap,
-    xCoordReferenceMap,
-    yCoordReferenceMap
-  ) {
-    // Set coordinates and width for the cluster itself
-    xCoordMap.set(cluster, offsetX);
-    yCoordMap.set(cluster, offsetY);
-    widthMap.set(cluster, cluster.getChildren().length * cellSize);
+  isLeaf(node) {
+    return !node.getChildren || node.getChildren().length === 0;
+  }
 
-    // Sort children based on their calculated X-coordinate in the layer below
-    const children = [...cluster.getChildren()].sort(
-      (a, b) => xCoordMap.get(a) - xCoordMap.get(b)
-    );
+  drawCluster(
+    cluster,
+    offsetX,
+    offsetY,
+    clusterGroup,
+    xCoordMap,
+    yCoordMap,
+    widthMap,
+    xCoordReferenceMap,
+    yCoordReferenceMap
+  ) {
+    const children = [...cluster.getChildren()].sort(
+      (a, b) => xCoordMap.get(a) - xCoordMap.get(b)
+    );
 
-    // Calculate the starting X position for the first child, relative to the cluster's center
-    const startX = -(children.length - 1) * 0.5 * cellSize;
+    xCoordMap.set(cluster, offsetX);
+    yCoordMap.set(cluster, offsetY);
+    widthMap.set(cluster, children.length * cellSize);
 
-    // Store the final global coordinates for each child node's representation in this cluster
-    children.forEach((child, i) => {
-      const childX = startX + i * cellSize;
-      xCoordReferenceMap.set(child, offsetX + childX);
-      yCoordReferenceMap.set(child, offsetY);
-    });
+    const startX = -(children.length - 1) * 0.5 * cellSize;
 
-    const clusterContainer = clusterGroup
-      .append("g")
-      .attr("class", "cluster")
-      .attr("transform", `translate(${offsetX}, ${offsetY})`);
+    children.forEach((child, i) => {
+      const childX = startX + i * cellSize;
+      xCoordReferenceMap.set(child, offsetX + childX);
+      yCoordReferenceMap.set(child, offsetY);
+    });
 
-    // --- Draw child nodes using a data join ---
-    const nodeCells = clusterContainer
-      .append("g")
-      .attr("class", "nodes")
-      .selectAll("g.node-cell")
-      .data(children, (d) => d.getID())
-      .join("g")
-      .attr("class", "node-cell")
-      .attr("transform", (d, i) => `translate(${startX + i * cellSize}, 0)`);
+    const clusterContainer = clusterGroup
+      .append("g")
+      .attr("class", "cluster")
+      .attr("transform", `translate(${offsetX}, ${offsetY})`);
 
-    nodeCells
-      .append("use")
-      .attr("href", "#squareShape")
-      .attr("fill", nodeColor);
+    const nodeCells = clusterContainer
+      .append("g")
+      .attr("class", "nodes")
+      .selectAll("g.node-cell")
+      .data(children, (d) => d.getID())
+      .join("g")
+      .attr("class", "node-cell")
+      .attr("data-id", d => d.getID())
+      .attr("transform", (d, i) => `translate(${startX + i * cellSize}, 0)`);
 
-    nodeCells
-      .append("text")
-      .attr("y", textOffset)
-      .attr("fill", "white")
-      .attr("font-size", textSize)
-      .attr("text-anchor", "middle")
-      .attr("alignment-baseline", "middle")
-      .attr("pointer-events", "none")
-      .text((d) => d.getID());
+    // DIAMOND SHAPE FOR ALL NODES
+    nodeCells
+      .append("use")
+      .attr("href", "#diamondShape")
+      .attr("fill", nodeColor);
 
-    nodeCells
-      .on("mouseover", listeners.mouseEntersNodeCell)
-      .on("mouseleave", listeners.mouseLeavesNodeCell);
+    nodeCells
+      .append("text")
+      .attr("y", textOffset)
+      .attr("fill", "white")
+      .attr("font-size", textSize)
+      .attr("text-anchor", "middle")
+      .attr("alignment-baseline", "middle")
+      .attr("pointer-events", "none")
+      .text((d) => d.getID());
 
-    // --- Prepare data for the adjacency matrix ---
-    const adjacencyData = [];
-    for (let i = 0; i < children.length; i++) {
-      for (let j = i + 1; j < children.length; j++) {
-        adjacencyData.push({
-          source: children[i],
-          target: children[j],
-          x1: startX + i * cellSize,
-          x2: startX + j * cellSize,
-        });
-      }
-    }
+    nodeCells
+      .on("mouseover", listeners.mouseEntersNodeCell)
+      .on("mouseleave", listeners.mouseLeavesNodeCell);
 
-    // --- Draw adjacency matrix cells using a data join ---
-    const adjCells = clusterContainer
-      .append("g")
-      .attr("class", "adjacency")
-      .selectAll("g.adjacency-cell")
-      .data(adjacencyData)
-      .join("g")
-      .attr("class", "adjacency-cell")
-      .attr("transform", (d) => {
-        const xDist = d.x2 - d.x1;
-        const x = d.x1 + xDist / 2;
-        const y = -xDist / 2;
-        return `translate(${x}, ${y})`;
-      });
-	  
-	   // CRITICAL FIX: Resolve CSS variables to actual color strings before creating the D3 scale.
-		const bodyElement = d3.select("body").node();
-		const computedStyle = getComputedStyle(bodyElement);
+    // ADJACENCY CELLS
+    const adjacencyData = [];
+    for (let i = 0; i < children.length; i++) {
+      for (let j = i + 1; j < children.length; j++) {
+        adjacencyData.push({
+          source: children[i],
+          target: children[j],
+          x1: startX + i * cellSize,
+          x2: startX + j * cellSize,
+        });
+      }
+    }
 
-		// Read the actual color strings from the CSS variables defined in index.html
-		const resolvedAdjColorLow = computedStyle.getPropertyValue('--adj-color-low').trim();
-		const resolvedAdjColorHigh = computedStyle.getPropertyValue('--adj-color-high').trim();
+    const adjCells = clusterContainer
+      .append("g")
+      .attr("class", "adjacency")
+      .selectAll("g.adjacency-cell")
+      .data(adjacencyData)
+      .join("g")
+      .attr("class", "adjacency-cell")
+      .attr("transform", (d) => {
+        const xDist = d.x2 - d.x1;
+        const x = d.x1 + xDist / 2;
+        const y = -xDist / 2;
+        return `translate(${x}, ${y})`;
+      });
 
-		// NEW D3 COLOR SCALE: D3 can now interpolate (mix) between these two resolved HSL color strings.
-		const colorScale = d3.scaleLinear()
-			.domain([0, 1]) // Connectivity ranges from 0 (min) to 1 (max)
-			.range([resolvedAdjColorLow, resolvedAdjColorHigh]); 
+    const bodyElement = d3.select("body").node();
+    const computedStyle = getComputedStyle(bodyElement);
+    const resolvedAdjColorLow = computedStyle
+      .getPropertyValue("--adj-color-low")
+      .trim();
+    const resolvedAdjColorHigh = computedStyle
+      .getPropertyValue("--adj-color-high")
+      .trim();
 
-      // Set color and text for each adjacency cell based on its data
-	  adjCells.each((d, i, nodes) => {
-      const adjCell = d3.select(nodes[i]);
-      const actualEdges = this.H.getNumberOfEdges(d.source, d.target);
-      const potentialEdges =
-        d.source.getLeaves().length * d.target.getLeaves().length;
-      const connectivity =
-        potentialEdges > 0 ? actualEdges / potentialEdges : 0;
-      let cellColor;
-      if (connectivity === 0) {
-          // Pure white for cells with zero potential connections
-          cellColor = "rgb(255, 255, 255)"; 
-      } else {
-          // Use the D3 scale to get the color mixture based on connectivity
-          cellColor = colorScale(connectivity); 
-      }
+    const colorScale = d3
+      .scaleLinear()
+      .domain([0, 1])
+      .range([resolvedAdjColorLow, resolvedAdjColorHigh]);
 
-      adjCell
-        .append("use")
-        .attr("href", "#squareShape")
-        .attr("fill", cellColor);
+    adjCells.each((d, i, nodes) => {
+      const adjCell = d3.select(nodes[i]);
+      const actualEdges = this.H.getNumberOfEdges(d.source, d.target);
+      const potentialEdges =
+        d.source.getLeaves().length * d.target.getLeaves().length;
+      const connectivity = potentialEdges > 0 ? actualEdges / potentialEdges : 0;
+      let cellColor =
+        connectivity === 0 ? "rgb(255,255,255)" : colorScale(connectivity);
 
-      // Bind a richer data object to the group element for listeners to access the color and nodes
-      adjCell.datum({
-        color: cellColor,
-        source: d.source,
-        target: d.target,
-        actualEdges: actualEdges,
-        potentialEdges: potentialEdges,
-      });
+      adjCell
+        .append("use")
+        .attr("href", "#diamondShape")
+        .attr("fill", cellColor);
 
-      adjCell
-        .append("text")
-        .attr("y", textOffset)
-        .attr("fill", "black") // Black text for better contrast
-        .attr("font-size", smallTextSize)
-        .attr("text-anchor", "middle")
-        .attr("alignment-baseline", "middle")
-        .attr("pointer-events", "none")
-        .text(`${actualEdges}/${potentialEdges}`);
+      adjCell.datum({
+        color: cellColor,
+        source: d.source,
+        target: d.target,
+        actualEdges: actualEdges,
+        potentialEdges: potentialEdges,
+      });
 
-      adjCell
-        .on("mouseover", listeners.mouseEntersAdjCell)
-        .on("mouseleave", listeners.mouseLeavesAdjCell);
-    });
-  }
+      adjCell
+        .append("text")
+        .attr("y", textOffset)
+        .attr("fill", "black")
+        .attr("font-size", smallTextSize)
+        .attr("text-anchor", "middle")
+        .attr("alignment-baseline", "middle")
+        .attr("pointer-events", "none")
+        .text(`${actualEdges}/${potentialEdges}`);
 
-  drawLinearLayout(
-    svg,
-    initialOffsetX,
-    offsetY,
-    xCoordMap,
-    yCoordMap,
-    widthMap
-  ) {
-    if (this.nodeOrder === null) {
-      this.nodeOrder = this.H.getVertices();
-    }
+      adjCells
+        .on("mouseover", listeners.mouseEntersAdjCell)
+        .on("mouseleave", listeners.mouseLeavesAdjCell);
+    });
+  }
 
-    // Pre-calculate positions for all vertices
-    let currentX = initialOffsetX;
-    this.nodeOrder.forEach((vertex) => {
-      xCoordMap.set(vertex, currentX);
-      yCoordMap.set(vertex, offsetY);
-      widthMap.set(vertex, cellSize);
-      currentX += vertexDistance;
-    });
+// ----------------------------------------------------------------------
+// MODIFIED: drawLinearLayout - Coordinates only (No drawing)
+// ----------------------------------------------------------------------
+drawLinearLayout(
+    initialOffsetX,
+    offsetY,
+    xCoordMap,
+    yCoordMap,
+    widthMap,
+    finalClusterNodePositions = null
+) {
+    if (this.nodeOrder === null) {
+        this.nodeOrder = this.H.getVertices();
+    }
 
-    // --- Draw edges using a data join ---
-    svg
-      .append("g")
-      .attr("class", "linear-edges")
-      .selectAll("path.edge")
-      .data(this.H.getEdges())
-      .join("path")
-      .attr("class", "edge")
-      .attr("d", (d) => {
-        let x1 = xCoordMap.get(d.getSource());
-        let x2 = xCoordMap.get(d.getTarget());
-        if (x1 > x2) [x1, x2] = [x2, x1]; // Ensure x1 is the smaller coordinate
-        const xDist = x2 - x1;
-        return `M ${x1} ${offsetY} C ${x1} ${offsetY + xDist / 2}, ${x2} ${
-          offsetY + xDist / 2
-        }, ${x2} ${offsetY}`;
-      })
-      .attr("stroke", edgeColor)
-      .attr("stroke-width", edgeWidth)
-      .attr("fill", "none")
-      .on("mouseover", listeners.mouseEntersEdge)
-      .on("mouseleave", listeners.mouseLeavesEdge);
+    let currentX = initialOffsetX;
+    const leafPositions = new Map();
 
-    // --- Draw nodes using a data join ---
-    const nodeCells = svg
-      .append("g")
-      .attr("class", "linear-nodes")
-      .selectAll("g.node-cell")
-      .data(this.nodeOrder, (d) => d.getID()) // Key function for object constancy
-      .join("g")
-      .attr("class", "node-cell")
-      .attr("transform", (d) => `translate(${xCoordMap.get(d)}, ${offsetY})`);
+    // Get the filtered leaves (last-level cluster leaves)
+    const leavesToAlign = new Set(this.getLeavesInLastLevelClusters());
 
-    nodeCells
-      .append("use")
-      .attr("href", "#circleShape")
-      .attr("fill", nodeColor);
+    this.nodeOrder.forEach((vertex) => {
+        if (finalClusterNodePositions && finalClusterNodePositions.has(vertex.getID())) {
+            leafPositions.set(vertex, finalClusterNodePositions.get(vertex.getID()));
+        } else {
+            leafPositions.set(vertex, currentX);
+            currentX += vertexDistance;
+        }
+    });
 
-    nodeCells
-      .append("text")
-      .attr("y", textOffset)
-      .attr("fill", "white")
-      .attr("font-size", textSize)
-      .attr("text-anchor", "middle")
-      .attr("alignment-baseline", "middle")
-      .attr("pointer-events", "none")
-      .text((d) => d.getID());
+    // Update coordinates for all leaves
+    this.nodeOrder.forEach((vertex) => {
+        xCoordMap.set(vertex, leafPositions.get(vertex));
 
-    nodeCells
-      .on("mouseover", listeners.mouseEntersNodeCell)
-      .on("mouseleave", listeners.mouseLeavesNodeCell);
-  }
+        // Align filtered leaves with their cluster (if applicable)
+        if (leavesToAlign.has(vertex)) {
+            const parent = vertex.getParent();
+            if (parent) {
+                // Use parent's Y-coordinate if available, otherwise fallback to offsetY
+                yCoordMap.set(vertex, yCoordMap.get(parent) || offsetY);
+            } else {
+                yCoordMap.set(vertex, offsetY);
+            }
+        } else {
+            yCoordMap.set(vertex, offsetY);
+        }
 
-  drawClusterInclusions(
-    svg,
-    xCoordMap,
-    yCoordMap,
-    widthMap,
-    xCoordReferenceMap,
-    yCoordReferenceMap,
-    clusterDistance
-  ) {
-    // 1. Create an array to hold rich data objects, not just strings.
-    const pathData = [];
-    for (const node of this.H.getNodes()) {
-      if (node.getParent() !== null) {
-        //
-        const referenceX = xCoordReferenceMap.get(node); //
-        const referenceY = yCoordReferenceMap.get(node); //
-        const x = xCoordMap.get(node); //
-        const y = yCoordMap.get(node); //
-        const width = widthMap.get(node); //
+        widthMap.set(vertex, cellSize);
+    });
 
-        // Check if all coordinates are available before creating the path
-        if (
-          [referenceX, referenceY, x, y, width].every((v) => v !== undefined)
-        ) {
-          const topLeftX =
-            referenceX - cellSize / 2 - parseInt(arrayBoundaryWidth, 10); //
-          const topRightX =
-            referenceX + cellSize / 2 + parseInt(arrayBoundaryWidth, 10); //
-          const topY = referenceY; //
-          const bottomLeftX = x - width / 2 - parseInt(arrayBoundaryWidth, 10); //
-          const bottomRightX = x + width / 2 + parseInt(arrayBoundaryWidth, 10); //
-          const bottomY = y; //
-          const upperMiddleLeftX =
-            referenceX - cellSize / 2 + 2.5 * parseInt(arrayBoundaryWidth, 10); //
-          const upperMiddleRightX =
-            referenceX + cellSize / 2 - 2.5 * parseInt(arrayBoundaryWidth, 10); //
-          const lowerMiddleLeftX = x - width / 3; //
-          const lowerMiddleRightX = x + width / 3; //
-          const belowTopY = topY + 0.4 * clusterDistance; //
-          let currentBottomY = topY + clusterDistance;
-          let currentTopY = topY;
-          const aboveBottomY = currentBottomY - 0.6 * clusterDistance; //
-          const verticalSpan = Math.abs(bottomY - topY) / clusterDistance;
-          let currentBottomLeftX = lowerMiddleLeftX;
-          if (verticalSpan === 1) {
-            currentBottomLeftX = bottomLeftX;
-          }
-          let leftPath = `C ${upperMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${currentBottomLeftX} ${currentBottomY}`;
-          let rightPath = `C ${lowerMiddleRightX} ${aboveBottomY}, ${upperMiddleRightX} ${belowTopY}, ${topRightX} ${currentTopY}`;
-          for (let i = 1; i < verticalSpan; i++) {
-            currentBottomY = currentBottomY + clusterDistance;
-            currentTopY = currentTopY + clusterDistance;
-            const belowTopY = currentTopY + 0.4 * clusterDistance; //
-            const aboveBottomY = currentBottomY - 0.6 * clusterDistance; //
-            if (verticalSpan === i + 1) {
-              currentBottomLeftX = bottomLeftX;
-            }
-            leftPath =
-              leftPath +
-              `\nC ${lowerMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${currentBottomLeftX} ${currentBottomY}`;
-            rightPath =
-              `C ${lowerMiddleRightX} ${aboveBottomY}, ${lowerMiddleRightX} ${belowTopY}, ${lowerMiddleRightX} ${currentTopY}\n` +
-              rightPath;
-          }
+    // DELETED: Edge and Node drawing blocks were here.
+}
 
-          const pathString =
-            `M ${topLeftX} ${topY}` +
-            leftPath +
-            `L ${bottomRightX} ${bottomY}` +
-            rightPath +
-            `L ${topLeftX} ${topY} 
-		  Z`; //
 
-          // 2. Push an object containing the node and its path string.
-          pathData.push({
-            node: node,
-            path: pathString,
-          });
-        }
-      }
-    }
+getLeavesInLastLevelClusters() {
+    const clusterLayers = this.H.getClusterLayers();
+    const depth = clusterLayers.length;
+    if (depth === 0) return [];
 
-    // 3. Bind the array of objects. The second argument to .attr("d", ...) is now an accessor function.
-    svg
-      .append("g")
-      .attr("class", "cluster-inclusions")
-      .lower() // Move this group to the background
-      .selectAll("path.inclusion")
-      .data(pathData)
-      .join("path")
-      .attr("class", "inclusion")
-      .attr("d", (d) => d.path) // Access the 'path' property from the bound object
-      .attr("stroke", "none") //
-      .attr("fill", treecolor); //
-  }
+    const lastLevelClusters = clusterLayers[depth - 1];
+    const leaves = [];
 
-  draw() {
+    lastLevelClusters.forEach(cluster => {
+        cluster.getChildren().forEach(child => {
+            if (!child.getChildren || child.getChildren().length === 0) { // leaf check
+                leaves.push({ leaf: child, cluster: cluster });
+                console.log(`Leaf ID: ${child.getID()} in cluster ID: ${cluster.getID()}`);
+            }
+        });
+    });
+
+    return leaves.map(x => x.leaf); // return only the leaf nodes
+}
+
+// ----------------------------------------------------------------------
+// CORRECTED: drawClusterInclusions - Fixed Path String Syntax
+// ----------------------------------------------------------------------
+  drawClusterInclusions(
+    svg,
+    xCoordMap,
+    yCoordMap,
+    widthMap,
+    xCoordReferenceMap,
+    yCoordReferenceMap,
+    clusterDistance
+  ) {
+    // 1. Create an array to hold rich data objects, not just strings.
+    const pathData = [];
+    const leavesToSkip = new Set(this.getLeavesInLastLevelClusters());
+    for (const node of this.H.getNodes()) {
+      if (node.getParent() !== null && !leavesToSkip.has(node)) {
+        //
+        const referenceX = xCoordReferenceMap.get(node); //
+        const referenceY = yCoordReferenceMap.get(node); //
+        const x = xCoordMap.get(node); //
+        const y = yCoordMap.get(node); //
+        const width = widthMap.get(node); //
+
+        // Check if all coordinates are available before creating the path
+        if (
+          [referenceX, referenceY, x, y, width].every((v) => v !== undefined)
+        ) {
+          const topLeftX =
+            referenceX - cellSize / 2 - parseInt(arrayBoundaryWidth, 10); //
+          const topRightX =
+            referenceX + cellSize / 2 + parseInt(arrayBoundaryWidth, 10); //
+          const topY = referenceY; //
+          const bottomLeftX = x - width / 2 - parseInt(arrayBoundaryWidth, 10); //
+          const bottomRightX = x + width / 2 + parseInt(arrayBoundaryWidth, 10); //
+          const bottomY = y; //
+          const upperMiddleLeftX =
+            referenceX - cellSize / 2 + 2.5 * parseInt(arrayBoundaryWidth, 10); //
+          const upperMiddleRightX =
+            referenceX + cellSize / 2 - 2.5 * parseInt(arrayBoundaryWidth, 10); //
+          const lowerMiddleLeftX = x - width / 3; //
+          const lowerMiddleRightX = x + width / 3; //
+          const belowTopY = topY + 0.4 * clusterDistance; //
+          let currentBottomY = topY + clusterDistance;
+          let currentTopY = topY;
+          const aboveBottomY = currentBottomY - 0.6 * clusterDistance; //
+          const verticalSpan = Math.abs(bottomY - topY) / clusterDistance;
+          let currentBottomLeftX = lowerMiddleLeftX;
+          if (verticalSpan === 1) {
+            currentBottomLeftX = bottomLeftX;
+          }
+          let leftPath = `C ${upperMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${currentBottomLeftX} ${currentBottomY}`;
+          let rightPath = `C ${lowerMiddleRightX} ${aboveBottomY}, ${upperMiddleRightX} ${belowTopY}, ${topRightX} ${currentTopY}`;
+          for (let i = 1; i < verticalSpan; i++) {
+            currentBottomY = currentBottomY + clusterDistance;
+            currentTopY = currentTopY + clusterDistance;
+            const belowTopY = currentTopY + 0.4 * clusterDistance; //
+            const aboveBottomY = currentBottomY - 0.6 * clusterDistance; //
+            if (verticalSpan === i + 1) {
+              currentBottomLeftX = bottomLeftX;
+            }
+            leftPath =
+              leftPath +
+              `\nC ${lowerMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${currentBottomLeftX} ${currentBottomY}`;
+            rightPath =
+              `C ${lowerMiddleRightX} ${aboveBottomY}, ${lowerMiddleRightX} ${belowTopY}, ${lowerMiddleRightX} ${currentTopY}\n` +
+              rightPath;
+          }
+
+          // FIX: Removed the trailing newline and indentation before the final Z
+          const pathString =
+            `M ${topLeftX} ${topY}` +
+            leftPath +
+            `L ${bottomRightX} ${bottomY}` +
+            rightPath +
+            `L ${topLeftX} ${topY} Z`;
+
+          // 2. Push an object containing the node and its path string.
+          pathData.push({
+            node: node,
+            path: pathString,
+          });
+        }
+      }
+    }
+
+    // 3. Bind the array of objects. The second argument to .attr("d", ...) is now an accessor function.
+    svg
+      .append("g")
+      .attr("class", "cluster-inclusions")
+      .lower() // Move this group to the background
+      .selectAll("path.inclusion")
+      .data(pathData)
+      .join("path")
+      .attr("class", "inclusion")
+      .attr("d", (d) => d.path) // Access the 'path' property from the bound object
+      .attr("stroke", "none") //
+      .attr("fill", treecolor); //
+  }
+
+// ----------------------------------------------------------------------
+// CORRECTED: draw function
+// ----------------------------------------------------------------------
+draw() {
     // Determine the necessary dimensions
     if (this.nodeOrder === null) {
-      this.nodeOrder = this.H.getVertices();
+        this.nodeOrder = this.H.getVertices();
     }
     const numVertices = this.nodeOrder.length;
     const clusterLayers = this.H.getClusterLayers();
@@ -386,101 +379,239 @@ export class HierarchicallyClusteredGraphDrawer {
     const clusterHeight = this.H.getMaxChildren() * cellSize;
     const clusterDistance = clusterHeight * clusterDistanceScalar;
 
-    // Initial Y offset to safely fit the top cluster
+    // Initial offsets
     const initialOffsetX = cellSize;
     const initialOffsetY = 5 * cellSize;
 
-    // 1. Calculate the X-coordinate of the center of the last node
+    // Linear layout dimensions
     const lastNodeCenterX = initialOffsetX + (numVertices - 1) * vertexDistance;
-
-    // The required width is the position of the last node's right edge plus padding
     const minRequiredWidth = lastNodeCenterX + cellSize / 2;
-
-    // 2. Calculate the maximum possible distance between any two leaf nodes.
     const maxHorizontalDistance = (numVertices - 1) * vertexDistance;
-
-    // The height of the largest arc will be maxHorizontalDistance / 2.
     const maxArcHeight = maxHorizontalDistance / 2;
-
-    // The Y-coordinate of the linear layout (center of leaf nodes).
-    const linearLayoutY = initialOffsetY + depth * clusterDistance;
-
-    // 3. Calculate the new minimum required height for the viewBox.
-    // The lowest point is linearLayoutY + maxArcHeight.
-    // --- FIX: Removed the redundant + cellSize/2 to reduce bottom padding ---
+    const linearLayoutY = initialOffsetY + (depth - 1) * clusterDistance;
     const minRequiredHeight = linearLayoutY + maxArcHeight;
-
-    // Use minimal padding only for the viewBox edges
     const padding = 2;
     const viewBoxWidth = minRequiredWidth + padding;
     const viewBoxHeight = minRequiredHeight + padding;
 
-    const svg = d3
-      .create("svg:svg")
-      .attr("viewBox", `0 0 ${viewBoxWidth} ${viewBoxHeight}`)
-      .style("width", "100%")
-      .style("max-height", "100vh")
-      .style("display", "block");
+    const svg = d3.create("svg:svg")
+        .attr("viewBox", `0 0 ${viewBoxWidth} ${viewBoxHeight}`)
+        .style("width", "100%")
+        .style("max-height", "100vh")
+        .style("display", "block");
 
-    const defs = svg.append("defs");
+    // Create zoom group
+    this.zoomGroup = svg.append("g").attr("class", "zoom-group");
+
+    // Define node shapes
+    const defs = this.zoomGroup.append("defs");
     this.defineNodeShapes(defs);
 
-    // Maps to store calculated coordinates and sizes
+    // Maps to store coordinates
     const xCoordMap = new Map();
     const yCoordMap = new Map();
     const widthMap = new Map();
     const xCoordReferenceMap = new Map();
     const yCoordReferenceMap = new Map();
 
-    // --- Draw the bottom linear layout of leaf nodes ---
+    // 1. Calculate Initial Linear Layout (Sets initial spaced-out X, and correct final Y)
     this.drawLinearLayout(
-      svg,
-      initialOffsetX,
-      linearLayoutY,
-      xCoordMap,
-      yCoordMap,
-      widthMap
+        initialOffsetX,
+        linearLayoutY,
+        xCoordMap,
+        yCoordMap,
+        widthMap
     );
 
-    // --- Draw the hierarchical clusters from bottom to top ---
-    const clustersContainer = svg
-      .append("g")
-      .attr("class", "clusters-container");
-    for (let i = depth - 1; i >= 0; i--) {
-      for (const cluster of clusterLayers.at(i)) {
-        // Calculate the cluster's center X based on its children's positions
-        let totalX = 0;
-        for (const child of cluster.getChildren()) {
-          totalX += xCoordMap.get(child);
-        }
-        const clusterX = totalX / cluster.getChildren().length;
+    // 2. Draw Hierarchical Clusters (Calculates and sets X/Y for clusters and xCoordReferenceMap for cells)
+    const clustersContainer = this.zoomGroup.append("g").attr("class", "clusters-container");
 
-        this.drawCluster(
-          cluster,
-          clusterX,
-          initialOffsetY + i * clusterDistance,
-          clustersContainer,
-          xCoordMap,
-          yCoordMap,
-          widthMap,
-          xCoordReferenceMap,
-          yCoordReferenceMap
-        );
-      }
+    for (let i = depth - 1; i >= 0; i--) {
+        for (const cluster of clusterLayers.at(i)) {
+            const children = cluster.getChildren();
+            // Calculate cluster center X based on children's spaced-out X coordinates
+            const clusterX = children.reduce((sum, child) => sum + xCoordMap.get(child), 0) / children.length;
+            this.drawCluster(
+                cluster,
+                clusterX,
+                initialOffsetY + i * clusterDistance,
+                clustersContainer,
+                xCoordMap,
+                yCoordMap,
+                widthMap,
+                xCoordReferenceMap,
+                yCoordReferenceMap
+            );
+        }
     }
 
-    // --- Draw the inclusion bands connecting hierarchy levels ---
+    // 3. ALIGN LEAVES: Overwrite X position only for leaves belonging to a last-level cluster.
+    // This requires the helper function getLeavesInLastLevelClusters() to be available.
+    const leavesToAlign = new Set(this.getLeavesInLastLevelClusters());
+
+    this.H.getVertices().forEach(leaf => {
+        // ONLY align leaves that are explicitly part of a last-level cluster
+        if (leavesToAlign.has(leaf)) {
+            const refX = xCoordReferenceMap.get(leaf);
+            const clusterY = yCoordMap.get(leaf.getParent());
+
+            if (refX !== undefined && clusterY !== undefined) {
+                // Overwrite the linear X (vertexDistance) with the cluster cell X (cellSize)
+                xCoordMap.set(leaf, refX);
+                
+                // Re-confirm the Y coordinate is the cluster's Y (linearLayoutY)
+                yCoordMap.set(leaf, clusterY);
+            }
+        }
+        // Leaves not in this set retain their original drawLinearLayout X-coordinates (spaced by vertexDistance)
+    });
+
+    // 4. FINAL DRAWING BLOCK (Edges and Nodes use the now-correctly-aligned coordinates)
+
+    // --- DRAW EDGES ---
+    this.zoomGroup.select("g.linear-edges").remove();
+    const edgesGroup = this.zoomGroup.append("g").attr("class", "linear-edges");
+
+    edgesGroup
+        .selectAll("path.edge")
+        .data(this.H.getEdges())
+        .join("path")
+        .attr("class", "edge")
+        .attr("d", (d) => {
+            // Use the finalized, aligned coordinates from the map
+            let x1 = xCoordMap.get(d.getSource());
+            let x2 = xCoordMap.get(d.getTarget());
+            let y = yCoordMap.get(d.getSource());
+
+            if (x1 === undefined || x2 === undefined || y === undefined) return "";
+
+            let tempX1 = x1;
+            let tempX2 = x2;
+            if (tempX1 > tempX2) [tempX1, tempX2] = [tempX2, tempX1];
+
+            const xDist = tempX2 - tempX1;
+
+            // Draw a cubic Bèzier curve
+            return `M ${x1} ${y} C ${x1} ${y + xDist / 2}, ${x2} ${y + xDist / 2}, ${x2} ${y}`;
+        })
+        .attr("stroke", edgeColor)
+        .attr("stroke-width", edgeWidth)
+        .attr("fill", "none")
+        .on("mouseover", listeners.mouseEntersEdge)
+        .on("mouseleave", listeners.mouseLeavesEdge);
+
+    // --- DRAW LEAF NODES ---
+    this.zoomGroup.select("g.linear-nodes").remove();
+
+    const nodeCells = this.zoomGroup
+        .append("g")
+        .attr("class", "linear-nodes")
+        .selectAll("g.node-cell")
+        .data(this.nodeOrder, (d) => d.getID())
+        .join("g")
+        .attr("class", "node-cell")
+        .attr("data-id", (d) => d.getID())
+        .attr("transform", (d) => {
+            // Use the finalized coordinates from the map
+            const finalX = xCoordMap.get(d);
+            const finalY = yCoordMap.get(d);
+            return `translate(${finalX}, ${finalY})`;
+        });
+
+    nodeCells
+        .append("use")
+        .attr("href", "#diamondShape")
+        .attr("fill", nodeColor);
+
+    nodeCells
+        .append("text")
+        .attr("y", textOffset)
+        .attr("fill", "white")
+        .attr("font-size", textSize)
+        .attr("text-anchor", "middle")
+        .attr("alignment-baseline", "middle")
+        .attr("pointer-events", "none")
+        .text((d) => d.getID());
+
+    nodeCells
+        .on("mouseover", listeners.mouseEntersNodeCell)
+        .on("mouseleave", listeners.mouseLeavesNodeCell);
+
+
+    // 5. Draw Cluster Inclusions 
     this.drawClusterInclusions(
-      svg,
-      xCoordMap,
-      yCoordMap,
-      widthMap,
-      xCoordReferenceMap,
-      yCoordReferenceMap,
-      clusterDistance
+        this.zoomGroup,
+        xCoordMap, // Contains the correctly aligned X
+        yCoordMap,
+        widthMap,
+        xCoordReferenceMap,
+        yCoordReferenceMap,
+        clusterDistance
     );
 
-    // Append the fluid SVG.
+    // Store SVG reference for zoom
+    this.svg = svg;
     d3.select("body").append(() => svg.node());
-  }
+
+    // Setup zoom behavior
+    this.setupZoomBehavior();
+}
+
+// === ZOOM METHODS ===
+setupZoomBehavior() {
+  if (!this.svg) return;
+  
+  // Store the initial transform for reset
+  this.initialTransform = d3.zoomIdentity;
+  
+  const zoom = d3.zoom()
+    .scaleExtent([0.1, 4]) // Min and max zoom levels
+    .on('zoom', (event) => {
+      this.zoomGroup.attr('transform', event.transform);
+      this.currentTransform = event.transform; // Store current transform
+    });
+  
+  this.svg.call(zoom);
+  
+  // Store the zoom behavior for programmatic control
+  this.d3zoom = zoom;
+}
+
+zoomIn() {
+  if (!this.svg || !this.d3zoom) return;
+  
+  // Get current transform or use identity if none
+  const currentTransform = this.currentTransform || d3.zoomIdentity;
+  const newScale = Math.min(4, currentTransform.k * 1.2);
+  
+  // Apply zoom with transition
+  this.svg.transition()
+    .duration(250)
+    .call(this.d3zoom.scaleTo, newScale);
+}
+
+zoomOut() {
+  if (!this.svg || !this.d3zoom) return;
+  
+  // Get current transform or use identity if none
+  const currentTransform = this.currentTransform || d3.zoomIdentity;
+  const newScale = Math.max(0.1, currentTransform.k / 1.2);
+  
+  // Apply zoom with transition
+  this.svg.transition()
+    .duration(250)
+    .call(this.d3zoom.scaleTo, newScale);
+}
+
+zoomReset() {
+  if (!this.svg || !this.d3zoom) return;
+  
+  console.log("Resetting zoom to 100%");
+  
+  // Reset to identity transform (scale=1, translate=0,0)
+  this.svg.transition()
+    .duration(250)
+    .call(this.d3zoom.transform, d3.zoomIdentity);
+}
+
 }
