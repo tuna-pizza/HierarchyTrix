@@ -60,6 +60,29 @@
         margin: 0;
         font-size: 1.2rem;
       }
+      
+      /* Zoom Buttons */
+      #zoom-controls {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .zoom-button {
+        background: var(--color-background-medium);
+        border: 1px solid var(--color-primary);
+        color: var(--color-text-header);
+        padding: 6px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-family: var(--font-main);
+        font-size: 0.9rem;
+        min-width:40px;
+      }
+      .zoom-button:hover {
+        background: var(--color-primary);
+        color: var(--color-text-button);
+      }
+      
       #uploadButton {
         background: var(--color-primary);
         border: none;
@@ -88,8 +111,8 @@
 		   font-family: var(--font-main);
       }
       
-      /* Instance Buttons (Go & Sample) */
-      #sample-button, #go-to-instance-button {
+      /* Instance Buttons (Go & Sample & Solver) */
+      #sample-button, #go-to-instance-button, #solver-button {
            background: var(--color-secondary);
 		   border: none; 
 		   color: var(--color-text-button);
@@ -102,11 +125,11 @@
       }
       
       /* Dropdown Styles */
-      #sample-dropdown {
+      #sample-dropdown, #solver-dropdown {
           background-color: var(--color-background-medium);
 		  border: 1px solid var(--color-primary);
       }
-      #sample-dropdown a {
+      #sample-dropdown a, #solver-dropdown a {
           color: var(--color-text-header); 
           font-family: var(--font-main);
       }
@@ -229,6 +252,13 @@
     <h1>HierarchyTrix</h1>
 		<div style="display: flex; gap: 15px; align-items: center;"> 
 			
+			<!-- Zoom Controls - ADDED BEFORE UPLOAD BUTTON -->
+			<div id="zoom-controls">
+				<button id="zoom-out-button" class="zoom-button" title="Zoom Out">-</button>
+				<button id="zoom-reset-button" class="zoom-button" title="Reset Zoom">100%</button>
+				<button id="zoom-in-button" class="zoom-button" title="Zoom In">+</button>
+			</div>
+
 			<button id="uploadButton">Upload JSON</button>
 			<input
 				type="file"
@@ -267,6 +297,25 @@
 					</div>
 				</div>
 
+				<div id="solver-popover-container" style="position: relative;">
+					<button id="solver-button" 
+							title="Select solver method"
+							style="">Solver</button>
+					
+					<div id="solver-dropdown" 
+						 style="display: none; 
+								position: absolute; 
+								top: 100%; 
+								left: 0; 
+								width: 120px; 
+								box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+								z-index: 200;">
+						<a data-solver="ilp" href="#" style="padding: 8px 10px; text-decoration: none; display: block; font-size: 0.9rem;">ILP Solver</a>
+						<a data-solver="heuristic" href="#" style="padding: 8px 10px; text-decoration: none; display: block; font-size: 0.9rem;">Heuristic Solver</a>
+						<a data-solver="hybrid" href="#" style="padding: 8px 10px; text-decoration: none; display: block; font-size: 0.9rem;">Hybrid Solver</a>
+					</div>
+				</div>
+
 				<button id="go-to-instance-button" 
 						style="">Go</button>
 			</div>
@@ -295,12 +344,6 @@
 					style="">Download JSON</button>
 		</div>
 	</header>
-
-    <div style="padding: 20px;">
-      Quando Alessandra si sente cattiva, lei si chiama Henry. Quando si sente
-      male, lei si chiama Marialena.
-      <br />
-    </div>
 
     <script>
 	  // Function to handle all visualization downloads
@@ -396,6 +439,25 @@
 				img.src = svgUrl;
 			}
 		}
+
+		// Function to trigger solve again
+		function solveAgain(selectedSolver) {
+			const urlParams = new URLSearchParams(window.location.search);
+			const currentInstanceId = urlParams.get('instance');
+			const currentTheme = urlParams.get('theme');
+			
+			if (!currentInstanceId) {
+				alert("No graph is currently loaded.");
+				return;
+			}
+			
+			// Update URL and reload with new solver
+			let newUrl = `?instance=${currentInstanceId}&method=${selectedSolver}`;
+			if (currentTheme) {
+				newUrl += `&theme=${currentTheme}`;
+			}
+			window.location.href = newUrl;
+		}
 	
 	  document.addEventListener('DOMContentLoaded', () => {
 		// Initialization MUST happen inside DOMContentLoaded to ensure elements exist.
@@ -423,6 +485,10 @@
         }
         // --- END EASTER EGG CHECK ---
 
+		// Zoom Controls - NEW
+		const zoomOutButton = document.getElementById("zoom-out-button");
+		const zoomResetButton = document.getElementById("zoom-reset-button");
+		const zoomInButton = document.getElementById("zoom-in-button");
 
 		const uploadButton = document.getElementById("uploadButton");
 		const fileInput = document.getElementById("fileInput");
@@ -433,6 +499,10 @@
 		const sampleButton = document.getElementById("sample-button");
 		const sampleDropdown = document.getElementById("sample-dropdown");
 		const downloadButton = document.getElementById("downloadButton");
+
+		// NEW SOLVER DROPDOWN ELEMENTS
+		const solverButton = document.getElementById("solver-button");
+		const solverDropdown = document.getElementById("solver-dropdown");
 
 		const saveVizButton = document.getElementById("saveVizButton");
 		const saveVizDropdown = document.getElementById("save-viz-dropdown");
@@ -447,6 +517,21 @@
 		if (!uploadButton || !fileInput) {
 			console.error("Critical upload UI elements missing!");
 			return;
+		}
+
+		// Zoom Controls Event Listeners - NEW
+		if (zoomOutButton && zoomResetButton && zoomInButton) {
+			zoomOutButton.addEventListener('click', () => {
+				window.dispatchEvent(new CustomEvent('zoomOut'));
+			});
+
+			zoomResetButton.addEventListener('click', () => {
+				window.dispatchEvent(new CustomEvent('zoomReset'));
+			});
+
+			zoomInButton.addEventListener('click', () => {
+				window.dispatchEvent(new CustomEvent('zoomIn'));
+			});
 		}
 
 		uploadButton.addEventListener("click", () => {
@@ -521,14 +606,28 @@
 			  // 3. Define button actions (using .onclick to ensure a fresh handler each time)
 			  
 			  // Go Button: Navigate to the new instance
-			  goButton.onclick = () => {
+			goButton.onclick = () => {
+				const selectedSolver = document.getElementById("solver-select").value;
+				
 				modal.style.display = "none";
 				let newUrl = `?instance=${instanceId}`;
-				if (isK00lModeActive) { // Persist 90s theme
+
+				// ✅ FIX: Use 'method' parameter instead of 'solver'
+				if (selectedSolver.toLowerCase() === "ilp") {
+					newUrl += '&method=ilp';
+				} else if (selectedSolver.toLowerCase() === "heuristic") {
+					newUrl += '&method=heuristic';
+				} else if (selectedSolver.toLowerCase() === "hybrid") {
+					newUrl += '&method=hybrid';
+				}
+
+				// Keep the 90s theme if active
+				if (isK00lModeActive) {
 					newUrl += '&theme=k00l90z';
 				}
-				window.location.href = newUrl; 
-			  };
+
+				window.location.href = newUrl;
+				};
 
 			  // Stay Button: Close the modal and stay on the current page
 			  stayButton.onclick = () => {
@@ -616,33 +715,78 @@
 				}
 			});
 		}
-		
-		if (goToInstanceButton && instanceIdInputHeader) {
-			goToInstanceButton.addEventListener('click', () => {
-				const instanceId = instanceIdInputHeader.value.trim();
-				
-				if (!instanceId) {
-					alert("Please enter a valid Instance ID.");
-					return;
-				}
-                
-                // If the user attempts to 'Go' to k00l90z, only apply the theme to the current page/instance
-                if (instanceId.toLowerCase() === "k00l90z") {
-                    // Get the real current instance ID from the URL, or empty string if none is loaded.
-                    const realInstance = urlParams.get('instance') || '';
-                    
-                    // Reload the page with the current instance and the new theme parameter
-                    window.location.href = `?instance=${realInstance}&theme=k00l90z`;
-                    return; // Stop here
-                }
-                
-                // For all other instances, navigate as normal, persisting theme if active
-				let newUrl = `?instance=${instanceId}`;
-				if (isK00lModeActive) { 
-					newUrl += '&theme=k00l90z';
-				}
-				window.location.href = newUrl;
+
+		// --- NEW LOGIC: Solver Dropdown Toggle & Selection ---
+		if (solverButton && solverDropdown) {
+			// Set initial solver based on URL parameter
+			const currentSolver = urlParams.get('method') || 'ilp';
+			let selectedSolver = currentSolver;
+
+			// Toggle visibility
+			solverButton.addEventListener('click', (event) => {
+				event.stopPropagation();
+				const isVisible = solverDropdown.style.display === 'block';
+				solverDropdown.style.display = isVisible ? 'none' : 'block';
 			});
+
+			// Handle clicks on the solver links
+			solverDropdown.querySelectorAll('a').forEach(link => {
+				link.addEventListener('click', (event) => {
+					event.preventDefault(); 
+					
+					const solver = link.getAttribute('data-solver');
+					selectedSolver = solver;
+					
+					// Update button text to show selected solver (optional)
+					// solverButton.textContent = solver === 'ilp' ? 'ILP' : 'HEU';
+					
+					// Hide the dropdown
+					solverDropdown.style.display = 'none';
+				});
+			});
+
+			// Hide the dropdown if the user clicks anywhere else on the page
+			document.addEventListener('click', (event) => {
+				if (!solverDropdown.contains(event.target) && event.target !== solverButton) {
+					solverDropdown.style.display = 'none';
+				}
+			});
+
+			// --- UPDATED LOGIC: Single Go Button that handles both functions ---
+			if (goToInstanceButton && instanceIdInputHeader) {
+				goToInstanceButton.addEventListener('click', () => {
+					const instanceId = instanceIdInputHeader.value.trim();
+					
+					// If the user attempts to 'Go' to k00l90z, only apply the theme to the current page/instance
+					if (instanceId.toLowerCase() === "k00l90z") {
+						// Get the real current instance ID from the URL, or empty string if none is loaded.
+						const realInstance = urlParams.get('instance') || '';
+						
+						// Reload the page with the current instance and the new theme parameter
+						window.location.href = `?instance=${realInstance}&theme=k00l90z`;
+						return; // Stop here
+					}
+					
+					// If input field is empty but we have a current instance, perform "Solve Again"
+					if (!instanceId && currentInstanceId) {
+						solveAgain(selectedSolver);
+						return;
+					}
+					
+					// If we have an instance ID in the input field, navigate to that instance
+					if (instanceId) {
+						let newUrl = `?instance=${instanceId}&method=${selectedSolver}`;
+						if (isK00lModeActive) { 
+							newUrl += '&theme=k00l90z';
+						}
+						window.location.href = newUrl;
+						return;
+					}
+					
+					// If neither condition is met, show an alert
+					alert("Please enter a valid Instance ID.");
+				});
+			}
 		}
         
         // Expose the current theme to the module script
@@ -650,7 +794,6 @@
 
 	  }); // <-- End of DOMContentLoaded listener
 	</script>
-
 
     <div id="custom-modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6);">
       <div class="modal-content-container" style=" 
@@ -673,6 +816,21 @@
                       font-weight: bold; 
                       font-family: monospace; 
                       border-radius: 4px;">
+		<div style="margin-bottom: 20px;">
+		<label for="solver-select" style="display:block; margin-bottom:5px;">Select Solver:</label>
+		<select id="solver-select" 
+				style="width: 100%; 
+						padding: 8px; 
+						border-radius: 5px; 
+						border: 1px solid #ccc; 
+						font-family: var(--font-main); 
+						background-color: var(--color-background-medium); 
+						color: var(--color-text-input);">
+			<option value="ilp">ILP Solver</option>
+			<option value="heuristic">Heuristic Solver</option>
+			<option value="hybrid">Hybrid Solver</option>
+		</select>
+		</div>
 
         <div style="display: flex; justify-content: space-between;">
           <button id="stay-button" 
