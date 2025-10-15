@@ -296,7 +296,7 @@ def solve_layout_for_graph(graph_json_path: str, time_limit: int = 3600) -> List
         print(f"❌ Unexpected error: {e}")
         traceback.print_exc()
         return []
-
+ 
 # Keep your preferred verification function
 def verify_crossings(layout: List[str], edges: List[Tuple[str, str]]) -> int:
     """Verify the number of crossings in a given layout"""
