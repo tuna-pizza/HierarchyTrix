@@ -241,12 +241,11 @@ drawLinearLayout(
         widthMap.set(vertex, cellSize);
     });
 
-    // DELETED: Edge and Node drawing blocks were here.
 }
 
 
 getLeavesInLastLevelClusters() {
-    const clusterLayers = this.H.getClusterLayers();
+    const clusterLayers = this.H.getClusterLayers(false);
     const depth = clusterLayers.length;
     if (depth === 0) return [];
 
@@ -374,28 +373,34 @@ draw() {
         this.nodeOrder = this.H.getVertices();
     }
     const numVertices = this.nodeOrder.length;
-    const clusterLayers = this.H.getClusterLayers();
+    const clusterLayers = this.H.getClusterLayers(false);
+
+    let maxChildren = 0;
+    for (let cluster of clusterLayers[0])
+    {
+        if (cluster.getChildren().length > maxChildren)
+        {
+            maxChildren = cluster.getChildren().length;
+        }
+    }
+
     const depth = clusterLayers.length;
     const clusterHeight = this.H.getMaxChildren() * cellSize;
     const clusterDistance = clusterHeight * clusterDistanceScalar;
 
     // Initial offsets
     const initialOffsetX = cellSize;
-    const initialOffsetY = 5 * cellSize;
+    const initialOffsetY =  (1 + maxChildren)/2.0 * cellSize;
 
     // Linear layout dimensions
     const lastNodeCenterX = initialOffsetX + (numVertices - 1) * vertexDistance;
     const minRequiredWidth = lastNodeCenterX + cellSize / 2;
     const maxHorizontalDistance = (numVertices - 1) * vertexDistance;
-    const maxArcHeight = maxHorizontalDistance / 2;
     const linearLayoutY = initialOffsetY + (depth - 1) * clusterDistance;
-    const minRequiredHeight = linearLayoutY + maxArcHeight;
     const padding = 2;
     const viewBoxWidth = minRequiredWidth + padding;
-    const viewBoxHeight = minRequiredHeight + padding;
-
+        
     const svg = d3.create("svg:svg")
-        .attr("viewBox", `0 0 ${viewBoxWidth} ${viewBoxHeight}`)
         .style("width", "100%")
         .style("max-height", "100vh")
         .style("display", "block");
@@ -414,6 +419,7 @@ draw() {
     const xCoordReferenceMap = new Map();
     const yCoordReferenceMap = new Map();
 
+    
     // 1. Calculate Initial Linear Layout (Sets initial spaced-out X, and correct final Y)
     this.drawLinearLayout(
         initialOffsetX,
@@ -445,8 +451,7 @@ draw() {
         }
     }
 
-    // 3. ALIGN LEAVES: Overwrite X position only for leaves belonging to a last-level cluster.
-    // This requires the helper function getLeavesInLastLevelClusters() to be available.
+    // 3. ALIGN LEAVES
     const leavesToAlign = new Set(this.getLeavesInLastLevelClusters());
 
     this.H.getVertices().forEach(leaf => {
@@ -463,7 +468,6 @@ draw() {
                 yCoordMap.set(leaf, clusterY);
             }
         }
-        // Leaves not in this set retain their original drawLinearLayout X-coordinates (spaced by vertexDistance)
     });
 
     // 4. FINAL DRAWING BLOCK (Edges and Nodes use the now-correctly-aligned coordinates)
@@ -473,7 +477,7 @@ draw() {
     const edgesGroup = this.zoomGroup.append("g").attr("class", "linear-edges");
 
     // === FILTER OUT EDGES INSIDE SAME LAST-LEVEL CLUSTER ===
-
+    //const clusterLayers = this.H.getClusterLayers();
     let filteredEdges = this.H.getEdges(); // default: all edges
 
     if (clusterLayers.length > 0) {
@@ -497,6 +501,8 @@ draw() {
         });
     }
 
+     let maxDist = 0;
+
     // === DRAW FILTERED EDGES ===
     edgesGroup
         .selectAll("path.edge")
@@ -515,10 +521,17 @@ draw() {
             let tempX2 = x2;
             if (tempX1 > tempX2) [tempX1, tempX2] = [tempX2, tempX1];
 
-            const xDist = tempX2 - tempX1;
+            if (x1 > x2)
+		   {
+			   let swap = x1;
+			   x1 = x2;
+			   x2 = swap;
+		   }
 
+            const xDist = tempX2 - tempX1;
+            if (xDist > maxDist) maxDist = xDist;
             // Draw a cubic Bézier curve
-            return `M ${x1} ${y} C ${x1} ${y + xDist / 2}, ${x2} ${y + xDist / 2}, ${x2} ${y}`;
+            return `M ${x1} ${y} Q ${x1} ${y + xDist / 2.5}, ${x1 + xDist / 2.0} ${y + xDist / 2.5} Q ${x2} ${y + xDist / 2.5}, ${x2} ${y}`;
         })
         .attr("stroke", edgeColor)
         .attr("stroke-width", edgeWidth)
@@ -575,8 +588,13 @@ draw() {
         clusterDistance
     );
 
+    const maxArcHeight = maxDist / 2.5;
+    const minRequiredHeight = linearLayoutY + maxArcHeight;
+    const viewBoxHeight = minRequiredHeight + padding;
+
     // Store SVG reference for zoom
     this.svg = svg;
+    svg.attr("viewBox", `0 0 ${viewBoxWidth} ${viewBoxHeight}`);
     d3.select("body").append(() => svg.node());
 
     // Setup zoom behavior

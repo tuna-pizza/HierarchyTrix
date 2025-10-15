@@ -2,11 +2,13 @@ export const NodeType = {
   Cluster: "Cluster",
   Vertex: "Vertex",
 };
+
 export class HierarchicallyClusteredGraph {
   constructor() {
     this.nodes = [];
     this.edges = [];
   }
+
   getNumberOfEdges(node1, node2) {
     let myLeaves = node1.getLeaves();
     let otherLeaves = node2.getLeaves();
@@ -27,12 +29,15 @@ export class HierarchicallyClusteredGraph {
     }
     return res;
   }
+
   getEdges() {
     return this.edges;
   }
+
   getNodes() {
     return this.nodes;
   }
+
   getNodeByID(id) {
     for (let node of this.nodes) {
       if (node.getID() === id) {
@@ -41,6 +46,7 @@ export class HierarchicallyClusteredGraph {
     }
     return null;
   }
+
   getVertices() {
     let vertices = [];
     for (let node of this.nodes) {
@@ -50,28 +56,70 @@ export class HierarchicallyClusteredGraph {
     }
     return vertices;
   }
-  getClusterLayers() {
+
+getClusterLayers(topmost = true) {
     let clusterLayers = [];
-    let nextLayer = [];
-    for (let cluster of this.getClusters()) {
-      if (cluster.getParent() === null) {
-        nextLayer.push(cluster);
-      }
-    }
-    while (nextLayer.length > 0) {
-      let currentLayer = nextLayer;
-      clusterLayers.push(nextLayer);
-      nextLayer = [];
-      for (let cluster of currentLayer) {
-        for (let child of cluster.getChildren()) {
-          if (child.getNodeType() === NodeType.Cluster) {
-            nextLayer.push(child);
-          }
-        }
-      }
-    }
+	if (topmost)
+	{
+		let nextLayer = [];
+		for (let cluster of this.getClusters()) {
+		  if (cluster.getParent() === null) {
+			nextLayer.push(cluster);
+		  }
+		}
+		while (nextLayer.length > 0) {
+		  let currentLayer = nextLayer;
+		  clusterLayers.push(nextLayer);
+		  nextLayer = [];
+		  for (let cluster of currentLayer) {
+			for (let child of cluster.getChildren()) {
+			  if (child.getNodeType() === NodeType.Cluster) {
+				nextLayer.push(child);
+			  }
+			}
+		  }
+		}
+	}
+	else
+	{
+		let assigned = [];
+		for (let vertex of this.getVertices()) 
+		{
+			assigned.push(vertex);
+		}
+		while (assigned.length < this.getNodes().length)
+		{
+			let newLayer = [];
+			for (let cluster of this.getClusters()) 
+			{				
+				if (!assigned.includes(cluster))
+				{
+					let assignable = true;
+					for (let child of cluster.getChildren())
+					{
+						if (!assigned.includes(child))
+						{
+							assignable = false;
+						}
+					}
+					if (assignable)
+					{
+						newLayer.push(cluster);
+					}
+				}
+			}
+			for (let cluster of newLayer)
+			{
+				assigned.push(cluster);
+			}
+			let newArray = [newLayer];
+			clusterLayers = newArray.concat(clusterLayers);
+		}
+	}
+	console.log(clusterLayers);
     return clusterLayers;
-  }
+}
+
   getMaxChildren() {
     let res = 0;
     for (let cluster of this.getClusters()) {
@@ -81,6 +129,7 @@ export class HierarchicallyClusteredGraph {
     }
     return res;
   }
+
   getClusters() {
     let clusters = [];
     for (let i = 0; i < this.nodes.length; i++) {
@@ -91,12 +140,47 @@ export class HierarchicallyClusteredGraph {
     }
     return clusters;
   }
+
+  // ✅ NEW METHOD: Reorder nodes based on solver output
+  setNodeOrder(order, drawer = null) {
+    if (!Array.isArray(order)) {
+      console.error("❌ Invalid order data. Expected an array:", order);
+      return;
+    }
+
+    const nodeMap = new Map(this.nodes.map(node => [node.getID(), node]));
+    const reorderedNodes = [];
+
+    for (const id of order) {
+      const node = nodeMap.get(id);
+      if (node) reorderedNodes.push(node);
+    }
+
+    // Keep nodes that were not mentioned in the order
+    for (const node of this.nodes) {
+      if (!order.includes(node.getID())) {
+        reorderedNodes.push(node);
+      }
+    }
+
+    this.nodes = reorderedNodes;
+    console.log("✅ Node order updated successfully.");
+
+    // ✅ Auto redraw if drawer provided
+    if (drawer && typeof drawer.draw === "function") {
+      console.log("🔄 Redrawing graph with new order...");
+      drawer.draw("#graph-container");
+    }
+  }
+
   async readFromJSON(instance) {
     try {
-      const response = await fetch("/api/graph/" + instance); // calls Node.js endpoint
+      const response = await fetch("/api/graph/" + instance);
       const data = await response.json();
+
       const queue = [];
       const nodeMap = new Map();
+
       // enqueue root nodes (no parent)
       for (const node of data.nodes) {
         if (node.parent === null) {
@@ -110,11 +194,11 @@ export class HierarchicallyClusteredGraph {
           queue.push(node);
         }
       }
+
       // BFS loop
       while (queue.length > 0) {
         const current = queue.shift();
 
-        // enqueue children of the current node
         for (const node of data.nodes) {
           if (node.parent === current.id) {
             let type = NodeType.Vertex;
@@ -128,6 +212,7 @@ export class HierarchicallyClusteredGraph {
           }
         }
       }
+
       for (const edge of data.edges) {
         this.edges.push(
           new Edge(nodeMap.get(edge.source), nodeMap.get(edge.target))
@@ -138,6 +223,7 @@ export class HierarchicallyClusteredGraph {
     }
   }
 }
+
 export class Node {
   constructor(id, parentNode, type) {
     this.id = id;
@@ -148,21 +234,27 @@ export class Node {
       parentNode.addChild(this);
     }
   }
+
   addChild(child) {
     this.children.push(child);
   }
+
   getChildren() {
     return this.children;
   }
+
   getNodeType() {
     return this.type;
   }
+
   getID() {
     return this.id;
   }
+
   getParent() {
     return this.parentNode;
   }
+
   getLeaves() {
     let res = [];
     if (this.type === NodeType.Vertex) {
@@ -176,15 +268,13 @@ export class Node {
     }
     return res;
   }
+
   getDescendants() {
     const descendants = [];
     const children = this.getChildren();
 
     for (const child of children) {
-      // Add the child itself
       descendants.push(child);
-
-      // If the child is a cluster (i.e., has children), add its descendants recursively
       if (child.getChildren().length > 0) {
         descendants.push(...child.getDescendants());
       }
@@ -192,14 +282,17 @@ export class Node {
     return descendants;
   }
 }
+
 export class Edge {
   constructor(source, target) {
     this.source = source;
     this.target = target;
   }
+
   getSource() {
     return this.source;
   }
+
   getTarget() {
     return this.target;
   }
