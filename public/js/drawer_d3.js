@@ -165,9 +165,15 @@ export class HierarchicallyClusteredGraphDrawer {
         connectivity === 0 ? "rgb(255,255,255)" : colorScale(connectivity);
 
       adjCell
-        .append("use")
-        .attr("href", "#diamondShape")
-        .attr("fill", cellColor);
+      .append("polygon")
+      .attr(
+        "points",
+        `${-cellSize / 2},0 0,${cellSize / 2} ${cellSize / 2},0 0,${-cellSize / 2}`
+      )
+      .attr("stroke", cellboundaryColor)
+      .attr("stroke-width", arrayBoundaryWidth)
+      .attr("fill", cellColor);
+
 
       adjCell.datum({
         color: cellColor,
