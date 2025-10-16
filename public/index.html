@@ -14,7 +14,7 @@
       /* --- 1. DEFINE DEFAULT VARIABLES --- */
       :root {
         --color-primary: #4caf50; /* Green (Upload/Go) */
-        --color-secondary: #3a75a0; /* Blue (Instance/Sample) */
+        --color-secondary: hsl(210, 60%, 49%); /* Blue (Instance/Sample) */
         --color-tertiary: #ffd700; /* Yellow (Save Viz) */
         --color-background-dark: #222;
         --color-background-medium: #333;
@@ -73,7 +73,7 @@
       }
       .zoom-button {
         background: var(--color-background-medium);
-        border: 1px solid var(--color-primary);
+        border: 1px solid var(--color-secondary);
         color: var(--color-text-header);
         padding: 6px 10px;
         border-radius: 4px;
@@ -83,12 +83,12 @@
         min-width: 40px;
       }
       .zoom-button:hover {
-        background: var(--color-primary);
+        background: var(--color-secondary);
         color: var(--color-text-button);
       }
 
       #uploadButton {
-        background: var(--color-primary);
+        background: var(--color-secondary);
         border: none;
         color: var(--color-text-button);
         padding: 8px 14px;
@@ -97,16 +97,17 @@
         font-weight: bold;
         font-family: var(--font-main);
       }
-      #uploadButton:hover {
+      #uploadButton:hover,
+      #downloadButton:hover {
         /* Keep a slight darker shade for hover in default mode */
-        background: var(--color-primary);
-        filter: brightness(90%);
+        background: var(--color-secondary);
+        filter: brightness(80%);
       }
 
       /* Instance Input Styling */
       #instance-id-input-header {
         padding: 6px;
-        border: 1px solid var(--color-primary);
+        border: 1px solid var(--color-secondary);
         background: var(--color-background-medium);
         color: var(--color-text-input);
         border-radius: 4px;
@@ -119,7 +120,7 @@
       #sample-button,
       #go-to-instance-button,
       #solver-button {
-        background: var(--color-primary);
+        background: var(--color-secondary);
         border: none;
         color: var(--color-text-button);
         padding: 8px 10px;
@@ -129,13 +130,20 @@
         font-size: 0.9rem;
         font-family: var(--font-main);
       }
+      #sample-button:hover,
+      #go-to-instance-button:hover,
+      #solver-button:hover {
+        /* Apply a slight darkening effect on hover */
+        background: var(--color-secondary);
+        filter: brightness(80%);
+      }
 
       /* Dropdown Styles */
       #sample-dropdown,
       #solver-dropdown {
         width: 130px;
         background-color: var(--color-background-medium);
-        border: 1px solid var(--color-primary);
+        border: 1px solid var(--color-secondary);
       }
       #sample-dropdown a,
       #solver-dropdown a {
@@ -145,7 +153,7 @@
 
       /* Save Viz Button */
       #saveVizButton {
-        background: var(--color-primary);
+        background: var(--color-secondary);
         border: none;
         color: var(--color-text-button);
         padding: 8px 14px;
@@ -154,9 +162,14 @@
         font-weight: bold;
         font-family: var(--font-main);
       }
+      #saveVizButton:hover {
+        /* Keep a slight darker shade for hover in default mode */
+        background: var(--color-secondary);
+        filter: brightness(80%);
+      }
       #save-viz-dropdown {
         background-color: var(--color-background-medium);
-        border: 1px solid var(--color-primary);
+        border: 1px solid var(--color-secondary);
       }
       #save-viz-dropdown a {
         color: var(--color-text-header);
@@ -165,8 +178,8 @@
 
       /* Download Button */
       #downloadButton {
-        background: var(--color-button-disabled);
         border: none;
+        background-color: var(--color-secondary);
         color: var(--color-text-header);
         padding: 8px 14px;
         border-radius: 6px;
@@ -298,7 +311,7 @@
 
           <div id="samples-popover-container" style="position: relative">
             <button id="sample-button" title="Select a sample ID" style="">
-              &#x25BC;
+              Instance <span style="font-size: 0.7em">&#x25BC;</span>
             </button>
 
             <div
@@ -373,7 +386,7 @@
 
           <div id="solver-popover-container" style="position: relative">
             <button id="solver-button" title="Select solver method" style="">
-              Solver
+              Solver <span style="font-size: 0.7em">&#x25BC;</span>
             </button>
 
             <div
@@ -484,230 +497,251 @@
           </div>
         </div>
 
-        <button id="downloadButton" data-active-color="#4CAF50" style="">
-          Download JSON
-        </button>
+        <button id="downloadButton" style="">Download JSON</button>
       </div>
     </header>
 
     <script>
       // Function to handle all visualization downloads
-    function saveVisualization(format) {
+      // Function to handle all visualization downloads
+      function saveVisualization(format) {
+        // FIX: Directly search for the SVG element on the page
         const svgElement = document.querySelector("svg");
-        const statusMessage = document.getElementById('status-message'); // Get status element
+
         if (!svgElement) {
-            statusMessage.textContent = "No graph visualization found to save.";
-            setTimeout(() => statusMessage.textContent = "", 3000);
-            return;
+          alert(
+            "No SVG visualization found to download. Please draw a graph first."
+          );
+          return;
         }
 
-        const serializer = new XMLSerializer();
-        let svgString = "";
-        
-        // --- 1. PRE-DOWNLOAD FIXES START ---
-        
-        // A. COLOR FIX: Store original styles and hardcode current style for ALL styled elements
-        // Include additional shapes that may have borders, such as line, circle, ellipse, polygon, polyline
-        const styledElements = svgElement.querySelectorAll("text, rect, path, line, circle, ellipse, polygon, polyline");
+        // Continue with the rest of the original logic:
+        const zoomGroup = svgElement.querySelector(".zoom-group");
 
-        const originalStyles = []; 
-        
-        styledElements.forEach(el => {
-        const computedStyle = window.getComputedStyle(el);
-        let stylesToRestore = {};
+        // Calculate the bounding box of the content for accurate export size
+        const bbox = svgElement.getBBox();
 
-        const originalFillAttr = el.getAttribute("fill");
-        const originalStrokeAttr = el.getAttribute("stroke");
-        const originalStrokeWidthAttr = el.getAttribute("stroke-width");
+        // --- TEMPORARY FIX SETUP ---
+        // 1. Store original viewBox/width/height
+        const originalViewBox = svgElement.getAttribute("viewBox");
+        const originalWidth = svgElement.getAttribute("width");
+        const originalHeight = svgElement.getAttribute("height");
 
-        // --- FIX: Only touch elements that depend on CSS vars or have no explicit fill ---
-        const usesVarColor =
-          (originalFillAttr && originalFillAttr.includes("var(")) ||
-          (originalStrokeAttr && originalStrokeAttr.includes("var("));
+        // Set explicit size attributes for reliable conversion and drawing
+        svgElement.setAttribute("width", bbox.width);
+        svgElement.setAttribute("height", bbox.height);
+        svgElement.setAttribute(
+          "viewBox",
+          `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`
+        );
 
-        // If it already has a solid rgb(...) fill, leave it alone
-        if (!usesVarColor) {
-            return;
+        // 2. Store original zoom/pan transform
+        const originalTransform = zoomGroup
+          ? zoomGroup.getAttribute("transform")
+          : null;
+
+        // 3. RESET ZOOM/PAN to default view temporarily for export
+        if (zoomGroup) {
+          zoomGroup.setAttribute("transform", "translate(0,0)scale(1)");
         }
 
-        // Force computed styles only for CSS-dependent elements
-        const finalFill = computedStyle.fill;
-        if (finalFill && finalFill !== 'none' && finalFill !== 'transparent') {
+        // 4. FONT & COLOR FIX: Hardcode computed styles to resolve CSS variable issues
+        const styledElements = svgElement.querySelectorAll(
+          "text, rect, path, line, circle, ellipse, polygon, polyline"
+        );
+        const originalStyles = [];
+
+        styledElements.forEach((el) => {
+          const computedStyle = window.getComputedStyle(el);
+          let stylesToRestore = {};
+
+          const originalFillAttr = el.getAttribute("fill");
+          const originalStrokeAttr = el.getAttribute("stroke");
+          const originalFontFamilyAttr = el.getAttribute("font-family");
+
+          const usesVarColor =
+            (originalFillAttr && originalFillAttr.includes("var(")) ||
+            (originalStrokeAttr && originalStrokeAttr.includes("var("));
+          const usesVarFont =
+            originalFontFamilyAttr && originalFontFamilyAttr.includes("var(");
+
+          if (!usesVarColor && !usesVarFont) {
+            return;
+          }
+
+          // Color Forcing
+          const finalFill = computedStyle.fill;
+          if (
+            usesVarColor &&
+            finalFill &&
+            finalFill !== "none" &&
+            finalFill !== "transparent"
+          ) {
             stylesToRestore.fill = originalFillAttr;
             el.setAttribute("fill", finalFill);
-        }
+          }
 
-        const finalStroke = computedStyle.stroke;
-        if (finalStroke && finalStroke !== 'none' && finalStroke !== 'transparent') {
+          const finalStroke = computedStyle.stroke;
+          if (
+            usesVarColor &&
+            finalStroke &&
+            finalStroke !== "none" &&
+            finalStroke !== "transparent"
+          ) {
             stylesToRestore.stroke = originalStrokeAttr;
             el.setAttribute("stroke", finalStroke);
-        }
+          }
 
-        const finalStrokeWidth = computedStyle.strokeWidth;
-        if (finalStrokeWidth && finalStrokeWidth !== originalStrokeWidthAttr) {
-            stylesToRestore['stroke-width'] = originalStrokeWidthAttr;
-            el.setAttribute("stroke-width", finalStrokeWidth.replace('px', ''));
-        }
-
-        if (Object.keys(stylesToRestore).length > 0) {
-            originalStyles.push({ element: el, styles: stylesToRestore });
-        }
-    });
-
-        
-        // B. ZOOM/CROP FIX: Temporarily remove the current zoom/pan transform
-        const zoomGroup = svgElement.querySelector("g"); 
-        let originalTransform = null;
-
-        if (zoomGroup) {
-            originalTransform = zoomGroup.getAttribute("transform");
-            zoomGroup.setAttribute("transform", "translate(0,0) scale(1)");
-        }
-        
-        // --- PRE-DOWNLOAD FIXES END ---
-
-        // Re-serialize the SVG *after* fixes (color and transform)
-        svgString = serializer.serializeToString(svgElement);
-
-        // --- Get Visualization Dimensions (Use viewBox for full graph size) ---
-        const viewBoxString = svgElement.getAttribute("viewBox");
-        let originalWidth = 0;
-        let originalHeight = 0;
-        
-        if (viewBoxString) {
-            const viewBoxParts = viewBoxString.split(/\s+/);
-            originalWidth = parseFloat(viewBoxParts[2]);
-            originalHeight = parseFloat(viewBoxParts[3]);
-        }
-        
-        if (originalWidth <= 0 || originalHeight <= 0 || isNaN(originalWidth) || isNaN(originalHeight)) {
-            statusMessage.textContent = "Cannot determine visualization dimensions. Please ensure the graph is fully loaded and has a valid viewBox.";
-            setTimeout(() => statusMessage.textContent = "", 3000);
-            
-            // Cleanup transform and colors before exiting
-            if (zoomGroup && originalTransform) { zoomGroup.setAttribute("transform", originalTransform); }
-            originalStyles.forEach(item => { 
-                if (item.element) {
-                    const el = item.element;
-                    const restore = (attr, value) => {
-                         if (value === null || value === undefined) {
-                            el.removeAttribute(attr);
-                        } else {
-                            el.setAttribute(attr, value);
-                        }
-                    };
-                    if (item.styles.fill !== undefined) restore("fill", item.styles.fill);
-                    if (item.styles.stroke !== undefined) restore("stroke", item.styles.stroke);
-                    if (item.styles['stroke-width'] !== undefined) restore("stroke-width", item.styles['stroke-width']);
-                }
-            });
-            return;
-        }
-
-        const SCALE_FACTOR = 3;
-        const urlParams = new URLSearchParams(window.location.search);
-        const instanceId = urlParams.get("instance") || "visualization";
-
-
-        // --- 2. DOWNLOAD LOGIC ---
-
-        const cleanup = () => {
-            // C. RESET ZOOM/PAN
-            if (zoomGroup && originalTransform) {
-                zoomGroup.setAttribute("transform", originalTransform);
+          // Font Forcing (The original fix for the user's initial problem)
+          if (el.tagName === "text" && usesVarFont) {
+            const finalFontFamily = computedStyle.fontFamily;
+            if (finalFontFamily) {
+              stylesToRestore["font-family"] = originalFontFamilyAttr;
+              el.setAttribute("font-family", finalFontFamily);
             }
-            // D. RESET COLOR ATTRIBUTES
-            originalStyles.forEach(item => {
-                // Restore fill, stroke, and stroke-width
-                if (item.element) {
-                    const el = item.element;
-                    const restore = (attr, value) => {
-                         if (value === null || value === undefined) {
-                            el.removeAttribute(attr);
-                        } else {
-                            el.setAttribute(attr, value);
-                        }
-                    };
+          }
 
-                    if (item.styles.fill !== undefined) restore("fill", item.styles.fill);
-                    if (item.styles.stroke !== undefined) restore("stroke", item.styles.stroke);
-                    if (item.styles['stroke-width'] !== undefined) restore("stroke-width", item.styles['stroke-width']);
+          if (Object.keys(stylesToRestore).length > 0) {
+            originalStyles.push({ element: el, styles: stylesToRestore });
+          }
+        });
+
+        // --- SERIALIZATION & BLOB CREATION ---
+        let svgString = new XMLSerializer().serializeToString(svgElement);
+
+        // CRITICAL FIX: Remove XML declaration to prevent canvas image loading errors for PNG/PDF.
+        svgString = svgString.replace(/<\?xml[^>]*\?>/i, "");
+
+        const blob = new Blob([svgString], {
+          type: "image/svg+xml;charset=utf-8",
+        });
+        const url = URL.createObjectURL(blob);
+
+        // --- CLEANUP FUNCTION ---
+        const cleanup = () => {
+          // 1. Restore zoom/pan
+          if (zoomGroup && originalTransform) {
+            zoomGroup.setAttribute("transform", originalTransform);
+          }
+
+          // 2. Restore colors and fonts
+          originalStyles.forEach((item) => {
+            if (item.element) {
+              const el = item.element;
+              const restore = (attr, value) => {
+                if (value === null || value === undefined) {
+                  el.removeAttribute(attr);
+                } else {
+                  el.setAttribute(attr, value);
                 }
-            });
+              };
+
+              if (item.styles.fill !== undefined)
+                restore("fill", item.styles.fill);
+              if (item.styles.stroke !== undefined)
+                restore("stroke", item.styles.stroke);
+              if (item.styles["font-family"] !== undefined)
+                restore("font-family", item.styles["font-family"]);
+            }
+          });
+
+          // 3. Restore original SVG size attributes
+          if (originalViewBox !== null) {
+            svgElement.setAttribute("viewBox", originalViewBox);
+          } else {
+            svgElement.removeAttribute("viewBox");
+          }
+          if (originalWidth !== null) {
+            svgElement.setAttribute("width", originalWidth);
+          } else {
+            svgElement.removeAttribute("width");
+          }
+          if (originalHeight !== null) {
+            svgElement.setAttribute("height", originalHeight);
+          } else {
+            svgElement.removeAttribute("height");
+          }
+
+          URL.revokeObjectURL(url);
         };
 
-
+        // --- DOWNLOAD LOGIC ---
         if (format === "svg") {
-            // SVG Download (Vector)
-            const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
-            const url = URL.createObjectURL(blob);
-
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `${instanceId}.svg`;
-            link.click();
-            URL.revokeObjectURL(url);
-            
-            cleanup(); // Perform cleanup immediately after synchronous save
-
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "visualization.svg";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          cleanup();
         } else if (format === "png" || format === "pdf") {
-            // Rasterized PNG/PDF Download (Asynchronous)
-            const canvas = document.createElement("canvas");
-            const ctx = canvas.getContext("2d");
-            const img = new Image();
+          const canvas = document.createElement("canvas");
+          canvas.width = bbox.width;
+          canvas.height = bbox.height;
 
-            const hiResWidth = originalWidth * SCALE_FACTOR;
-            const hiResHeight = originalHeight * SCALE_FACTOR;
+          const ctx = canvas.getContext("2d");
+          const img = new Image();
 
-            const svgUrl = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgString)));
+          img.onerror = function (error) {
+            console.error("Error loading SVG for canvas conversion:", error);
+            alert(
+              "Error during image conversion. Please try downloading as SVG."
+            );
+            cleanup();
+          };
 
-            img.onload = function () {
-                canvas.width = hiResWidth;
-                canvas.height = hiResHeight;
-                ctx.drawImage(img, 0, 0, hiResWidth, hiResHeight);
+          img.onload = function () {
+            // Set canvas size
+            canvas.width = bbox.width;
+            canvas.height = bbox.height;
 
-                if (format === "png") {
-                    // PNG Download
-                    const pngUrl = canvas.toDataURL("image/png");
-                    const link = document.createElement("a");
-                    link.href = pngUrl;
-                    link.download = `${instanceId}.png`;
-                    link.click();
-                } else if (format === "pdf") {
-                    // PDF Download (Rasterized)
-                    if (typeof window.jspdf !== "undefined" && window.jspdf.jsPDF) {
-                        const { jsPDF } = window.jspdf;
+            // Set a white background explicitly before drawing the SVG
+            ctx.fillStyle = "white";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                        const pdf = new jsPDF({
-                            orientation: originalWidth > originalHeight ? "l" : "p",
-                            unit: "px",
-                            format: [originalWidth, originalHeight],
-                        });
+            // Draw the SVG content onto the canvas (this layer will be drawn over the white background)
+            ctx.drawImage(this, 0, 0);
 
-                        const pngDataUrl = canvas.toDataURL("image/png");
-                        pdf.addImage(
-                            pngDataUrl,
-                            "PNG",
-                            0, 0,
-                            originalWidth,
-                            originalHeight
-                        );
-                        pdf.save(`${instanceId}.pdf`);
-                    } else {
-                        statusMessage.textContent = "jsPDF library not loaded. Cannot save as PDF.";
-                        setTimeout(() => statusMessage.textContent = "", 3000);
-                    }
-                }
-                
-                cleanup(); // Perform cleanup after asynchronous save completes
-            };
-            img.onerror = function() {
-                console.error("Failed to load SVG into Image object for rasterization.");
+            if (format === "png") {
+              const pngUrl = canvas.toDataURL("image/png");
+              const a = document.createElement("a");
+              a.href = pngUrl;
+              a.download = "visualization.png";
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              cleanup();
+            } else if (format === "pdf") {
+              // Requires the jsPDF library to be included in the HTML
+              if (
+                typeof window.jspdf === "undefined" ||
+                typeof window.jspdf.jsPDF !== "function"
+              ) {
+                alert("PDF export failed. jsPDF library not found.");
                 cleanup();
-            };
-            img.src = svgUrl;
+                return;
+              }
+
+              // Get image data from the canvas
+              const imgData = canvas.toDataURL("image/jpeg", 1.0); // Use JPEG for smaller PDF size
+              const pdf = new jspdf.jsPDF({
+                orientation: "landscape", // or 'portrait'
+                unit: "px",
+                format: [canvas.width, canvas.height], // Set PDF size to canvas size
+              });
+
+              // Add the image to the PDF
+              pdf.addImage(imgData, "JPEG", 0, 0, canvas.width, canvas.height);
+
+              // Download the PDF
+              pdf.save("visualization.pdf");
+              cleanup();
+            }
+          };
+
+          img.src = url;
         }
-    }
+      }
 
       // Function to trigger solve again
       function solveAgain(selectedSolver) {
@@ -737,8 +771,12 @@
 
         let isK00lModeActive = false;
 
-        // --- EASTER EGG CLIENT-SIDE CHECK (Theme Activation) ---
-        // Activate k00l mode if theme parameter is explicitly set, OR if instance is k00l90z
+        // NEW/CORRECTED LOCATION: Define the instance input element right away.
+        const instanceIdInputHeader = document.getElementById(
+          "instance-id-input-header"
+        );
+
+        // 1. EASTER EGG CLIENT-SIDE CHECK (Theme Activation)
         if (
           currentTheme === "k00l90z" ||
           (currentInstanceId && currentInstanceId.toLowerCase() === "k00l90z")
@@ -748,19 +786,14 @@
           currentTheme = "k00l90z"; // Ensure currentTheme is correctly set
         }
 
-        // Handle the "k00l90z" instance input separately for display
-        if (
-          currentInstanceId &&
-          currentInstanceId.toLowerCase() === "k00l90z"
-        ) {
-          const instanceIdInputHeader = document.getElementById(
-            "instance-id-input-header"
-          );
-          if (instanceIdInputHeader) {
+        // 2. Initialization of dell'Input Field from URL
+        if (instanceIdInputHeader && currentInstanceId) {
+          if (currentInstanceId.toLowerCase() === "k00l90z") {
             instanceIdInputHeader.value = "K00L 90Z MODE";
+          } else {
+            instanceIdInputHeader.value = currentInstanceId;
           }
         }
-        // --- END EASTER EGG CHECK ---
 
         // Zoom Controls - NEW
         const zoomOutButton = document.getElementById("zoom-out-button");
@@ -770,10 +803,6 @@
         const uploadButton = document.getElementById("uploadButton");
         const fileInput = document.getElementById("fileInput");
 
-        // New Instance Selector Elements
-        const instanceIdInputHeader = document.getElementById(
-          "instance-id-input-header"
-        );
         const goToInstanceButton = document.getElementById(
           "go-to-instance-button"
         );
@@ -781,14 +810,14 @@
         const sampleDropdown = document.getElementById("sample-dropdown");
         const downloadButton = document.getElementById("downloadButton");
 
-        // NEW SOLVER DROPDOWN ELEMENTS
+        // SOLVER DROPDOWN ELEMENTS
         const solverButton = document.getElementById("solver-button");
         const solverDropdown = document.getElementById("solver-dropdown");
 
         const saveVizButton = document.getElementById("saveVizButton");
         const saveVizDropdown = document.getElementById("save-viz-dropdown");
 
-        // New Modal Elements
+        // Modal Elements
         const modal = document.getElementById("custom-modal");
         const instanceIdInput = document.getElementById("instance-id-input");
         const goButton = document.getElementById("go-button");
@@ -800,7 +829,7 @@
           return;
         }
 
-        // Zoom Controls Event Listeners - NEW
+        // Zoom Controls Event Listeners
         if (zoomOutButton && zoomResetButton && zoomInButton) {
           zoomOutButton.addEventListener("click", () => {
             window.dispatchEvent(new CustomEvent("zoomOut"));
@@ -946,7 +975,6 @@
             // 1. Visually activate the button
             downloadButton.style.opacity = 1;
             downloadButton.style.cursor = "pointer";
-            downloadButton.style.background = activeColor; // Use the currently active primary color
             downloadButton.removeAttribute("title");
 
             // 2. Set the download handler
@@ -974,7 +1002,7 @@
           }
         }
 
-        // --- NEW LOGIC: Sample Dropdown Toggle & Population ---
+        // --- Sample Dropdown Toggle & Population ---
         if (sampleButton && sampleDropdown && instanceIdInputHeader) {
           // Toggle visibility
           sampleButton.addEventListener("click", (event) => {
@@ -1012,11 +1040,16 @@
           });
         }
 
-        // --- NEW LOGIC: Solver Dropdown Toggle & Selection ---
+        // --- Solver Dropdown Toggle & Selection ---
         if (solverButton && solverDropdown) {
-          // Set initial solver based on URL parameter
-          const currentSolver = urlParams.get("method") || "ilp";
+          // Set initial solver based on URL parameter (default is 'heuristic')
+          const currentSolver = urlParams.get("method") || "heuristic";
           let selectedSolver = currentSolver;
+
+          // 1. Inizializzazione: Aggiorna il testo del pulsante al caricamento della pagina
+          const formattedSolver =
+            selectedSolver.slice(0) == "ilp" ? "ILP" : selectedSolver.slice(0);
+          solverButton.innerHTML = `${formattedSolver} Solver <span style="font-size: 0.7em;">&#x25BC;</span>`;
 
           // Toggle visibility
           solverButton.addEventListener("click", (event) => {
@@ -1033,8 +1066,11 @@
               const solver = link.getAttribute("data-solver");
               selectedSolver = solver;
 
-              // Update button text to show selected solver (optional)
-              // solverButton.textContent = solver === 'ilp' ? 'ILP' : 'HEU';
+              // 2. Aggiornamento: Aggiorna il testo del pulsante dopo la selezione
+              const formattedSolver =
+                selectedSolver.charAt(0).toUpperCase() +
+                selectedSolver.slice(1);
+              solverButton.innerHTML = `${formattedSolver} Solver <span style="font-size: 0.7em;">&#x25BC;</span>`;
 
               // Hide the dropdown
               solverDropdown.style.display = "none";
@@ -1051,7 +1087,7 @@
             }
           });
 
-          // --- UPDATED LOGIC: Single Go Button that handles both functions ---
+          // --- Single Go Button that handles both functions ---
           if (goToInstanceButton && instanceIdInputHeader) {
             goToInstanceButton.addEventListener("click", () => {
               const instanceId = instanceIdInputHeader.value.trim();
