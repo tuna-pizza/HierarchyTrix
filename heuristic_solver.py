@@ -505,15 +505,28 @@ def solve_layout_for_graph_heuristic(graph_input) -> List[str]:
         
     # --- Count visible crossings (only for edges between different clusters) ---
     def count_visible_crossings(G, layout, edges_list):
-        """Count crossings only for edges whose endpoints are in different clusters."""
+        """
+        Count crossings only for edges whose endpoints are in different clusters.
+        - G: networkx graph
+        - layout: list of nodes in order
+        - edges_list: list of edges (tuples)
+        """
+        def norm_parent(p):
+            return None if p is None or str(p) == 'None' or str(p) == '' else str(p)
+
+        # Only edges connecting nodes in different parent clusters
         visible_edges = [
-            (u, v) for (u, v) in edges_list
-            if G.nodes[u].get("parent") != G.nodes[v].get("parent")
+            (u, v) for u, v in edges_list
+            if norm_parent(G.nodes[u].get("parent")) != norm_parent(G.nodes[v].get("parent"))
         ]
+
+        # Count crossings among visible edges
         return count_crossings_fast(layout, visible_edges)
-    
+
+    # --- Use it after your final layout ---
     visible_crossings = count_visible_crossings(G, final_layout, bottom_edges)
     print(f"Visible crossings (shown in visualization): {visible_crossings}")
+
 
 
 

@@ -51,6 +51,11 @@ def solve_layout_for_graph_hybrid(graph_json_path: str, time_limit: int = 300) -
         
         optimized_layout = heuristic_layout.copy()
         
+        # --- Compute visible crossings for final layout ---
+        visible_crossings = count_visible_crossings(G, optimized_layout, bottom_edges)
+        print(f"Visible crossings (shown in visualization): {visible_crossings}")
+
+        
         # Try simple local improvements
         improvement = apply_simple_improvements(G, optimized_layout, bottom_edges, top_edges)
         
@@ -287,6 +292,22 @@ def calculate_crossings(layout: List[str], edges: List[Tuple[str, str]]) -> int:
                     crossings += 1
     return crossings
 
+# --- Count visible crossings (only for edges between different clusters) ---
+def count_visible_crossings(G, layout: List[str], edges: List[Tuple[str, str]]) -> int:
+    """
+    Count crossings only for edges whose endpoints are in different clusters (different parents).
+    """
+    def norm_parent(p):
+        return None if p is None or str(p) == 'None' or str(p) == '' else str(p)
+
+    visible_edges = [
+        (u, v) for u, v in edges
+        if norm_parent(G.nodes[u].get("parent")) != norm_parent(G.nodes[v].get("parent"))
+    ]
+
+    return calculate_crossings(layout, visible_edges)
+
+
 def edges_cross(u1, v1, u2, v2, positions):
     """Check if two edges cross"""
     if u1 not in positions or v1 not in positions or u2 not in positions or v2 not in positions:
@@ -330,3 +351,4 @@ def build_graph_from_json(graph_json_path: str) -> nx.DiGraph:
         G.add_edge(source, target, type="bottom")
     
     return G
+
