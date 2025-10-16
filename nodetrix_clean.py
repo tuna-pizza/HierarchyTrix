@@ -31,10 +31,12 @@ def solve_layout_for_graph(graph_json_path: str, time_limit: int = 3600) -> List
         
         # Add nodes - LIKE FIRST CODE
         for n in data["nodes"]:
-            if str(n["parent"]) != 'None':
-                G.add_node(str(n["id"]), type=str(n["type"]))
-            else:        
-                G.add_node(str(n["id"]), type="root")
+            raw_parent = n.get("parent")
+            # Normalize parent: treat None, 'None', '' as actual None
+            parent_val = None if raw_parent is None or str(raw_parent) == 'None' or str(raw_parent) == '' else str(raw_parent)
+            node_type = "root" if parent_val is None else str(n.get("type", "node"))
+            G.add_node(str(n["id"]), type=node_type, parent=parent_val)
+
 
         # Add hierarchy edges - LIKE FIRST CODE
         for n in data["nodes"]:
@@ -261,21 +263,6 @@ def solve_layout_for_graph(graph_json_path: str, time_limit: int = 3600) -> List
         print(f"Total solving time: {time_str}")
         print(f"Model status: {status_str}")
         
-        # --- Count visible crossings (edges between different clusters) ---
-        def count_visible_crossings(G, edges):
-            visible_edges = [
-                (u, v) for (u, v) in edges
-                if G[u][v]["type"] == "bottom" and G.nodes[u].get("parent") != G.nodes[v].get("parent")
-            ]
-            return visible_edges
-        
-        # Count visible crossings in visualization
-        visible_edges = count_visible_crossings(G, edges)
-        visible_crossings = verify_crossings(
-            [n for n in G.nodes()], visible_edges
-        )
-        print(f"Visible crossings (shown in visualization): {visible_crossings}")
-
 
         # EXTRACT SOLUTION - KEEPING YOUR PREFERRED FEATURE (FILTERING LEAF NODES)
         if m.status in [GRB.OPTIMAL, GRB.TIME_LIMIT] and m.SolCount > 0:
@@ -297,6 +284,32 @@ def solve_layout_for_graph(graph_json_path: str, time_limit: int = 3600) -> List
                 print(f"✅ Linear layout order found with {len(leaf_order)} leaf nodes")
                 print(f"Full order: {full_order}")
                 print(f"Leaf order: {leaf_order}")
+                
+                            # --- Count visible crossings (edges between different clusters) ---
+                def count_visible_crossings(G, edges):
+                    """Return list of bottom edges that are visible (endpoints in different clusters)."""
+                    def norm_parent(p):
+                        return None if p is None or str(p) == 'None' or str(p) == '' else str(p)
+
+                    visible_edges = []
+                    for (u, v) in edges:
+                        e_data = G.get_edge_data(u, v) or {}
+                        if e_data.get("type") != "bottom":
+                            continue
+                        pu = norm_parent(G.nodes[u].get("parent"))
+                        pv = norm_parent(G.nodes[v].get("parent"))
+                        if pu != pv:
+                            visible_edges.append((u, v))
+                    return visible_edges
+
+                visible_edges = count_visible_crossings(G, edges)
+                print(f"Visible bottom edges (shown in visualization): {len(visible_edges)}")
+
+                # Use the correct node order from the solver for crossings
+                layout_for_counting = leaf_order  # or full_order if your visualization uses all nodes
+                visible_crossings = verify_crossings(layout_for_counting, visible_edges)
+                print(f"Visible crossings (shown in visualization): {visible_crossings}")
+
                 
                 return leaf_order
             else:
