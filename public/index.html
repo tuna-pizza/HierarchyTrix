@@ -325,6 +325,17 @@
                 >sample</a
               >
               <a
+                data-instance="paper_example"
+                href="#"
+                style="
+                  padding: 8px 10px;
+                  text-decoration: none;
+                  display: block;
+                  font-size: 0.9rem;
+                "
+                >paper_example</a
+              >
+              <a
                 data-instance="graph_1"
                 href="#"
                 style="
@@ -481,111 +492,222 @@
 
     <script>
       // Function to handle all visualization downloads
-      function saveVisualization(format) {
+    function saveVisualization(format) {
         const svgElement = document.querySelector("svg");
+        const statusMessage = document.getElementById('status-message'); // Get status element
         if (!svgElement) {
-          alert("No graph visualization found to save.");
-          return;
+            statusMessage.textContent = "No graph visualization found to save.";
+            setTimeout(() => statusMessage.textContent = "", 3000);
+            return;
         }
 
-        // Define a high-resolution scaling factor (3x resolution)
+        const serializer = new XMLSerializer();
+        let svgString = "";
+        
+        // --- 1. PRE-DOWNLOAD FIXES START ---
+        
+        // A. COLOR FIX: Store original styles and hardcode current style for ALL styled elements
+        // Include additional shapes that may have borders, such as line, circle, ellipse, polygon, polyline
+        const styledElements = svgElement.querySelectorAll("text, rect, path, line, circle, ellipse, polygon, polyline");
+
+        const originalStyles = []; 
+        
+        styledElements.forEach(el => {
+        const computedStyle = window.getComputedStyle(el);
+        let stylesToRestore = {};
+
+        const originalFillAttr = el.getAttribute("fill");
+        const originalStrokeAttr = el.getAttribute("stroke");
+        const originalStrokeWidthAttr = el.getAttribute("stroke-width");
+
+        // --- FIX: Only touch elements that depend on CSS vars or have no explicit fill ---
+        const usesVarColor =
+          (originalFillAttr && originalFillAttr.includes("var(")) ||
+          (originalStrokeAttr && originalStrokeAttr.includes("var("));
+
+        // If it already has a solid rgb(...) fill, leave it alone
+        if (!usesVarColor) {
+            return;
+        }
+
+        // Force computed styles only for CSS-dependent elements
+        const finalFill = computedStyle.fill;
+        if (finalFill && finalFill !== 'none' && finalFill !== 'transparent') {
+            stylesToRestore.fill = originalFillAttr;
+            el.setAttribute("fill", finalFill);
+        }
+
+        const finalStroke = computedStyle.stroke;
+        if (finalStroke && finalStroke !== 'none' && finalStroke !== 'transparent') {
+            stylesToRestore.stroke = originalStrokeAttr;
+            el.setAttribute("stroke", finalStroke);
+        }
+
+        const finalStrokeWidth = computedStyle.strokeWidth;
+        if (finalStrokeWidth && finalStrokeWidth !== originalStrokeWidthAttr) {
+            stylesToRestore['stroke-width'] = originalStrokeWidthAttr;
+            el.setAttribute("stroke-width", finalStrokeWidth.replace('px', ''));
+        }
+
+        if (Object.keys(stylesToRestore).length > 0) {
+            originalStyles.push({ element: el, styles: stylesToRestore });
+        }
+    });
+
+        
+        // B. ZOOM/CROP FIX: Temporarily remove the current zoom/pan transform
+        const zoomGroup = svgElement.querySelector("g"); 
+        let originalTransform = null;
+
+        if (zoomGroup) {
+            originalTransform = zoomGroup.getAttribute("transform");
+            zoomGroup.setAttribute("transform", "translate(0,0) scale(1)");
+        }
+        
+        // --- PRE-DOWNLOAD FIXES END ---
+
+        // Re-serialize the SVG *after* fixes (color and transform)
+        svgString = serializer.serializeToString(svgElement);
+
+        // --- Get Visualization Dimensions (Use viewBox for full graph size) ---
+        const viewBoxString = svgElement.getAttribute("viewBox");
+        let originalWidth = 0;
+        let originalHeight = 0;
+        
+        if (viewBoxString) {
+            const viewBoxParts = viewBoxString.split(/\s+/);
+            originalWidth = parseFloat(viewBoxParts[2]);
+            originalHeight = parseFloat(viewBoxParts[3]);
+        }
+        
+        if (originalWidth <= 0 || originalHeight <= 0 || isNaN(originalWidth) || isNaN(originalHeight)) {
+            statusMessage.textContent = "Cannot determine visualization dimensions. Please ensure the graph is fully loaded and has a valid viewBox.";
+            setTimeout(() => statusMessage.textContent = "", 3000);
+            
+            // Cleanup transform and colors before exiting
+            if (zoomGroup && originalTransform) { zoomGroup.setAttribute("transform", originalTransform); }
+            originalStyles.forEach(item => { 
+                if (item.element) {
+                    const el = item.element;
+                    const restore = (attr, value) => {
+                         if (value === null || value === undefined) {
+                            el.removeAttribute(attr);
+                        } else {
+                            el.setAttribute(attr, value);
+                        }
+                    };
+                    if (item.styles.fill !== undefined) restore("fill", item.styles.fill);
+                    if (item.styles.stroke !== undefined) restore("stroke", item.styles.stroke);
+                    if (item.styles['stroke-width'] !== undefined) restore("stroke-width", item.styles['stroke-width']);
+                }
+            });
+            return;
+        }
+
         const SCALE_FACTOR = 3;
-
-        // Get Visualization Dimensions (original size)
-        const viewBox = svgElement.viewBox.baseVal;
-        let originalWidth =
-          viewBox.width || svgElement.getBoundingClientRect().width;
-        let originalHeight =
-          viewBox.height || svgElement.getBoundingClientRect().height;
-
-        if (originalWidth <= 0 || originalHeight <= 0) {
-          alert(
-            "Cannot determine visualization dimensions. Please ensure the graph is fully loaded."
-          );
-          return;
-        }
-
         const urlParams = new URLSearchParams(window.location.search);
         const instanceId = urlParams.get("instance") || "visualization";
 
-        const serializer = new XMLSerializer();
-        let svgString = serializer.serializeToString(svgElement);
 
-        // --- SVG Download (Vector) ---
-        if (format === "svg") {
-          const blob = new Blob([svgString], {
-            type: "image/svg+xml;charset=utf-8",
-          });
-          const url = URL.createObjectURL(blob);
+        // --- 2. DOWNLOAD LOGIC ---
 
-          const link = document.createElement("a");
-          link.href = url;
-          link.download = `${instanceId}.svg`;
-          link.click();
-          URL.revokeObjectURL(url);
-        }
-        // --- Rasterized PNG/PDF Download (High Resolution) ---
-        else if (format === "png" || format === "pdf") {
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d");
-          const img = new Image();
-
-          // Calculate High Resolution dimensions
-          const hiResWidth = originalWidth * SCALE_FACTOR;
-          const hiResHeight = originalHeight * SCALE_FACTOR;
-
-          // Encode SVG string to base64 Data URL
-          const svgUrl =
-            "data:image/svg+xml;base64," +
-            btoa(unescape(encodeURIComponent(svgString)));
-
-          img.onload = function () {
-            // Set canvas size to the HIGH RESOLUTION dimensions
-            canvas.width = hiResWidth;
-            canvas.height = hiResHeight;
-
-            // Draw the image onto the canvas at high resolution
-            ctx.drawImage(img, 0, 0, hiResWidth, hiResHeight);
-
-            if (format === "png") {
-              // PNG Download
-              const pngUrl = canvas.toDataURL("image/png");
-              const link = document.createElement("a");
-              link.href = pngUrl;
-              link.download = `${instanceId}.png`;
-              link.click();
-            } else if (format === "pdf") {
-              // PDF Download (Rasterized)
-              if (typeof window.jspdf !== "undefined" && window.jspdf.jsPDF) {
-                const { jsPDF } = window.jspdf;
-
-                // Set PDF page size to the ORIGINAL dimensions
-                const pdf = new jsPDF({
-                  orientation: originalWidth > originalHeight ? "l" : "p",
-                  unit: "px",
-                  format: [originalWidth, originalHeight],
-                });
-
-                // Add the high-resolution canvas image to the PDF,
-                // fitting it into the ORIGINAL page dimensions for high-DPI output.
-                const pngDataUrl = canvas.toDataURL("image/png");
-                pdf.addImage(
-                  pngDataUrl,
-                  "PNG",
-                  0,
-                  0,
-                  originalWidth,
-                  originalHeight
-                );
-                pdf.save(`${instanceId}.pdf`);
-              } else {
-                alert("jsPDF library not loaded. Cannot save as PDF.");
-              }
+        const cleanup = () => {
+            // C. RESET ZOOM/PAN
+            if (zoomGroup && originalTransform) {
+                zoomGroup.setAttribute("transform", originalTransform);
             }
-          };
-          img.src = svgUrl;
+            // D. RESET COLOR ATTRIBUTES
+            originalStyles.forEach(item => {
+                // Restore fill, stroke, and stroke-width
+                if (item.element) {
+                    const el = item.element;
+                    const restore = (attr, value) => {
+                         if (value === null || value === undefined) {
+                            el.removeAttribute(attr);
+                        } else {
+                            el.setAttribute(attr, value);
+                        }
+                    };
+
+                    if (item.styles.fill !== undefined) restore("fill", item.styles.fill);
+                    if (item.styles.stroke !== undefined) restore("stroke", item.styles.stroke);
+                    if (item.styles['stroke-width'] !== undefined) restore("stroke-width", item.styles['stroke-width']);
+                }
+            });
+        };
+
+
+        if (format === "svg") {
+            // SVG Download (Vector)
+            const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `${instanceId}.svg`;
+            link.click();
+            URL.revokeObjectURL(url);
+            
+            cleanup(); // Perform cleanup immediately after synchronous save
+
+        } else if (format === "png" || format === "pdf") {
+            // Rasterized PNG/PDF Download (Asynchronous)
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            const img = new Image();
+
+            const hiResWidth = originalWidth * SCALE_FACTOR;
+            const hiResHeight = originalHeight * SCALE_FACTOR;
+
+            const svgUrl = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgString)));
+
+            img.onload = function () {
+                canvas.width = hiResWidth;
+                canvas.height = hiResHeight;
+                ctx.drawImage(img, 0, 0, hiResWidth, hiResHeight);
+
+                if (format === "png") {
+                    // PNG Download
+                    const pngUrl = canvas.toDataURL("image/png");
+                    const link = document.createElement("a");
+                    link.href = pngUrl;
+                    link.download = `${instanceId}.png`;
+                    link.click();
+                } else if (format === "pdf") {
+                    // PDF Download (Rasterized)
+                    if (typeof window.jspdf !== "undefined" && window.jspdf.jsPDF) {
+                        const { jsPDF } = window.jspdf;
+
+                        const pdf = new jsPDF({
+                            orientation: originalWidth > originalHeight ? "l" : "p",
+                            unit: "px",
+                            format: [originalWidth, originalHeight],
+                        });
+
+                        const pngDataUrl = canvas.toDataURL("image/png");
+                        pdf.addImage(
+                            pngDataUrl,
+                            "PNG",
+                            0, 0,
+                            originalWidth,
+                            originalHeight
+                        );
+                        pdf.save(`${instanceId}.pdf`);
+                    } else {
+                        statusMessage.textContent = "jsPDF library not loaded. Cannot save as PDF.";
+                        setTimeout(() => statusMessage.textContent = "", 3000);
+                    }
+                }
+                
+                cleanup(); // Perform cleanup after asynchronous save completes
+            };
+            img.onerror = function() {
+                console.error("Failed to load SVG into Image object for rasterization.");
+                cleanup();
+            };
+            img.src = svgUrl;
         }
-      }
+    }
 
       // Function to trigger solve again
       function solveAgain(selectedSolver) {
