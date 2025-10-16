@@ -260,6 +260,22 @@ def solve_layout_for_graph(graph_json_path: str, time_limit: int = 3600) -> List
             
         print(f"Total solving time: {time_str}")
         print(f"Model status: {status_str}")
+        
+        # --- Count visible crossings (edges between different clusters) ---
+        def count_visible_crossings(G, edges):
+            visible_edges = [
+                (u, v) for (u, v) in edges
+                if G[u][v]["type"] == "bottom" and G.nodes[u].get("parent") != G.nodes[v].get("parent")
+            ]
+            return visible_edges
+        
+        # Count visible crossings in visualization
+        visible_edges = count_visible_crossings(G, edges)
+        visible_crossings = verify_crossings(
+            [n for n in G.nodes()], visible_edges
+        )
+        print(f"Visible crossings (shown in visualization): {visible_crossings}")
+
 
         # EXTRACT SOLUTION - KEEPING YOUR PREFERRED FEATURE (FILTERING LEAF NODES)
         if m.status in [GRB.OPTIMAL, GRB.TIME_LIMIT] and m.SolCount > 0:
@@ -329,3 +345,5 @@ def verify_crossings(layout: List[str], edges: List[Tuple[str, str]]) -> int:
                 crossings += 1
     
     return crossings
+
+

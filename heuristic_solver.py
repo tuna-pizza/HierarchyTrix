@@ -502,5 +502,20 @@ def solve_layout_for_graph_heuristic(graph_input) -> List[str]:
         print("❌ WARNING: Top edges have crossings - this should not happen!")
     else:
         print("✅ Top edges are planar (no crossings)")
+        
+    # --- Count visible crossings (only for edges between different clusters) ---
+    def count_visible_crossings(G, layout, edges_list):
+        """Count crossings only for edges whose endpoints are in different clusters."""
+        visible_edges = [
+            (u, v) for (u, v) in edges_list
+            if G.nodes[u].get("parent") != G.nodes[v].get("parent")
+        ]
+        return count_crossings_fast(layout, visible_edges)
+    
+    visible_crossings = count_visible_crossings(G, final_layout, bottom_edges)
+    print(f"Visible crossings (shown in visualization): {visible_crossings}")
+
+
 
     return final_layout
+
