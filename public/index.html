@@ -10,259 +10,7 @@
       rel="stylesheet"
     />
 
-    <style>
-      /* --- 1. DEFINE DEFAULT VARIABLES --- */
-      :root {
-        --color-primary: #4caf50; /* Green (Upload/Go) */
-        --color-secondary: hsl(210, 60%, 49%); /* Blue (Instance/Sample) */
-        --color-tertiary: #ffd700; /* Yellow (Save Viz) */
-        --color-background-dark: #222;
-        --color-background-medium: #333;
-        --color-text-header: white;
-        --color-text-input: white;
-        --color-text-button: white; /* Consistent button text color */
-        --color-button-disabled: #555;
-        --font-main: sans-serif;
-      }
-
-      /* --- 2. 90s THEME VARIABLES (Override) --- */
-      .k00l90z-mode {
-        /* 90s K00L Font: Monospace/Pixelated look */
-        --font-main: "VT323", monospace;
-
-        /* High-Contrast, Neon/Vaporwave Colors */
-        --color-primary: #00ffff; /* Aqua/Cyan */
-        --color-secondary: #ff00ff; /* Magenta/Fuchsia */
-        --color-tertiary: #ff00ff;
-        --color-background-dark: #111133; /* Dark Blue/Purple */
-        --color-background-medium: #222255;
-        --color-text-header: #ffd700; /* Gold/Bright Yellow */
-        --color-text-input: #00ffff;
-        --color-text-button: #111133; /* Dark text on neon buttons */
-        --color-button-disabled: #00ffff;
-      }
-
-      /* Apply 90s Font to body */
-      .k00l90z-mode,
-      .k00l90z-mode body {
-        font-family: var(--font-main) !important;
-        background-color: var(--color-background-dark);
-        color: var(--color-text-header);
-      }
-
-      /* --- 3. APPLY VARIABLES TO ELEMENTS --- */
-      header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        background: var(--color-background-dark);
-        color: var(--color-text-header);
-        padding: 10px 20px;
-        font-family: var(--font-main);
-      }
-      h1 {
-        margin: 0;
-        font-size: 1.2rem;
-      }
-
-      /* Zoom Buttons */
-      #zoom-controls {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-      }
-      .zoom-button {
-        background: var(--color-background-medium);
-        border: 1px solid var(--color-secondary);
-        color: var(--color-text-header);
-        padding: 6px 10px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-family: var(--font-main);
-        font-size: 0.9rem;
-        min-width: 40px;
-      }
-      .zoom-button:hover {
-        background: var(--color-secondary);
-        color: var(--color-text-button);
-      }
-
-      #uploadButton {
-        background: var(--color-secondary);
-        border: none;
-        color: var(--color-text-button);
-        padding: 8px 14px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: bold;
-        font-family: var(--font-main);
-      }
-      #uploadButton:hover,
-      #downloadButton:hover {
-        /* Keep a slight darker shade for hover in default mode */
-        background: var(--color-secondary);
-        filter: brightness(80%);
-      }
-
-      /* Instance Input Styling */
-      #instance-id-input-header {
-        padding: 6px;
-        border: 1px solid var(--color-secondary);
-        background: var(--color-background-medium);
-        color: var(--color-text-input);
-        border-radius: 4px;
-        width: 120px;
-        font-size: 0.9rem;
-        font-family: var(--font-main);
-      }
-
-      /* Instance Buttons (Go & Sample & Solver) */
-      #sample-button,
-      #go-to-instance-button,
-      #solver-button {
-        background: var(--color-secondary);
-        border: none;
-        color: var(--color-text-button);
-        padding: 8px 10px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: bold;
-        font-size: 0.9rem;
-        font-family: var(--font-main);
-      }
-      #sample-button:hover,
-      #go-to-instance-button:hover,
-      #solver-button:hover {
-        /* Apply a slight darkening effect on hover */
-        background: var(--color-secondary);
-        filter: brightness(80%);
-      }
-
-      /* Dropdown Styles */
-      #sample-dropdown,
-      #solver-dropdown {
-        width: 130px;
-        background-color: var(--color-background-medium);
-        border: 1px solid var(--color-secondary);
-      }
-      #sample-dropdown a,
-      #solver-dropdown a {
-        color: var(--color-text-header);
-        font-family: var(--font-main);
-      }
-
-      /* Save Viz Button */
-      #saveVizButton {
-        background: var(--color-secondary);
-        border: none;
-        color: var(--color-text-button);
-        padding: 8px 14px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: bold;
-        font-family: var(--font-main);
-      }
-      #saveVizButton:hover {
-        /* Keep a slight darker shade for hover in default mode */
-        background: var(--color-secondary);
-        filter: brightness(80%);
-      }
-      #save-viz-dropdown {
-        background-color: var(--color-background-medium);
-        border: 1px solid var(--color-secondary);
-      }
-      #save-viz-dropdown a {
-        color: var(--color-text-header);
-        font-family: var(--font-main);
-      }
-
-      /* Download Button */
-      #downloadButton {
-        border: none;
-        background-color: var(--color-secondary);
-        color: var(--color-text-header);
-        padding: 8px 14px;
-        border-radius: 6px;
-        cursor: not-allowed;
-        font-weight: bold;
-        font-family: var(--font-main);
-        opacity: 0.5; /* Always start disabled visually */
-      }
-
-      .k00l90z-mode .modal-content-container {
-        /* Use sharp corners for the 90s look */
-        border-radius: 0 !important;
-        /* Create a neon glow effect using multiple shadows */
-        box-shadow: 0 0 8px var(--color-secondary),
-          0 0 15px var(--color-secondary), 0 0 25px #ff00ff !important;
-        /* Thicker border using the secondary neon color */
-        border: 2px solid var(--color-secondary) !important;
-      }
-
-      .k00l90z-mode #instance-id-input {
-        /* Sharp corners for the ID input field */
-        border-radius: 0 !important;
-        /* Optional: Add a subtle inner shadow for a screen look */
-        box-shadow: inset 0 0 5px rgba(0, 255, 255, 0.5);
-      }
-
-      .k00l90z-mode #custom-modal h2 {
-        /* Ensure the checkmark and text are bright neon */
-        color: var(--color-primary);
-        text-shadow: 0 0 5px var(--color-primary);
-      }
-
-      /* Modal Styles */
-      #custom-modal .modal-content-container {
-        background-color: var(--color-background-medium);
-        color: var(--color-text-header);
-        border: 1px solid var(--color-secondary);
-        font-family: var(--font-main);
-      }
-      #custom-modal h2 {
-        color: var(--color-primary);
-      }
-      #instance-id-input {
-        border: 1px solid var(--color-primary);
-        background-color: var(--color-background-dark);
-        color: var(--color-text-input);
-        font-family: var(--font-main);
-      }
-      #stay-button {
-        background-color: var(--color-button-disabled);
-        color: var(--color-text-button);
-        font-family: var(--font-main);
-      }
-      #go-button {
-        background-color: var(--color-primary);
-        color: var(--color-text-button);
-        font-family: var(--font-main);
-      }
-      body {
-        /* Default Theme Colors */
-        --node-color: black;
-        --cell-boundary-color: #888b90;
-        --tree-color: #dadbdd;
-        --edge-color: hsl(210, 60%, 49%);
-        --adj-color-low: hsl(210, 60%, 90%); /* Light default blue */
-        --adj-color-high: hsl(210, 60%, 49%);
-      }
-
-      /* K00L90Z Theme Overrides */
-      body.k00l90z-mode {
-        --node-color: #ff00ff; /* Magenta nodes */
-        --cell-boundary-color: #00ffff; /* Cyan boundaries */
-        --tree-color: yellow; /* Magenta cluster bands */
-        --edge-color: #00ffff; /* Cyan edges */
-        --adj-color-low: hsl(300, 80%, 95%); /* Light 90s purple */
-        --adj-color-high: hsl(300, 80%, 55%); /* Dark 90s purple */
-      }
-
-      /* Optional: Darken text in k00l90z mode for better contrast against bright nodes */
-      body.k00l90z-mode text {
-        fill: #000 !important;
-      }
-    </style>
+    <link rel="stylesheet" href="styles.css" />
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
@@ -278,7 +26,7 @@
             -
           </button>
           <button id="zoom-reset-button" class="zoom-button" title="Reset Zoom">
-            100%
+            Reset
           </button>
           <button id="zoom-in-button" class="zoom-button" title="Zoom In">
             +
@@ -438,6 +186,64 @@
           </div>
 
           <button id="go-to-instance-button" style="">Go</button>
+        </div>
+
+        <div
+          id="loading-modal"
+          style="
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.7); /* Slightly darker overlay */
+          "
+        >
+          <div
+            class="modal-content-container"
+            style="
+              margin: 15% auto;
+              padding: 25px; /* Increased padding */
+              border: 1px solid var(--color-secondary); /* Use theme color */
+              width: 80%;
+              max-width: 450px; /* Slightly wider */
+              border-radius: 8px;
+              box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6); /* Deeper shadow */
+              text-align: center;
+              background-color: var(--color-background-medium); /* Ensure background is defined by theme */
+            "
+          >
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h2 style="margin: 0; color: var(--color-primary); font-size: 1.4rem;">
+                    &#x231B; Visualization Loading...
+                </h2>
+                <button
+                    id="return-button"
+                    style="
+                        padding: 8px 12px;
+                        border: none;
+                        border-radius: 5px;
+                        cursor: pointer;
+                        font-weight: bold;
+                        background-color: var(--color-secondary); /* Use secondary color for the action button */
+                        color: var(--color-text-button);
+                        font-family: var(--font-main);
+                        transition: background-color 0.2s;
+                        white-space: nowrap; /* Prevent text wrap */
+                    "
+                >
+                    Return current visualization
+                </button>
+            </div>
+            <hr style="border: 0; height: 1px; background: var(--color-secondary); margin: 15px 0;">
+            
+            <p style="margin-top: 15px; margin-bottom: 0; font-size: 0.95rem;">
+              The solver is processing the request. This may take a moment.
+            </p>
+          </div>
         </div>
 
         <div id="save-viz-container" style="position: relative">
@@ -762,6 +568,21 @@
         window.location.href = newUrl;
       }
 
+     window.showLoadingModal = function() {
+      const loadingModal = document.getElementById("loading-modal");
+      if (loadingModal) {
+          loadingModal.style.display = "block";
+      } else {
+          console.error("Loading modal element not found.");
+      }
+  }
+
+    window.hideLoadingModal = function() {
+        const loadingModal = document.getElementById("loading-modal");
+        if (loadingModal) {
+            loadingModal.style.display = "none";
+        }
+    }
       document.addEventListener("DOMContentLoaded", () => {
         // Initialization MUST happen inside DOMContentLoaded to ensure elements exist.
 
@@ -823,10 +644,40 @@
         const goButton = document.getElementById("go-button");
         const stayButton = document.getElementById("stay-button");
 
-        // Check for critical null elements just in case the HTML structure is missing
-        if (!uploadButton || !fileInput) {
-          console.error("Critical upload UI elements missing!");
-          return;
+        const loadingModal = document.getElementById("loading-modal");
+        const returnButton = document.getElementById("return-button");
+
+        // Function to signal the server to stop the running solver
+        async function stopSolverProcess() {
+            try {
+                // Assuming a POST request to a dedicated endpoint to interrupt the process
+                const response = await fetch("/api/stop-solver", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    // You might want to send the instance ID or session ID here
+                    body: JSON.stringify({ action: "interrupt" }),
+                });
+
+                if (response.ok) {
+                    console.log("Solver interruption signal sent successfully.");
+                } else {
+                    console.error("Failed to signal solver interruption.");
+                }
+            } catch (error) {
+                console.error("Network error while trying to interrupt solver:", error);
+            }
+        }
+
+        if (loadingModal && returnButton) {
+            returnButton.addEventListener("click", () => {
+                // 1. Signal the server to stop the ongoing solver
+                stopSolverProcess();
+                
+                // 2. Hide the modal and return to the current visualization
+                hideLoadingModal(); 
+            });
         }
 
         // Zoom Controls Event Listeners
@@ -1097,9 +948,23 @@
                 // Get the real current instance ID from the URL, or empty string if none is loaded.
                 const realInstance = urlParams.get("instance") || "";
 
+                if (loadingModal) {
+                    loadingModal.style.display = "block";
+                }
+
                 // Reload the page with the current instance and the new theme parameter
                 window.location.href = `?instance=${realInstance}&theme=k00l90z`;
                 return; // Stop here
+              }
+
+              // If input field is empty but we have a current instance, perform "Solve Again"
+              if (!instanceId && currentInstanceId) {
+                // NEW JS: Show the loading modal before calling solveAgain
+                if (loadingModal) {
+                    loadingModal.style.display = "block";
+                }
+                solveAgain(selectedSolver);
+                return;
               }
 
               // If input field is empty but we have a current instance, perform "Solve Again"
@@ -1122,6 +987,13 @@
               alert("Please enter a valid Instance ID.");
             });
           }
+        }
+
+        if (loadingModal && returnButton) {
+            returnButton.addEventListener("click", () => {
+                // Simply hide the modal and stay on the current page.
+                loadingModal.style.display = "none";
+            });
         }
 
         // Expose the current theme to the module script
