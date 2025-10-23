@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>HierarchyTrix</title>
+    <title>Clusterix</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
@@ -17,8 +17,17 @@
     <script type="module" src="js/client.js" defer></script>
   </head>
   <body>
-    <header id="main-header-container">
-      <h1>HierarchyTrix</h1>
+    <header id="main-header-container" style="background-color: var(--color-background-medium)">
+      <div style="display: flex; align-items: center; gap: 4px;">
+      <h1>Clusterix</h1>
+      <img 
+      src="asterix.png" 
+      alt="Asterix Icon" 
+      class="header-icon"
+      style="height: 45px; width: 45px; vertical-align: left;" 
+    />
+    </div>
+      
       <div style="display: flex; gap: 15px; align-items: center">
         <!-- Zoom Controls - ADDED BEFORE UPLOAD BUTTON -->
         <div id="zoom-controls">
@@ -217,7 +226,7 @@
             "
           >
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <h2 style="margin: 0; color: var(--color-primary); font-size: 1.4rem;">
+                <h2 style="margin: 0; font-size: 1.4rem;">
                     &#x231B; Visualization Loading...
                 </h2>
                 <button
@@ -235,7 +244,7 @@
                         white-space: nowrap; /* Prevent text wrap */
                     "
                 >
-                    Return current visualization
+                    Cancel
                 </button>
             </div>
             <hr style="border: 0; height: 1px; background: var(--color-secondary); margin: 15px 0;">
@@ -897,9 +906,9 @@
           const currentSolver = urlParams.get("method") || "heuristic";
           let selectedSolver = currentSolver;
 
-          // 1. Inizializzazione: Aggiorna il testo del pulsante al caricamento della pagina
+          // 1. Initilization
           const formattedSolver =
-            selectedSolver.slice(0) == "ilp" ? "ILP" : selectedSolver.slice(0);
+            selectedSolver.slice(0) === "ilp" ? "ILP" : selectedSolver.slice(0).charAt(0).toUpperCase() + selectedSolver.slice(1).toLowerCase();
           solverButton.innerHTML = `${formattedSolver} Solver <span style="font-size: 0.7em;">&#x25BC;</span>`;
 
           // Toggle visibility
@@ -1079,7 +1088,7 @@
               transition: background-color 0.2s;
             "
           >
-            Stay Here
+            Cancel
           </button>
 
           <button
