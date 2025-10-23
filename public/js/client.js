@@ -98,6 +98,14 @@ function applyNodeOrder(graph, order) {
 
 // --- Main function ---
 async function main() {
+  // Check if a solver request is being made on initial load.
+  const isInitialLoad = new URLSearchParams(window.location.search).get("instance");
+  
+  // Show loading modal immediately if an instance is being loaded/solved
+  if (isInitialLoad && typeof window.showLoadingModal === 'function') {
+      window.showLoadingModal();
+  }
+  
   // 1. Initialize Graph
   let H = new HierarchicallyClusteredGraph();
   await H.readFromJSON(instance);
@@ -115,6 +123,11 @@ async function main() {
   // 3. Initialize Drawer
   let HD = new HierarchicallyClusteredGraphDrawer(H);
   HD.draw('#graph-container');
+
+  // Hide the loading modal once the visualization is drawn
+  if (isInitialLoad && typeof window.hideLoadingModal === 'function') {
+      window.hideLoadingModal();
+  }
 
   // Zoom functionality
   window.addEventListener('zoomOut', () => {
@@ -165,18 +178,29 @@ function setupGoButtonListener() {
   const solverSelect = document.getElementById('solver-select');
 
   if (goButton && instanceIdInput && solverSelect) {
-    // In setupGoButtonListener() in client.js
     goButton.addEventListener('click', () => {
       const newInstanceId = instanceIdInput.value;
       const selectedSolver = solverSelect.value;
+      
       if (newInstanceId) {
+        // VITAL CHANGE: Show loading modal before navigation
+        if (typeof window.showLoadingModal === 'function') {
+           window.showLoadingModal();
+        }
+
         const url = new URL(window.location.href);
         url.searchParams.set('instance', newInstanceId);
-        url.searchParams.set('method', selectedSolver); // ✅ Already correct
-        window.location.href = url.toString();
+        url.searchParams.set('method', selectedSolver);
+        
+        // This triggers the page reload/solve.
+        window.location.href = url.toString(); 
       } else {
         console.error("Missing instance ID, cannot navigate.");
+        // If there's an error, hide the success modal (and loading modal if it somehow showed)
         hideSuccessModal();
+        if (typeof window.hideLoadingModal === 'function') {
+           window.hideLoadingModal();
+        }
       }
     });
   } else {
