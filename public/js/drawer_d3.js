@@ -24,6 +24,7 @@ export class HierarchicallyClusteredGraphDrawer {
     this.zoomGroup = null;
     this.d3zoom = null;
     this.currentTransform = null;
+    this.clusterStatsPopup = null;
   }
 
   addOrderConstraints(orderString) {
@@ -50,6 +51,177 @@ export class HierarchicallyClusteredGraphDrawer {
 
   isLeaf(node) {
     return !node.getChildren || node.getChildren().length === 0;
+  }
+
+  calculateStatistics() {
+    const stats = {
+        totalTreeEdges: 0,
+        visibleEdges: 0,
+        internalClusterEdges: 0,
+        totalClusters: 0,
+        totalLeaves: 0
+    };
+
+    // Count total tree edges (cluster hierarchy relationships)
+    // These are the parent-child relationships in the cluster tree
+    const clusterLayers = this.H.getClusterLayers(false);
+    stats.totalClusters = clusterLayers.flat().length;
+    
+    // Calculate tree edges: each non-root cluster has one parent relationship
+    // Total tree edges = total clusters - 1 (since root cluster has no parent)
+    stats.totalTreeEdges = Math.max(0, stats.totalClusters - 1);
+
+    // Count total leaves (nodes without children)
+    stats.totalLeaves = this.H.getVertices().length;
+
+    // Count all graph edges (the actual connections between nodes)
+    const allEdges = this.H.getEdges();
+
+    // Identify last-level clusters for filtering
+    let filteredEdges = allEdges;
+    if (clusterLayers.length > 0) {
+        const lastLevelClusters = clusterLayers.at(-1);
+        const clusterMap = new Map();
+
+        // Map each leaf to its cluster ID
+        lastLevelClusters.forEach((cluster) => {
+            cluster.getChildren().forEach((child) => {
+                if (!child.getChildren || child.getChildren().length === 0) {
+                    clusterMap.set(child.getID(), cluster.getID());
+                }
+            });
+        });
+
+        // Separate visible edges from internal cluster edges
+        filteredEdges = allEdges.filter((edge) => {
+            const srcCluster = clusterMap.get(edge.getSource().getID());
+            const tgtCluster = clusterMap.get(edge.getTarget().getID());
+            return !(srcCluster && tgtCluster && srcCluster === tgtCluster);
+        });
+
+        stats.visibleEdges = filteredEdges.length;
+        stats.internalClusterEdges = allEdges.length - filteredEdges.length;
+    } else {
+        // If no clusters, all edges are visible
+        stats.visibleEdges = allEdges.length;
+        stats.internalClusterEdges = 0;
+    }
+
+    return stats;
+  }
+
+  calculateClusterStatistics(cluster) {
+    const stats = {
+        clusterId: cluster.getID(),
+        childClusters: 0,
+        directChildren: 0,
+        totalLeavesInCluster: 0,
+        internalEdges: 0,
+        externalEdges: 0,
+        totalDescendants: 0
+    };
+
+    // Get all leaves in this cluster
+    const leavesInCluster = cluster.getLeaves();
+    stats.totalLeavesInCluster = leavesInCluster.length;
+    
+    // Count direct children and child clusters
+    const children = cluster.getChildren();
+    stats.directChildren = children.length;
+    
+    // Count child clusters (non-leaf children)
+    stats.childClusters = children.filter(child => 
+        child.getChildren && child.getChildren().length > 0
+    ).length;
+
+    // Count total descendants (all nodes in this cluster's subtree)
+    const countDescendants = (node) => {
+        let count = 1; // count self
+        if (node.getChildren && node.getChildren().length > 0) {
+            node.getChildren().forEach(child => {
+                count += countDescendants(child);
+            });
+        }
+        return count;
+    };
+    stats.totalDescendants = countDescendants(cluster) - 1; // exclude self
+
+    // Calculate edges within this cluster and edges going out
+    const allEdges = this.H.getEdges();
+    const leafIdsInCluster = new Set(leavesInCluster.map(leaf => leaf.getID()));
+
+    allEdges.forEach(edge => {
+        const sourceId = edge.getSource().getID();
+        const targetId = edge.getTarget().getID();
+        
+        const sourceInCluster = leafIdsInCluster.has(sourceId);
+        const targetInCluster = leafIdsInCluster.has(targetId);
+
+        if (sourceInCluster && targetInCluster) {
+            stats.internalEdges++;
+        } else if (sourceInCluster || targetInCluster) {
+            stats.externalEdges++;
+        }
+    });
+
+    return stats;
+  }
+
+  updateStatisticsDisplay(stats) {
+    // Update the stats panel if it exists
+        if (typeof window.updateStatsPanel === 'function') {
+        window.updateStatsPanel(stats);
+    }
+    
+    // Also log to console for debugging
+    console.log('Graph Statistics:', stats);
+}
+
+  showClusterStatsPopup(cluster, stats, x, y) {
+    // Create popup if it doesn't exist
+    if (!this.clusterStatsPopup) {
+        this.clusterStatsPopup = d3.select("body")
+            .append("div")
+            .attr("id", "cluster-stats-popup")
+            .style("position", "absolute")
+            .style("z-index", "1000")
+            .style("background", "var(--color-background-medium)")
+            .style("border", "2px solid var(--color-secondary)")
+            .style("border-radius", "8px")
+            .style("padding", "15px")
+            .style("box-shadow", "0 4px 12px rgba(0,0,0,0.3)")
+            .style("font-family", "var(--font-main)")
+            .style("font-size", "0.9rem")
+            .style("color", "var(--color-text-header)")
+            .style("pointer-events", "none")
+            .style("opacity", 0)
+            .style("transition", "opacity 0.2s");
+    }
+
+    // Update popup content and position
+    const popupContent = `
+        <div style="margin-bottom: 8px;"><strong>Cluster: ${stats.clusterId}</strong></div>
+        <div style="margin-left: 10px;">
+            <div style="margin-bottom: 4px;">• Children: ${stats.directChildren}</div>
+            <div style="margin-bottom: 4px;">• Child Clusters: ${stats.childClusters}</div>
+            <div style="margin-bottom: 4px;">• Total Leaves: ${stats.totalLeavesInCluster}</div>
+            <div style="margin-bottom: 4px;">• Total Nodes: ${stats.totalDescendants}</div>
+            <div style="margin-bottom: 4px;">• Internal Edges: ${stats.internalEdges}</div>
+            <div style="margin-bottom: 4px;">• External Edges: ${stats.externalEdges}</div>
+        </div>
+    `;
+
+    this.clusterStatsPopup
+        .html(popupContent)
+        .style("left", (x + 15) + "px")
+        .style("top", (y - 10) + "px")
+        .style("opacity", 1);
+  }
+
+  hideClusterStatsPopup() {
+    if (this.clusterStatsPopup) {
+        this.clusterStatsPopup.style("opacity", 0);
+    }
   }
 
   drawCluster(
@@ -84,6 +256,76 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("class", "cluster")
       .attr("transform", `translate(${offsetX}, ${offsetY})`);
 
+    // Add cluster label 
+    const clusterLabel = clusterContainer
+      .append("text")
+      .attr("class", "cluster-label")
+      .attr("x", startX - 10) // Position to the left of the first node in THIS cluster
+      .attr("y", -cellSize - 5) // Position 5px above THIS cluster (based on its own position)
+      .attr("text-anchor", "end") // Right-align the text
+      .attr("dominant-baseline", "hanging") // Align to top
+      .attr("font-family", "var(--font-main)")
+      .attr("font-size", "14px")
+      .attr("font-weight", "bold")
+      .attr("fill", "var(--color-primary)")
+      .attr("pointer-events", "none")
+      .text(cluster.getID());
+
+    // Add invisible hit area for the entire cluster for hover events
+    const clusterHitArea = clusterContainer
+      .append("rect")
+      .attr("class", "cluster-hit-area")
+      .attr("x", startX - cellSize/2)
+      .attr("y", -cellSize/2)
+      .attr("width", children.length * cellSize)
+      .attr("height", cellSize)
+      .attr("fill", "transparent")
+      .attr("pointer-events", "all")
+      .style("cursor", "pointer");
+
+    // Add hover events for cluster statistics
+    clusterHitArea
+      .on("mouseover", (event) => {
+        const stats = this.calculateClusterStatistics(cluster);
+        const [x, y] = d3.pointer(event, document.body);
+        this.showClusterStatsPopup(cluster, stats, x, y);
+        
+        // Highlight the cluster and label
+        clusterContainer.selectAll(".nodes use")
+          .transition()
+          .duration(200)
+          .attr("fill", "var(--color-primary)");
+        
+        clusterLabel
+          .transition()
+          .duration(200)
+          .attr("fill", "var(--color-secondary)")
+          .attr("font-size", "16px");
+      })
+      .on("mouseout", () => {
+        this.hideClusterStatsPopup();
+        
+        // Remove highlight
+        clusterContainer.selectAll(".nodes use")
+          .transition()
+          .duration(200)
+          .attr("fill", nodeColor);
+        
+        clusterLabel
+          .transition()
+          .duration(200)
+          .attr("fill", "var(--color-primary)")
+          .attr("font-size", "14px");
+      })
+      .on("mousemove", (event) => {
+        const [x, y] = d3.pointer(event, document.body);
+        if (this.clusterStatsPopup) {
+          this.clusterStatsPopup
+            .style("left", (x + 15) + "px")
+            .style("top", (y - 10) + "px");
+        }
+      });
+
     const nodeCells = clusterContainer
       .append("g")
       .attr("class", "nodes")
@@ -108,11 +350,13 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("text-anchor", "middle")
       .attr("alignment-baseline", "middle")
       .attr("pointer-events", "none")
-      .text((d) => d.getID());
-
-    nodeCells
-      .on("mouseover", listeners.mouseEntersNodeCell)
-      .on("mouseleave", listeners.mouseLeavesNodeCell); // ADJACENCY CELLS
+      .text((d) => {
+        const id = d.getID();
+        if (isNaN(id)) {
+          return id.charAt(0);
+        }
+        return id;
+      });
 
     const adjacencyData = [];
     for (let i = 0; i < children.length; i++) {
@@ -125,7 +369,6 @@ export class HierarchicallyClusteredGraphDrawer {
         });
       }
     }
-
     const adjCells = clusterContainer
       .append("g")
       .attr("class", "adjacency")
@@ -173,7 +416,6 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("stroke", cellboundaryColor)
       .attr("stroke-width", arrayBoundaryWidth)
       .attr("fill", cellColor);
-
 
       adjCell.datum({
         color: cellColor,
@@ -594,9 +836,82 @@ export class HierarchicallyClusteredGraphDrawer {
       clusterDistance
     );
 
+
+      // 6. DRAW LABELS (AFTER EVERYTHING ELSE TO APPEAR ON TOP)
+      this.zoomGroup.select("g.leaf-labels").remove();
+      const labelGroup = this.zoomGroup.append("g").attr("class", "leaf-labels");
+
+      const lastLevelLeaves = this.getLeavesInLastLevelClusters();
+
+      lastLevelLeaves.forEach((leaf) => {
+        if (leaf.customLabel) {
+          const refX = xCoordReferenceMap.get(leaf);
+          const refY = yCoordReferenceMap.get(leaf);
+          
+          if (refX !== undefined && refY !== undefined) {
+            const tempSvg = d3.create("svg");
+            const tempText = tempSvg.append("text")
+              .attr("font-size", "12px")
+              .attr("font-family", "var(--font-main)")
+              .attr("text-anchor", "end")
+              .text(leaf.customLabel);
+            
+            const bbox = tempText.node().getBBox();
+            const textWidth = bbox.width;
+            const textHeight = bbox.height;
+            tempSvg.remove();
+            
+            const padding = 8; // Larger padding for rotated text
+            const groupX = refX;
+            const groupY = refY + cellSize / 2 + 4;
+            
+            // ✅ CREATE GROUP
+            const labelContainer = labelGroup
+              .append("g")
+              .attr("class", "label-container")
+              .attr("transform", `translate(${groupX}, ${groupY}) rotate(-45)`);
+            
+            // ✅ LARGER BOX to account for rotation
+            const boxSize = Math.max(textWidth, textHeight) + padding * 2;
+            
+            labelContainer
+              .append("rect")
+              .attr("class", "label-background")
+              .attr("x", -boxSize / 2)
+              .attr("y", -boxSize / 2)
+              .attr("width", boxSize)
+              .attr("height", boxSize)
+              .attr("fill", "white")
+              .attr("opacity", 0.7)
+              .attr("rx", 4)
+              .attr("ry", 4)
+              .attr("pointer-events", "none");
+            
+            // ✅ ADD TEXT
+            labelContainer
+              .append("text")
+              .attr("class", "leaf-label")
+              .attr("x", 0)
+              .attr("y", 0)
+              .attr("fill", "var(--color-text-body)")
+              .attr("font-size", "12px")
+              .attr("font-family", "var(--font-main)")
+              .attr("text-anchor", "end")
+              .attr("dominant-baseline", "middle")
+              .attr("pointer-events", "none")
+              .style("opacity", 0.9)
+              .text(leaf.customLabel);
+          }
+        }
+});
+            
     const maxArcHeight = maxDist / 2.5;
     const minRequiredHeight = linearLayoutY + maxArcHeight;
     const viewBoxHeight = minRequiredHeight + padding;
+
+    // Calculate and display statistics
+    const stats = this.calculateStatistics();
+    this.updateStatisticsDisplay(stats);
 
     // Store SVG reference for zoom
     this.svg = svg;
@@ -613,6 +928,8 @@ export class HierarchicallyClusteredGraphDrawer {
     // Setup zoom behavior
     this.setupZoomBehavior();
   }
+
+
 
   // === ZOOM METHODS ===
   setupZoomBehavior() {

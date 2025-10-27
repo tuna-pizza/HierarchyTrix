@@ -57,68 +57,57 @@ export class HierarchicallyClusteredGraph {
     return vertices;
   }
 
-getClusterLayers(topmost = true) {
+  getClusterLayers(topmost = true) {
     let clusterLayers = [];
-	if (topmost)
-	{
-		let nextLayer = [];
-		for (let cluster of this.getClusters()) {
-		  if (cluster.getParent() === null) {
-			nextLayer.push(cluster);
-		  }
-		}
-		while (nextLayer.length > 0) {
-		  let currentLayer = nextLayer;
-		  clusterLayers.push(nextLayer);
-		  nextLayer = [];
-		  for (let cluster of currentLayer) {
-			for (let child of cluster.getChildren()) {
-			  if (child.getNodeType() === NodeType.Cluster) {
-				nextLayer.push(child);
-			  }
-			}
-		  }
-		}
-	}
-	else
-	{
-		let assigned = [];
-		for (let vertex of this.getVertices()) 
-		{
-			assigned.push(vertex);
-		}
-		while (assigned.length < this.getNodes().length)
-		{
-			let newLayer = [];
-			for (let cluster of this.getClusters()) 
-			{				
-				if (!assigned.includes(cluster))
-				{
-					let assignable = true;
-					for (let child of cluster.getChildren())
-					{
-						if (!assigned.includes(child))
-						{
-							assignable = false;
-						}
-					}
-					if (assignable)
-					{
-						newLayer.push(cluster);
-					}
-				}
-			}
-			for (let cluster of newLayer)
-			{
-				assigned.push(cluster);
-			}
-			let newArray = [newLayer];
-			clusterLayers = newArray.concat(clusterLayers);
-		}
-	}
-	console.log(clusterLayers);
+    if (topmost) {
+      let nextLayer = [];
+      for (let cluster of this.getClusters()) {
+        if (cluster.getParent() === null) {
+          nextLayer.push(cluster);
+        }
+      }
+      while (nextLayer.length > 0) {
+        let currentLayer = nextLayer;
+        clusterLayers.push(nextLayer);
+        nextLayer = [];
+        for (let cluster of currentLayer) {
+          for (let child of cluster.getChildren()) {
+            if (child.getNodeType() === NodeType.Cluster) {
+              nextLayer.push(child);
+            }
+          }
+        }
+      }
+    } else {
+      let assigned = [];
+      for (let vertex of this.getVertices()) {
+        assigned.push(vertex);
+      }
+      while (assigned.length < this.getNodes().length) {
+        let newLayer = [];
+        for (let cluster of this.getClusters()) {
+          if (!assigned.includes(cluster)) {
+            let assignable = true;
+            for (let child of cluster.getChildren()) {
+              if (!assigned.includes(child)) {
+                assignable = false;
+              }
+            }
+            if (assignable) {
+              newLayer.push(cluster);
+            }
+          }
+        }
+        for (let cluster of newLayer) {
+          assigned.push(cluster);
+        }
+        let newArray = [newLayer];
+        clusterLayers = newArray.concat(clusterLayers);
+      }
+    }
+    console.log(clusterLayers);
     return clusterLayers;
-}
+  }
 
   getMaxChildren() {
     let res = 0;
@@ -189,6 +178,12 @@ getClusterLayers(topmost = true) {
             type = NodeType.Cluster;
           }
           let vertex = new Node(node.id, null, type);
+          
+          // ✅ STORE LABEL IF PROVIDED
+          if (node.label) {
+            vertex.customLabel = node.label;
+          }
+          
           nodeMap.set(node.id, vertex);
           this.nodes.push(vertex);
           queue.push(node);
@@ -206,6 +201,12 @@ getClusterLayers(topmost = true) {
               type = NodeType.Cluster;
             }
             let vertex = new Node(node.id, nodeMap.get(node.parent), type);
+            
+            // ✅ STORE LABEL IF PROVIDED
+            if (node.label) {
+              vertex.customLabel = node.label;
+            }
+            
             nodeMap.set(node.id, vertex);
             this.nodes.push(vertex);
             queue.push(node);
@@ -230,6 +231,7 @@ export class Node {
     this.parentNode = parentNode;
     this.type = type;
     this.children = [];
+    this.customLabel = null; // ✅ ADD THIS LINE to initialize customLabel
     if (parentNode != null) {
       parentNode.addChild(this);
     }
