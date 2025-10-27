@@ -17,17 +17,20 @@
     <script type="module" src="js/client.js" defer></script>
   </head>
   <body>
-    <header id="main-header-container" style="background-color: var(--color-background-medium)">
-      <div style="display: flex; align-items: center; gap: 4px;">
-      <h1>Clusterix</h1>
-      <img 
-      src="asterix.png" 
-      alt="Asterix Icon" 
-      class="header-icon"
-      style="height: 45px; width: 45px; vertical-align: left;" 
-    />
-    </div>
-      
+    <header
+      id="main-header-container"
+      style="background-color: var(--color-background-medium)"
+    >
+      <div style="display: flex; align-items: center; gap: 4px">
+        <h1>Clusterix</h1>
+        <img
+          src="asterix.png"
+          alt="Asterix Icon"
+          class="header-icon"
+          style="height: 45px; width: 45px; vertical-align: left"
+        />
+      </div>
+
       <div style="display: flex; gap: 15px; align-items: center">
         <!-- Zoom Controls - ADDED BEFORE UPLOAD BUTTON -->
         <div id="zoom-controls">
@@ -77,12 +80,23 @@
                 display: none;
                 position: absolute;
                 top: 100%;
-                left: -126px;
-                width: 175px;
+                left: 0px;
+                width: 120px;
                 box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
                 z-index: 200;
               "
             >
+              <a
+                data-instance="animals"
+                href="#"
+                style="
+                  padding: 8px 10px;
+                  text-decoration: none;
+                  display: block;
+                  font-size: 0.9rem;
+                "
+                >animals</a
+              >
               <a
                 data-instance="sample"
                 href="#"
@@ -153,7 +167,7 @@
                 position: absolute;
                 top: 100%;
                 left: 0;
-                width: 120px;
+                width: 130px;
                 box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
                 z-index: 200;
               "
@@ -227,34 +241,52 @@
               border-radius: 8px;
               box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6); /* Deeper shadow */
               text-align: center;
-              background-color: var(--color-background-medium); /* Ensure background is defined by theme */
+              background-color: var(
+                --color-background-medium
+              ); /* Ensure background is defined by theme */
             "
           >
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <h2 style="margin: 0; font-size: 1.4rem;">
-                    &#x231B; Visualization Loading...
-                </h2>
-                <button
-                    id="return-button"
-                    style="
-                        padding: 8px 12px;
-                        border: none;
-                        border-radius: 5px;
-                        cursor: pointer;
-                        font-weight: bold;
-                        background-color: var(--color-secondary); /* Use secondary color for the action button */
-                        color: var(--color-text-button);
-                        font-family: var(--font-main);
-                        transition: background-color 0.2s;
-                        white-space: nowrap; /* Prevent text wrap */
-                    "
-                >
-                    Cancel
-                </button>
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+              "
+            >
+              <h2 style="margin: 0; font-size: 1.4rem">
+                &#x231B; Visualization Loading...
+              </h2>
+              <button
+                id="return-button"
+                style="
+                  padding: 8px 12px;
+                  border: none;
+                  border-radius: 5px;
+                  cursor: pointer;
+                  font-weight: bold;
+                  background-color: var(
+                    --color-secondary
+                  ); /* Use secondary color for the action button */
+                  color: var(--color-text-button);
+                  font-family: var(--font-main);
+                  transition: background-color 0.2s;
+                  white-space: nowrap; /* Prevent text wrap */
+                "
+              >
+                Cancel
+              </button>
             </div>
-            <hr style="border: 0; height: 1px; background: var(--color-secondary); margin: 15px 0;">
-            
-            <p style="margin-top: 15px; margin-bottom: 0; font-size: 0.95rem;">
+            <hr
+              style="
+                border: 0;
+                height: 1px;
+                background: var(--color-secondary);
+                margin: 15px 0;
+              "
+            />
+
+            <p style="margin-top: 15px; margin-bottom: 0; font-size: 0.95rem">
               The solver is processing the request. This may take a moment.
             </p>
           </div>
@@ -322,7 +354,9 @@
     </header>
 
     <!-- Stats Panel -->
-    <div id="stats-panel" style="
+    <div
+      id="stats-panel"
+      style="
         position: fixed;
         top: 80px;
         right: 20px;
@@ -336,32 +370,61 @@
         font-family: var(--font-main);
         font-size: 0.9rem;
         display: none;
-    ">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <h3 style="margin: 0; color: var(--color-secondary);">Graph Statistics</h3>
-            <button id="close-stats" style="
-                background: none;
-                border: none;
-                color: var(--color-text);
-                cursor: pointer;
-                font-size: 1.2rem;
-                padding: 0;
-                width: 20px;
-                height: 20px;
-            ">×</button>
+      "
+    >
+      <div
+        style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 10px;
+        "
+      >
+        <h3 style="margin: 0; color: var(--color-text)">Graph Statistics</h3>
+        <button
+          id="close-stats"
+          style="
+            background: none;
+            border: none;
+            color: var(--color-text);
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+          "
+        >
+          ×
+        </button>
+      </div>
+      <div id="stats-content">
+        <div style="margin-bottom: 8px">
+          <strong style="color: var(--color-text)">Edges:</strong>
         </div>
-        <div id="stats-content">
-            <div style="margin-bottom: 8px;"><strong style="color: var(--color-third);">Edges:</strong></div>
-            <div style="margin-left: 15px; margin-bottom: 4px;">• Inlusion Tree Edges: <span id="stat-tree-edges">0</span></div>
-            <div style="margin-left: 15px; margin-bottom: 4px;">• Visible Edges: <span id="stat-visible-edges">0</span></div>
-            <div style="margin-left: 15px; margin-bottom: 8px;">• Internal Cluster Edges: <span id="stat-internal-edges">0</span></div>
-            
-            <div style="margin-bottom: 8px;"><strong style="color: var(--color-third);">Clusters:</strong></div>
-            <div style="margin-left: 15px; margin-bottom: 8px;">• Total Clusters: <span id="stat-total-clusters">0</span></div>
-            
-            <div style="margin-bottom: 8px;"><strong style="color: var(--color-third);">Leaves:</strong></div>
-            <div style="margin-left: 15px; margin-bottom: 4px;">• Total Leaves: <span id="stat-total-leaves">0</span></div>
+        <div style="margin-left: 15px; margin-bottom: 4px">
+          • Inlusion Tree Edges: <span id="stat-tree-edges">0</span>
         </div>
+        <div style="margin-left: 15px; margin-bottom: 4px">
+          • Visible Edges: <span id="stat-visible-edges">0</span>
+        </div>
+        <div style="margin-left: 15px; margin-bottom: 8px">
+          • Internal Cluster Edges: <span id="stat-internal-edges">0</span>
+        </div>
+
+        <div style="margin-bottom: 8px">
+          <strong style="color: var(--color-text)">Clusters:</strong>
+        </div>
+        <div style="margin-left: 15px; margin-bottom: 8px">
+          • Total Clusters: <span id="stat-total-clusters">0</span>
+        </div>
+
+        <div style="margin-bottom: 8px">
+          <strong style="color: var(--color-text)">Leaves:</strong>
+        </div>
+        <div style="margin-left: 15px; margin-bottom: 4px">
+          • Total Leaves: <span id="stat-total-leaves">0</span>
+        </div>
+      </div>
     </div>
 
     <script>
@@ -606,10 +669,9 @@
         }
       }
 
-      // Function to trigger solve again
-      function solveAgain(selectedSolver) {
+      function solveAgain(selectedSolver, instanceId) {
         const urlParams = new URLSearchParams(window.location.search);
-        const currentInstanceId = urlParams.get("instance");
+        const currentInstanceId = instanceId || urlParams.get("instance");
         const currentTheme = urlParams.get("theme");
 
         if (!currentInstanceId) {
@@ -625,30 +687,35 @@
         window.location.href = newUrl;
       }
 
-     window.showLoadingModal = function() {
-      const loadingModal = document.getElementById("loading-modal");
-      if (loadingModal) {
-          loadingModal.style.display = "block";
-      } else {
-          console.error("Loading modal element not found.");
-      }
-  }
-
-    window.hideLoadingModal = function() {
+      window.showLoadingModal = function () {
         const loadingModal = document.getElementById("loading-modal");
         if (loadingModal) {
-            loadingModal.style.display = "none";
+          loadingModal.style.display = "block";
+        } else {
+          console.error("Loading modal element not found.");
         }
-    }
+      };
 
-    // Function to update stats panel (called from drawer_d3.js)
-    window.updateStatsPanel = function(stats) {
-        document.getElementById('stat-tree-edges').textContent = stats.totalTreeEdges;
-        document.getElementById('stat-visible-edges').textContent = stats.visibleEdges;
-        document.getElementById('stat-internal-edges').textContent = stats.internalClusterEdges;
-        document.getElementById('stat-total-clusters').textContent = stats.totalClusters;
-        document.getElementById('stat-total-leaves').textContent = stats.totalLeaves;
-    };
+      window.hideLoadingModal = function () {
+        const loadingModal = document.getElementById("loading-modal");
+        if (loadingModal) {
+          loadingModal.style.display = "none";
+        }
+      };
+
+      // Function to update stats panel (called from drawer_d3.js)
+      window.updateStatsPanel = function (stats) {
+        document.getElementById("stat-tree-edges").textContent =
+          stats.totalTreeEdges;
+        document.getElementById("stat-visible-edges").textContent =
+          stats.visibleEdges;
+        document.getElementById("stat-internal-edges").textContent =
+          stats.internalClusterEdges;
+        document.getElementById("stat-total-clusters").textContent =
+          stats.totalClusters;
+        document.getElementById("stat-total-leaves").textContent =
+          stats.totalLeaves;
+      };
 
       document.addEventListener("DOMContentLoaded", () => {
         // Initialization MUST happen inside DOMContentLoaded to ensure elements exist.
@@ -659,7 +726,6 @@
 
         let isK00lModeActive = false;
 
-        // NEW/CORRECTED LOCATION: Define the instance input element right away.
         const instanceIdInputHeader = document.getElementById(
           "instance-id-input-header"
         );
@@ -703,7 +769,9 @@
         const solverDropdown = document.getElementById("solver-dropdown");
 
         // Stats Panel Elements
-        const statsToggleButton = document.getElementById("stats-toggle-button");
+        const statsToggleButton = document.getElementById(
+          "stats-toggle-button"
+        );
         const statsPanel = document.getElementById("stats-panel");
         const closeStatsButton = document.getElementById("close-stats");
 
@@ -721,49 +789,52 @@
 
         // Stats Panel Functionality
         if (statsToggleButton && statsPanel) {
-            statsToggleButton.addEventListener('click', () => {
-                const isVisible = statsPanel.style.display === 'block';
-                statsPanel.style.display = isVisible ? 'none' : 'block';
-            });
+          statsToggleButton.addEventListener("click", () => {
+            const isVisible = statsPanel.style.display === "block";
+            statsPanel.style.display = isVisible ? "none" : "block";
+          });
         }
 
         if (closeStatsButton && statsPanel) {
-            closeStatsButton.addEventListener('click', () => {
-                statsPanel.style.display = 'none';
-            });
+          closeStatsButton.addEventListener("click", () => {
+            statsPanel.style.display = "none";
+          });
         }
 
         // Function to signal the server to stop the running solver
         async function stopSolverProcess() {
-            try {
-                // Assuming a POST request to a dedicated endpoint to interrupt the process
-                const response = await fetch("/api/stop-solver", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    // You might want to send the instance ID or session ID here
-                    body: JSON.stringify({ action: "interrupt" }),
-                });
+          try {
+            // Assuming a POST request to a dedicated endpoint to interrupt the process
+            const response = await fetch("/api/stop-solver", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              // You might want to send the instance ID or session ID here
+              body: JSON.stringify({ action: "interrupt" }),
+            });
 
-                if (response.ok) {
-                    console.log("Solver interruption signal sent successfully.");
-                } else {
-                    console.error("Failed to signal solver interruption.");
-                }
-            } catch (error) {
-                console.error("Network error while trying to interrupt solver:", error);
+            if (response.ok) {
+              console.log("Solver interruption signal sent successfully.");
+            } else {
+              console.error("Failed to signal solver interruption.");
             }
+          } catch (error) {
+            console.error(
+              "Network error while trying to interrupt solver:",
+              error
+            );
+          }
         }
 
         if (loadingModal && returnButton) {
-            returnButton.addEventListener("click", () => {
-                // 1. Signal the server to stop the ongoing solver
-                stopSolverProcess();
-                
-                // 2. Hide the modal and return to the current visualization
-                hideLoadingModal(); 
-            });
+          returnButton.addEventListener("click", () => {
+            // 1. Signal the server to stop the ongoing solver
+            stopSolverProcess();
+
+            // 2. Hide the modal and return to the current visualization
+            hideLoadingModal();
+          });
         }
 
         // Zoom Controls Event Listeners
@@ -984,9 +1055,24 @@
           let selectedSolver = currentSolver;
 
           // 1. Initilization
-          const formattedSolver =
-            selectedSolver.slice(0) === "ilp" ? "ILP" : selectedSolver.slice(0).charAt(0).toUpperCase() + selectedSolver.slice(1).toLowerCase();
-          solverButton.innerHTML = `${formattedSolver} Solver <span style="font-size: 0.7em;">&#x25BC;</span>`;
+          let buttonText;
+          const currentSolverInUrl = urlParams.get("method");
+
+          if (!currentSolverInUrl) {
+            // If no solver is in the URL, set the default display text
+            buttonText = "Choose Solver";
+          } else {
+            // If a solver is in the URL, format it (e.g., 'ilp' -> 'ILP Solver')
+            const formattedSolver =
+              selectedSolver.slice(0) === "ilp"
+                ? "ILP"
+                : selectedSolver.slice(0).charAt(0).toUpperCase() +
+                  selectedSolver.slice(1).toLowerCase();
+            buttonText = `${formattedSolver} Solver`;
+          }
+
+          // Update the button HTML
+          solverButton.innerHTML = `${buttonText} <span style="font-size: 0.7em;">&#x25BC;</span>`;
 
           // Toggle visibility
           solverButton.addEventListener("click", (event) => {
@@ -1035,7 +1121,7 @@
                 const realInstance = urlParams.get("instance") || "";
 
                 if (loadingModal) {
-                    loadingModal.style.display = "block";
+                  loadingModal.style.display = "block";
                 }
 
                 // Reload the page with the current instance and the new theme parameter
@@ -1043,23 +1129,24 @@
                 return; // Stop here
               }
 
-              // If input field is empty but we have a current instance, perform "Solve Again"
-              if (!instanceId && currentInstanceId) {
-                // NEW JS: Show the loading modal before calling solveAgain
-                if (loadingModal) {
+              if (!instanceId) {
+                // Determine the instance to solve again: URL param, or the client.js default "animals"
+                const instanceToSolve = currentInstanceId || "animals";
+
+                if (instanceToSolve) {
+                  if (loadingModal) {
                     loadingModal.style.display = "block";
+                  }
+                  solveAgain(selectedSolver, instanceToSolve);
+                  return;
+                } else {
+                  // If even the default "animals" is null/empty for some reason, show alert.
+                  alert("Please enter a valid Instance ID.");
+                  return;
                 }
-                solveAgain(selectedSolver);
-                return;
               }
 
-              // If input field is empty but we have a current instance, perform "Solve Again"
-              if (!instanceId && currentInstanceId) {
-                solveAgain(selectedSolver);
-                return;
-              }
-
-              // If we have an instance ID in the input field, navigate to that instance
+              // Original logic for a NEW instance ID in the input field
               if (instanceId) {
                 let newUrl = `?instance=${instanceId}&method=${selectedSolver}`;
                 if (isK00lModeActive) {
@@ -1076,10 +1163,10 @@
         }
 
         if (loadingModal && returnButton) {
-            returnButton.addEventListener("click", () => {
-                // Simply hide the modal and stay on the current page.
-                loadingModal.style.display = "none";
-            });
+          returnButton.addEventListener("click", () => {
+            // Simply hide the modal and stay on the current page.
+            loadingModal.style.display = "none";
+          });
         }
 
         // Expose the current theme to the module script

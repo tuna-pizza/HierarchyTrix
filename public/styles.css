@@ -1,56 +1,56 @@
 /* --- 1. DEFINE DEFAULT VARIABLES --- */
 :root {
---color-primary: rgb(19, 2, 59); /* Blue (Upload/Go) */
---color-secondary: hsl(210, 60%, 49%); /* Blue (Instance/Sample) */
---color-third:rgb(66, 143, 145); 
---color-tertiary: #ffd700; /* Yellow (Save Viz) */
---color-background-dark: #222;
---color-background-medium: #333;
---color-text-header: white;
---color-text-input: white;
---color-text-button: white; /* Consistent button text color */
---color-button-disabled: #555;
---font-main: sans-serif;
+  --color-primary: rgb(19, 2, 59); /* Blue (Upload/Go) */
+  --color-secondary: hsl(210, 60%, 49%); /* Blue (Instance/Sample) */
+  --color-third: rgb(66, 143, 145);
+  --color-tertiary: #ffd700; /* Yellow (Save Viz) */
+  --color-background-dark: #222;
+  --color-background-medium: #333;
+  --color-text-header: white;
+  --color-text-input: white;
+  --color-text-button: white; /* Consistent button text color */
+  --color-button-disabled: #555;
+  --font-main: sans-serif;
 }
 
 /* --- 2. 90s THEME VARIABLES (Override) --- */
 .k00l90z-mode {
-/* 90s K00L Font: Monospace/Pixelated look */
---font-main: "VT323", monospace;
+  /* 90s K00L Font: Monospace/Pixelated look */
+  --font-main: "VT323", monospace;
 
-/* High-Contrast, Neon/Vaporwave Colors */
---color-primary: #00ffff; /* Aqua/Cyan */
---color-secondary: #ff00ff; /* Magenta/Fuchsia */
---color-tertiary: #ff00ff;
---color-background-dark: #111133; /* Dark Blue/Purple */
---color-background-medium: #222255;
---color-text-header: #ffd700; /* Gold/Bright Yellow */
---color-text-input: #00ffff;
---color-text-button: #111133; /* Dark text on neon buttons */
---color-button-disabled: #00ffff;
+  /* High-Contrast, Neon/Vaporwave Colors */
+  --color-primary: #00ffff; /* Aqua/Cyan */
+  --color-secondary: #ff00ff; /* Magenta/Fuchsia */
+  --color-tertiary: #ff00ff;
+  --color-background-dark: #111133; /* Dark Blue/Purple */
+  --color-background-medium: #222255;
+  --color-text-header: #ffd700; /* Gold/Bright Yellow */
+  --color-text-input: #00ffff;
+  --color-text-button: #111133; /* Dark text on neon buttons */
+  --color-button-disabled: #00ffff;
 }
 
 /* Apply 90s Font to body */
 .k00l90z-mode,
 .k00l90z-mode body {
-font-family: var(--font-main) !important;
-background-color: var(--color-background-dark);
-color: var(--color-text-header);
+  font-family: var(--font-main) !important;
+  background-color: var(--color-background-dark);
+  color: var(--color-text-header);
 }
 
 /* --- 3. APPLY VARIABLES TO ELEMENTS --- */
 header {
-display: flex;
-align-items: center;
-justify-content: space-between;
-background: var(--color-background-dark);
-color: var(--color-text-header);
-padding: 10px 20px;
-font-family: var(--font-main);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--color-background-dark);
+  color: var(--color-text-header);
+  padding: 10px 20px;
+  font-family: var(--font-main);
 }
 h1 {
-margin: 0;
-font-size: 1.2rem;
+  margin: 0;
+  font-size: 1.2rem;
 }
 
 /* Stats Button Styling */
@@ -100,20 +100,19 @@ font-size: 1.2rem;
 
 .k00l90z-mode #cluster-stats-popup {
   border: 2px solid var(--color-secondary) !important;
-  box-shadow: 0 0 8px var(--color-secondary),
-              0 0 15px var(--color-secondary),
-              0 0 25px #ff00ff !important;
+  box-shadow: 0 0 8px var(--color-secondary), 0 0 15px var(--color-secondary),
+    0 0 25px #ff00ff !important;
 }
 
 /* Cluster hit area styling */
 .cluster-hit-area:hover {
-  stroke: var(--color-primary);
+  stroke: var(--color-button-disabled);
   stroke-width: 2px;
-  stroke-dasharray: 4,4;
+  stroke-opacity: 0.7;
 }
 
 .leaf-label {
-  fill: var(--color-text-body) !important;
+  fill: var(--node-color);
   font-size: 12px !important;
   font-family: var(--font-main) !important;
   text-anchor: end !important;
@@ -124,162 +123,168 @@ font-size: 1.2rem;
 
 /* Zoom Buttons */
 #zoom-controls {
-display: flex;
-align-items: center;
-gap: 5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 .zoom-button {
-background: var(--color-button-disabled);
-border: 1px solid var(--color-secondary);
-color: var(--color-text-header);
-padding: 6px 10px;
-border-radius: 4px;
-cursor: pointer;
-font-family: var(--font-main);
-font-size: 0.9rem;
-min-width: 40px;
+  background: var(--color-button-disabled);
+  border: 1px solid var(--color-secondary);
+  color: var(--color-text-header);
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-main);
+  font-size: 0.9rem;
+  min-width: 40px;
 }
 .zoom-button:hover {
-background: var(--color-secondary);
-color: var(--color-text-button);
+  background: var(--color-secondary);
+  color: var(--color-text-button);
 }
 
 #uploadButton {
-background: var(--color-secondary);
-border: none;
-color: var(--color-text-button);
-padding: 8px 14px;
-border-radius: 6px;
-cursor: pointer;
-font-weight: bold;
-font-family: var(--font-main);
+  background: var(--color-secondary);
+  border: none;
+  color: var(--color-text-button);
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  font-family: var(--font-main);
+  font-size: 0.9rem;
 }
 #uploadButton:hover,
 #downloadButton:hover {
-/* Keep a slight darker shade for hover in default mode */
-background: var(--color-secondary);
-filter: brightness(80%);
+  /* Keep a slight darker shade for hover in default mode */
+  background: var(--color-secondary);
+  filter: brightness(80%);
 }
 
 /* Instance Input Styling */
 #instance-id-input-header {
-padding: 6px;
-border: 1px solid var(--color-secondary);
-background: var(--color-background-medium);
-color: var(--color-text-input);
-border-radius: 4px;
-width: 120px;
-font-size: 0.9rem;
-font-family: var(--font-main);
+  padding: 6px;
+  border: 1px solid var(--color-secondary);
+  background: var(--color-background-medium);
+  color: var(--color-text-input);
+  border-radius: 4px;
+  width: 120px;
+  font-size: 0.9rem;
+  font-family: var(--font-main);
 }
 
 /* Instance Buttons (Go & Sample & Solver) */
 #sample-button,
 #go-to-instance-button,
 #solver-button {
-background: var(--color-secondary);
-border: none;
-color: var(--color-text-button);
-padding: 8px 10px;
-border-radius: 6px;
-cursor: pointer;
-font-weight: bold;
-font-size: 0.9rem;
-font-family: var(--font-main);
+  background: var(--color-secondary);
+  border: none;
+  color: var(--color-text-button);
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.9rem;
+  font-family: var(--font-main);
 }
 #sample-button:hover,
 #go-to-instance-button:hover,
 #solver-button:hover {
-/* Apply a slight darkening effect on hover */
-background: var(--color-secondary);
-filter: brightness(80%);
+  /* Apply a slight darkening effect on hover */
+  background: var(--color-secondary);
+  filter: brightness(80%);
 }
 
 /* Dropdown Styles */
-#sample-dropdown,
+#sample-dropdown {
+  width: 120px;
+  background-color: var(--color-background-medium);
+  border: 1px solid var(--color-secondary);
+}
+
 #solver-dropdown {
-width: 130px;
-background-color: var(--color-background-medium);
-border: 1px solid var(--color-secondary);
+  width: 130px;
+  background-color: var(--color-background-medium);
+  border: 1px solid var(--color-secondary);
 }
 #sample-dropdown a,
 #solver-dropdown a {
-color: var(--color-text-header);
-font-family: var(--font-main);
+  color: var(--color-text-header);
+  font-family: var(--font-main);
 }
 
 /* Save Viz Button */
 #saveVizButton {
-background: var(--color-secondary);
-border: none;
-color: var(--color-text-button);
-padding: 8px 14px;
-border-radius: 6px;
-cursor: pointer;
-font-weight: bold;
-font-family: var(--font-main);
+  background: var(--color-secondary);
+  border: none;
+  color: var(--color-text-button);
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  font-family: var(--font-main);
+  font-size: 0.9rem;
 }
 #saveVizButton:hover {
-/* Keep a slight darker shade for hover in default mode */
-background: var(--color-secondary);
-filter: brightness(80%);
+  /* Keep a slight darker shade for hover in default mode */
+  background: var(--color-secondary);
+  filter: brightness(80%);
 }
 #save-viz-dropdown {
-background-color: var(--color-background-medium);
-border: 1px solid var(--color-secondary);
+  background-color: var(--color-background-medium);
+  border: 1px solid var(--color-secondary);
 }
 #save-viz-dropdown a {
-color: var(--color-text-header);
-font-family: var(--font-main);
+  color: var(--color-text-header);
+  font-family: var(--font-main);
 }
 
 /* Download Button */
 #downloadButton {
-border: none;
-background-color: var(--color-secondary);
-color: var(--color-text-header);
-padding: 8px 14px;
-border-radius: 6px;
-cursor: not-allowed;
-font-weight: bold;
-font-family: var(--font-main);
-opacity: 0.5; /* Always start disabled visually */
+  border: none;
+  background-color: var(--color-secondary);
+  color: var(--color-text-header);
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: not-allowed;
+  font-weight: bold;
+  font-family: var(--font-main);
+  font-size: 0.9rem;
+  opacity: 0.5; /* Always start disabled visually */
 }
 
 /* Cluster Label Styling */
 .cluster-label {
-    paint-order: stroke;
-    stroke: var(--color-background-medium);
-    stroke-width: 3px;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+  paint-order: stroke;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .k00l90z-mode .cluster-label {
-    text-shadow: 0 0 5px var(--color-primary);
+  text-shadow: 0 0 5px var(--color-node);
 }
 
 .k00l90z-mode .modal-content-container {
-/* Use sharp corners for the 90s look */
-border-radius: 0 !important;
-/* Create a neon glow effect using multiple shadows */
-box-shadow: 0 0 8px var(--color-secondary),
-    0 0 15px var(--color-secondary), 0 0 25px #ff00ff !important;
-/* Thicker border using the secondary neon color */
-border: 2px solid var(--color-secondary) !important;
+  /* Use sharp corners for the 90s look */
+  border-radius: 0 !important;
+  /* Create a neon glow effect using multiple shadows */
+  box-shadow: 0 0 8px var(--color-secondary), 0 0 15px var(--color-secondary),
+    0 0 25px #ff00ff !important;
+  /* Thicker border using the secondary neon color */
+  border: 2px solid var(--color-secondary) !important;
 }
 
 .k00l90z-mode #instance-id-input {
-/* Sharp corners for the ID input field */
-border-radius: 0 !important;
-/* Optional: Add a subtle inner shadow for a screen look */
-box-shadow: inset 0 0 5px rgba(0, 255, 255, 0.5);
+  /* Sharp corners for the ID input field */
+  border-radius: 0 !important;
+  /* Optional: Add a subtle inner shadow for a screen look */
+  box-shadow: inset 0 0 5px rgba(0, 255, 255, 0.5);
 }
 
 .k00l90z-mode #custom-modal h2 {
-/* Ensure the checkmark and text are bright neon */
-color: var(--color-primary);
-text-shadow: 0 0 5px var(--color-primary);
+  /* Ensure the checkmark and text are bright neon */
+  color: var(--color-primary);
+  text-shadow: 0 0 5px var(--color-primary);
 }
 
 /* K00L90Z Theme Stats Overrides */
@@ -290,9 +295,8 @@ text-shadow: 0 0 5px var(--color-primary);
 
 .k00l90z-mode #stats-panel {
   border: 1px solid var(--color-secondary);
-  box-shadow: 0 0 8px var(--color-secondary),
-              0 0 15px var(--color-secondary),
-              0 0 25px #ff00ff;
+  box-shadow: 0 0 8px var(--color-secondary), 0 0 15px var(--color-secondary),
+    0 0 25px #ff00ff;
 }
 
 .k00l90z-mode #stats-content strong {
@@ -302,52 +306,51 @@ text-shadow: 0 0 5px var(--color-primary);
 
 /* Modal Styles */
 #custom-modal .modal-content-container {
-background-color: var(--color-background-medium);
-color: var(--color-text-header);
-border: 1px solid var(--color-secondary);
-font-family: var(--font-main);
+  background-color: var(--color-background-medium);
+  color: var(--color-text-header);
+  border: 1px solid var(--color-secondary);
+  font-family: var(--font-main);
 }
 #custom-modal h2 {
-color: var(--color-secondary);
+  color: var(--color-secondary);
 }
 #instance-id-input {
-border: 1px solid var(--color-secondary);
-background-color: var(--color-background-dark);
-color: var(--color-text-input);
-font-family: var(--font-main);
+  border: 1px solid var(--color-secondary);
+  background-color: var(--color-background-dark);
+  color: var(--color-text-input);
+  font-family: var(--font-main);
 }
 #stay-button {
-background-color: var(--color-button-disabled);
-color: var(--color-text-button);
-font-family: var(--font-main);
+  background-color: var(--color-button-disabled);
+  color: var(--color-text-button);
+  font-family: var(--font-main);
 }
 #go-button {
-background-color: var(--color-secondary);
-color: var(--color-text-button);
-font-family: var(--font-main);
+  background-color: var(--color-secondary);
+  color: var(--color-text-button);
+  font-family: var(--font-main);
 }
 body {
-/* Default Theme Colors */
---node-color: hsl(210, 60%, 20%);
---cell-boundary-color: #888b90;
---tree-color: #dadbdd;
---edge-color: hsl(210, 60%, 49%);
---adj-color-low: hsl(210, 60%, 90%); /* Light default blue */
---adj-color-high: hsl(210, 60%, 49%);
+  /* Default Theme Colors */
+  --node-color: hsl(210, 60%, 20%);
+  --cell-boundary-color: #888b90;
+  --tree-color: #dadbdd;
+  --edge-color: hsl(210, 60%, 49%);
+  --adj-color-low: hsl(210, 60%, 90%); /* Light default blue */
+  --adj-color-high: hsl(210, 60%, 49%);
 }
 
 /* K00L90Z Theme Overrides */
 body.k00l90z-mode {
---node-color: #ff00ff; /* Magenta nodes */
---cell-boundary-color: #00ffff; /* Cyan boundaries */
---tree-color: yellow; /* Magenta cluster bands */
---edge-color: #00ffff; /* Cyan edges */
---adj-color-low: hsl(300, 80%, 95%); /* Light 90s purple */
---adj-color-high: hsl(300, 80%, 55%); /* Dark 90s purple */
+  --node-color: #ff00ff; /* Magenta nodes */
+  --cell-boundary-color: #00ffff; /* Cyan boundaries */
+  --tree-color: yellow; /* Magenta cluster bands */
+  --edge-color: #00ffff; /* Cyan edges */
+  --adj-color-low: hsl(300, 80%, 95%); /* Light 90s purple */
+  --adj-color-high: hsl(300, 80%, 55%); /* Dark 90s purple */
 }
 
 /* Optional: Darken text in k00l90z mode for better contrast against bright nodes */
 body.k00l90z-mode text {
-fill: #000 !important;
+  fill: #000 !important;
 }
-
