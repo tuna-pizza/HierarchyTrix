@@ -4,17 +4,18 @@ import { HierarchicallyClusteredGraphDrawer } from "./drawer_d3.js";
 // --- Get URL parameters ---
 const urlParams = new URLSearchParams(window.location.search);
 const instanceParam = urlParams.get("instance");
-const instance = instanceParam && instanceParam.trim() !== "" ? instanceParam : "sample";
+const instance =
+  instanceParam && instanceParam.trim() !== "" ? instanceParam : "animals";
 
 // ✅ Get solver type from URL
 const solverParam = urlParams.get("method");
 let solver = "ilp"; // default
 
 if (solverParam) {
-    const paramLower = solverParam.toLowerCase();
-    if (paramLower === "heuristic" || paramLower === "hybrid") {
-        solver = paramLower;
-    }
+  const paramLower = solverParam.toLowerCase();
+  if (paramLower === "heuristic" || paramLower === "hybrid") {
+    solver = paramLower;
+  }
 }
 
 console.log("🧩 Using solver:", solver);
@@ -37,11 +38,11 @@ async function getOrder(instance, solver = "ilp") {
 // --- Upload handler ---
 async function uploadGraph(file) {
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append("file", file);
 
   try {
-    const response = await fetch('/api/upload', {
-      method: 'POST',
+    const response = await fetch("/api/upload", {
+      method: "POST",
       body: formData,
     });
 
@@ -51,24 +52,23 @@ async function uploadGraph(file) {
 
     const result = await response.json();
     showSuccessModal(result.filename.replace(".json", ""));
-
   } catch (error) {
-    console.error('❌ Upload failed:', error);
-    alert('Failed to upload graph. Check console for details.');
+    console.error("❌ Upload failed:", error);
+    alert("Failed to upload graph. Check console for details.");
   }
 }
 
 // --- Modal Functions ---
 function showSuccessModal(instanceId) {
-  const modal = document.getElementById('success-modal');
-  const instanceIdInput = document.getElementById('instance-id-input');
+  const modal = document.getElementById("success-modal");
+  const instanceIdInput = document.getElementById("instance-id-input");
   if (instanceIdInput) instanceIdInput.value = instanceId;
-  if (modal) modal.style.display = 'flex';
+  if (modal) modal.style.display = "flex";
 }
 
 function hideSuccessModal() {
-  const modal = document.getElementById('success-modal');
-  if (modal) modal.style.display = 'none';
+  const modal = document.getElementById("success-modal");
+  if (modal) modal.style.display = "none";
 }
 
 // --- Apply node order ---
@@ -99,13 +99,15 @@ function applyNodeOrder(graph, order) {
 // --- Main function ---
 async function main() {
   // Check if a solver request is being made on initial load.
-  const isInitialLoad = new URLSearchParams(window.location.search).get("instance");
-  
+  const isInitialLoad = new URLSearchParams(window.location.search).get(
+    "instance"
+  );
+
   // Show loading modal immediately if an instance is being loaded/solved
-  if (isInitialLoad && typeof window.showLoadingModal === 'function') {
-      window.showLoadingModal();
+  if (isInitialLoad && typeof window.showLoadingModal === "function") {
+    window.showLoadingModal();
   }
-  
+
   // 1. Initialize Graph
   let H = new HierarchicallyClusteredGraph();
   await H.readFromJSON(instance);
@@ -113,7 +115,9 @@ async function main() {
   // 2. Get Order from Server
   const orderString = await getOrder(instance, solver);
   if (orderString) {
-    const orderList = Array.isArray(orderString) ? orderString : orderString.trim().split(/\s+/);
+    const orderList = Array.isArray(orderString)
+      ? orderString
+      : orderString.trim().split(/\s+/);
     console.log("✅ Applying order:", orderList);
     applyNodeOrder(H, orderList); // <-- fixed
   } else {
@@ -122,84 +126,88 @@ async function main() {
 
   // 3. Initialize Drawer
   let HD = new HierarchicallyClusteredGraphDrawer(H);
-  HD.draw('#graph-container');
+  HD.draw("#graph-container");
 
   // Hide the loading modal once the visualization is drawn
-  if (isInitialLoad && typeof window.hideLoadingModal === 'function') {
-      window.hideLoadingModal();
+  if (isInitialLoad && typeof window.hideLoadingModal === "function") {
+    window.hideLoadingModal();
   }
 
   // Zoom functionality
-  window.addEventListener('zoomOut', () => {
-    if (HD && typeof HD.zoomOut === 'function') {
+  window.addEventListener("zoomOut", () => {
+    if (HD && typeof HD.zoomOut === "function") {
       HD.zoomOut();
     } else {
-      console.warn('Zoom out not implemented in drawer');
+      console.warn("Zoom out not implemented in drawer");
     }
   });
 
-  window.addEventListener('zoomReset', () => {
-    if (HD && typeof HD.zoomReset === 'function') {
+  window.addEventListener("zoomReset", () => {
+    if (HD && typeof HD.zoomReset === "function") {
       HD.zoomReset();
     } else {
-      console.warn('Zoom reset not implemented in drawer');
+      console.warn("Zoom reset not implemented in drawer");
     }
   });
 
-  window.addEventListener('zoomIn', () => {
-    if (HD && typeof HD.zoomIn === 'function') {
+  window.addEventListener("zoomIn", () => {
+    if (HD && typeof HD.zoomIn === "function") {
       HD.zoomIn();
     } else {
-      console.warn('Zoom in not implemented in drawer');
+      console.warn("Zoom in not implemented in drawer");
     }
   });
 
   // 4. Update UI
-  const idElement = document.getElementById('current-instance-id');
+  const idElement = document.getElementById("current-instance-id");
   if (idElement) idElement.textContent = instance;
 
   // 5. Setup Event Listeners
-  const fileInput = document.getElementById('file-upload');
-  if (fileInput) fileInput.addEventListener('change', e => uploadGraph(e.target.files[0]));
+  const fileInput = document.getElementById("file-upload");
+  if (fileInput)
+    fileInput.addEventListener("change", (e) => uploadGraph(e.target.files[0]));
 
-  const stayButton = document.getElementById('stay-button');
-  if (stayButton) stayButton.addEventListener('click', hideSuccessModal);
+  const stayButton = document.getElementById("stay-button");
+  if (stayButton) stayButton.addEventListener("click", hideSuccessModal);
 
-  const themeButton = document.getElementById('theme-toggle-button');
-  if (themeButton) themeButton.addEventListener('click', () => document.body.classList.toggle('k00l90z-mode'));
+  const themeButton = document.getElementById("theme-toggle-button");
+  if (themeButton)
+    themeButton.addEventListener("click", () =>
+      document.body.classList.toggle("k00l90z-mode")
+    );
 
   setupGoButtonListener();
 }
 
 // --- Go Button Handler ---
 function setupGoButtonListener() {
-  const goButton = document.getElementById('go-button');
-  const instanceIdInput = document.getElementById('instance-id-input');
-  const solverSelect = document.getElementById('solver-select');
+  const goButton = document.getElementById("go-button");
+  const instanceIdInput = document.getElementById("instance-id-input");
+  const solverSelect = document.getElementById("solver-select");
 
   if (goButton && instanceIdInput && solverSelect) {
-    goButton.addEventListener('click', () => {
+    goButton.addEventListener("click", () => {
       const newInstanceId = instanceIdInput.value;
       const selectedSolver = solverSelect.value;
-      
+
       if (newInstanceId) {
         // VITAL CHANGE: Show loading modal before navigation
-        if (typeof window.showLoadingModal === 'function') {
-           window.showLoadingModal();
+        if (typeof window.showLoadingModal === "function") {
+          window.showLoadingModal();
         }
 
         const url = new URL(window.location.href);
-        url.searchParams.set('instance', newInstanceId);
-        url.searchParams.set('method', selectedSolver);
-        
+        url.searchParams.set("instance", newInstanceId);
+        url.searchParams.set("method", selectedSolver);
+
         // This triggers the page reload/solve.
-        window.location.href = url.toString(); 
+        window.location.href = url.toString();
       } else {
         console.error("Missing instance ID, cannot navigate.");
         // If there's an error, hide the success modal (and loading modal if it somehow showed)
         hideSuccessModal();
-        if (typeof window.hideLoadingModal === 'function') {
-           window.hideLoadingModal();
+        if (typeof window.hideLoadingModal === "function") {
+          window.hideLoadingModal();
         }
       }
     });
@@ -209,4 +217,4 @@ function setupGoButtonListener() {
 }
 
 // --- Run main ---
-document.addEventListener('DOMContentLoaded', main);
+document.addEventListener("DOMContentLoaded", main);

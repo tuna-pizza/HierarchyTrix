@@ -9,7 +9,7 @@ const cellboundaryColor = "var(--cell-boundary-color)";
 const treecolor = "var(--tree-color)";
 const edgeColor = "var(--edge-color)";
 const arrayBoundaryWidth = "3";
-const edgeWidth = "4";
+const edgeWidth = "3";
 const textSize = "20";
 const smallTextSize = "12";
 const textOffset = 2;
@@ -55,18 +55,18 @@ export class HierarchicallyClusteredGraphDrawer {
 
   calculateStatistics() {
     const stats = {
-        totalTreeEdges: 0,
-        visibleEdges: 0,
-        internalClusterEdges: 0,
-        totalClusters: 0,
-        totalLeaves: 0
+      totalTreeEdges: 0,
+      visibleEdges: 0,
+      internalClusterEdges: 0,
+      totalClusters: 0,
+      totalLeaves: 0,
     };
 
     // Count total tree edges (cluster hierarchy relationships)
     // These are the parent-child relationships in the cluster tree
     const clusterLayers = this.H.getClusterLayers(false);
     stats.totalClusters = clusterLayers.flat().length;
-    
+
     // Calculate tree edges: each non-root cluster has one parent relationship
     // Total tree edges = total clusters - 1 (since root cluster has no parent)
     stats.totalTreeEdges = Math.max(0, stats.totalClusters - 1);
@@ -80,31 +80,31 @@ export class HierarchicallyClusteredGraphDrawer {
     // Identify last-level clusters for filtering
     let filteredEdges = allEdges;
     if (clusterLayers.length > 0) {
-        const lastLevelClusters = clusterLayers.at(-1);
-        const clusterMap = new Map();
+      const lastLevelClusters = clusterLayers.at(-1);
+      const clusterMap = new Map();
 
-        // Map each leaf to its cluster ID
-        lastLevelClusters.forEach((cluster) => {
-            cluster.getChildren().forEach((child) => {
-                if (!child.getChildren || child.getChildren().length === 0) {
-                    clusterMap.set(child.getID(), cluster.getID());
-                }
-            });
+      // Map each leaf to its cluster ID
+      lastLevelClusters.forEach((cluster) => {
+        cluster.getChildren().forEach((child) => {
+          if (!child.getChildren || child.getChildren().length === 0) {
+            clusterMap.set(child.getID(), cluster.getID());
+          }
         });
+      });
 
-        // Separate visible edges from internal cluster edges
-        filteredEdges = allEdges.filter((edge) => {
-            const srcCluster = clusterMap.get(edge.getSource().getID());
-            const tgtCluster = clusterMap.get(edge.getTarget().getID());
-            return !(srcCluster && tgtCluster && srcCluster === tgtCluster);
-        });
+      // Separate visible edges from internal cluster edges
+      filteredEdges = allEdges.filter((edge) => {
+        const srcCluster = clusterMap.get(edge.getSource().getID());
+        const tgtCluster = clusterMap.get(edge.getTarget().getID());
+        return !(srcCluster && tgtCluster && srcCluster === tgtCluster);
+      });
 
-        stats.visibleEdges = filteredEdges.length;
-        stats.internalClusterEdges = allEdges.length - filteredEdges.length;
+      stats.visibleEdges = filteredEdges.length;
+      stats.internalClusterEdges = allEdges.length - filteredEdges.length;
     } else {
-        // If no clusters, all edges are visible
-        stats.visibleEdges = allEdges.length;
-        stats.internalClusterEdges = 0;
+      // If no clusters, all edges are visible
+      stats.visibleEdges = allEdges.length;
+      stats.internalClusterEdges = 0;
     }
 
     return stats;
@@ -112,56 +112,58 @@ export class HierarchicallyClusteredGraphDrawer {
 
   calculateClusterStatistics(cluster) {
     const stats = {
-        clusterId: cluster.getID(),
-        childClusters: 0,
-        directChildren: 0,
-        totalLeavesInCluster: 0,
-        internalEdges: 0,
-        externalEdges: 0,
-        totalDescendants: 0
+      clusterId: cluster.getID(),
+      childClusters: 0,
+      directChildren: 0,
+      totalLeavesInCluster: 0,
+      internalEdges: 0,
+      externalEdges: 0,
+      totalDescendants: 0,
     };
 
     // Get all leaves in this cluster
     const leavesInCluster = cluster.getLeaves();
     stats.totalLeavesInCluster = leavesInCluster.length;
-    
+
     // Count direct children and child clusters
     const children = cluster.getChildren();
     stats.directChildren = children.length;
-    
+
     // Count child clusters (non-leaf children)
-    stats.childClusters = children.filter(child => 
-        child.getChildren && child.getChildren().length > 0
+    stats.childClusters = children.filter(
+      (child) => child.getChildren && child.getChildren().length > 0
     ).length;
 
     // Count total descendants (all nodes in this cluster's subtree)
     const countDescendants = (node) => {
-        let count = 1; // count self
-        if (node.getChildren && node.getChildren().length > 0) {
-            node.getChildren().forEach(child => {
-                count += countDescendants(child);
-            });
-        }
-        return count;
+      let count = 1; // count self
+      if (node.getChildren && node.getChildren().length > 0) {
+        node.getChildren().forEach((child) => {
+          count += countDescendants(child);
+        });
+      }
+      return count;
     };
     stats.totalDescendants = countDescendants(cluster) - 1; // exclude self
 
     // Calculate edges within this cluster and edges going out
     const allEdges = this.H.getEdges();
-    const leafIdsInCluster = new Set(leavesInCluster.map(leaf => leaf.getID()));
+    const leafIdsInCluster = new Set(
+      leavesInCluster.map((leaf) => leaf.getID())
+    );
 
-    allEdges.forEach(edge => {
-        const sourceId = edge.getSource().getID();
-        const targetId = edge.getTarget().getID();
-        
-        const sourceInCluster = leafIdsInCluster.has(sourceId);
-        const targetInCluster = leafIdsInCluster.has(targetId);
+    allEdges.forEach((edge) => {
+      const sourceId = edge.getSource().getID();
+      const targetId = edge.getTarget().getID();
 
-        if (sourceInCluster && targetInCluster) {
-            stats.internalEdges++;
-        } else if (sourceInCluster || targetInCluster) {
-            stats.externalEdges++;
-        }
+      const sourceInCluster = leafIdsInCluster.has(sourceId);
+      const targetInCluster = leafIdsInCluster.has(targetId);
+
+      if (sourceInCluster && targetInCluster) {
+        stats.internalEdges++;
+      } else if (sourceInCluster || targetInCluster) {
+        stats.externalEdges++;
+      }
     });
 
     return stats;
@@ -169,33 +171,34 @@ export class HierarchicallyClusteredGraphDrawer {
 
   updateStatisticsDisplay(stats) {
     // Update the stats panel if it exists
-        if (typeof window.updateStatsPanel === 'function') {
-        window.updateStatsPanel(stats);
+    if (typeof window.updateStatsPanel === "function") {
+      window.updateStatsPanel(stats);
     }
-    
+
     // Also log to console for debugging
-    console.log('Graph Statistics:', stats);
-}
+    console.log("Graph Statistics:", stats);
+  }
 
   showClusterStatsPopup(cluster, stats, x, y) {
     // Create popup if it doesn't exist
     if (!this.clusterStatsPopup) {
-        this.clusterStatsPopup = d3.select("body")
-            .append("div")
-            .attr("id", "cluster-stats-popup")
-            .style("position", "absolute")
-            .style("z-index", "1000")
-            .style("background", "var(--color-background-medium)")
-            .style("border", "2px solid var(--color-secondary)")
-            .style("border-radius", "8px")
-            .style("padding", "15px")
-            .style("box-shadow", "0 4px 12px rgba(0,0,0,0.3)")
-            .style("font-family", "var(--font-main)")
-            .style("font-size", "0.9rem")
-            .style("color", "var(--color-text-header)")
-            .style("pointer-events", "none")
-            .style("opacity", 0)
-            .style("transition", "opacity 0.2s");
+      this.clusterStatsPopup = d3
+        .select("body")
+        .append("div")
+        .attr("id", "cluster-stats-popup")
+        .style("position", "absolute")
+        .style("z-index", "1000")
+        .style("background", "var(--color-background-medium)")
+        .style("border", "2px solid var(--color-secondary)")
+        .style("border-radius", "8px")
+        .style("padding", "15px")
+        .style("box-shadow", "0 4px 12px rgba(0,0,0,0.3)")
+        .style("font-family", "var(--font-main)")
+        .style("font-size", "0.9rem")
+        .style("color", "var(--color-text-header)")
+        .style("pointer-events", "none")
+        .style("opacity", 0)
+        .style("transition", "opacity 0.2s");
     }
 
     // Update popup content and position
@@ -212,15 +215,15 @@ export class HierarchicallyClusteredGraphDrawer {
     `;
 
     this.clusterStatsPopup
-        .html(popupContent)
-        .style("left", (x + 15) + "px")
-        .style("top", (y - 10) + "px")
-        .style("opacity", 1);
+      .html(popupContent)
+      .style("left", x + 15 + "px")
+      .style("top", y - 10 + "px")
+      .style("opacity", 1);
   }
 
   hideClusterStatsPopup() {
     if (this.clusterStatsPopup) {
-        this.clusterStatsPopup.style("opacity", 0);
+      this.clusterStatsPopup.style("opacity", 0);
     }
   }
 
@@ -256,29 +259,37 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("class", "cluster")
       .attr("transform", `translate(${offsetX}, ${offsetY})`);
 
-    // Add cluster label 
+    // Compute how high the matrix extends
+    const matrixHeight = (children.length - 1) * (cellSize / 2);
+
+    // Add cluster label at the top tip of the matrix
     const clusterLabel = clusterContainer
       .append("text")
       .attr("class", "cluster-label")
-      .attr("x", startX - 10) // Position to the left of the first node in THIS cluster
-      .attr("y", -cellSize - 5) // Position 5px above THIS cluster (based on its own position)
-      .attr("text-anchor", "end") // Right-align the text
-      .attr("dominant-baseline", "hanging") // Align to top
+      .attr("x", 0) // centered horizontally
+      .attr("y", -matrixHeight - cellSize * 0.75) // above the topmost adjacency cell
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "baseline")
       .attr("font-family", "var(--font-main)")
-      .attr("font-size", "14px")
+      .attr("font-size", "15px")
       .attr("font-weight", "bold")
-      .attr("fill", "var(--color-primary)")
+      .attr("fill", "var(--node-color)")
       .attr("pointer-events", "none")
       .text(cluster.getID());
+
+    const labelTopY = -matrixHeight - cellSize * 0.75; // Y position of the label text
+    const hitAreaTopY = labelTopY - cellSize * 0.25; // Extend hit area slightly above the label
+    const hitAreaBottomY = cellSize / 2; // Bottom of the diamond cells
+    const hitAreaHeight = hitAreaBottomY - hitAreaTopY;
 
     // Add invisible hit area for the entire cluster for hover events
     const clusterHitArea = clusterContainer
       .append("rect")
       .attr("class", "cluster-hit-area")
-      .attr("x", startX - cellSize/2)
-      .attr("y", -cellSize/2)
-      .attr("width", children.length * cellSize)
-      .attr("height", cellSize)
+      .attr("x", startX - cellSize / 2 - 5)
+      .attr("y", hitAreaTopY - 5) // NEW Y START
+      .attr("width", children.length * cellSize + 10)
+      .attr("height", hitAreaHeight + 10) // NEW HEIGHT
       .attr("fill", "transparent")
       .attr("pointer-events", "all")
       .style("cursor", "pointer");
@@ -289,40 +300,42 @@ export class HierarchicallyClusteredGraphDrawer {
         const stats = this.calculateClusterStatistics(cluster);
         const [x, y] = d3.pointer(event, document.body);
         this.showClusterStatsPopup(cluster, stats, x, y);
-        
+
         // Highlight the cluster and label
-        clusterContainer.selectAll(".nodes use")
+        clusterContainer
+          .selectAll(".nodes use")
           .transition()
           .duration(200)
           .attr("fill", "var(--color-primary)");
-        
+
         clusterLabel
           .transition()
           .duration(200)
-          .attr("fill", "var(--color-secondary)")
+          .attr("fill", "var(--node-color)")
           .attr("font-size", "16px");
       })
       .on("mouseout", () => {
         this.hideClusterStatsPopup();
-        
+
         // Remove highlight
-        clusterContainer.selectAll(".nodes use")
+        clusterContainer
+          .selectAll(".nodes use")
           .transition()
           .duration(200)
           .attr("fill", nodeColor);
-        
+
         clusterLabel
           .transition()
           .duration(200)
-          .attr("fill", "var(--color-primary)")
+          .attr("fill", "var(--node-color)")
           .attr("font-size", "14px");
       })
       .on("mousemove", (event) => {
         const [x, y] = d3.pointer(event, document.body);
         if (this.clusterStatsPopup) {
           this.clusterStatsPopup
-            .style("left", (x + 15) + "px")
-            .style("top", (y - 10) + "px");
+            .style("left", x + 15 + "px")
+            .style("top", y - 10 + "px");
         }
       });
 
@@ -408,14 +421,16 @@ export class HierarchicallyClusteredGraphDrawer {
         connectivity === 0 ? "rgb(255,255,255)" : colorScale(connectivity);
 
       adjCell
-      .append("polygon")
-      .attr(
-        "points",
-        `${-cellSize / 2},0 0,${cellSize / 2} ${cellSize / 2},0 0,${-cellSize / 2}`
-      )
-      .attr("stroke", cellboundaryColor)
-      .attr("stroke-width", arrayBoundaryWidth)
-      .attr("fill", cellColor);
+        .append("polygon")
+        .attr(
+          "points",
+          `${-cellSize / 2},0 0,${cellSize / 2} ${cellSize / 2},0 0,${
+            -cellSize / 2
+          }`
+        )
+        .attr("stroke", cellboundaryColor)
+        .attr("stroke-width", arrayBoundaryWidth)
+        .attr("fill", cellColor);
 
       adjCell.datum({
         color: cellColor,
@@ -633,12 +648,11 @@ export class HierarchicallyClusteredGraphDrawer {
 
     // Initial offsets
     const initialOffsetX = cellSize;
-    const initialOffsetY = ((1 + maxChildren) / 2.0) * cellSize;
+    const initialOffsetY = ((1 + maxChildren) / 2.0) * cellSize + 20;
 
     // Linear layout dimensions
     const lastNodeCenterX = initialOffsetX + (numVertices - 1) * vertexDistance;
     const minRequiredWidth = lastNodeCenterX + cellSize / 2;
-    const maxHorizontalDistance = (numVertices - 1) * vertexDistance;
     const linearLayoutY = initialOffsetY + (depth - 1) * clusterDistance;
     const padding = 80;
     const viewBoxWidth = minRequiredWidth + padding;
@@ -784,6 +798,7 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("stroke", edgeColor)
       .attr("stroke-width", edgeWidth)
       .attr("fill", "none")
+      .attr("opacity", 0.8)
       .on("mouseover", listeners.mouseEntersEdge)
       .on("mouseleave", listeners.mouseLeavesEdge);
 
@@ -836,75 +851,79 @@ export class HierarchicallyClusteredGraphDrawer {
       clusterDistance
     );
 
+    // 6. DRAW LABELS (AFTER EVERYTHING ELSE TO APPEAR ON TOP)
+    this.zoomGroup.select("g.leaf-labels").remove();
+    const labelGroup = this.zoomGroup.append("g").attr("class", "leaf-labels");
 
-      // 6. DRAW LABELS (AFTER EVERYTHING ELSE TO APPEAR ON TOP)
-      this.zoomGroup.select("g.leaf-labels").remove();
-      const labelGroup = this.zoomGroup.append("g").attr("class", "leaf-labels");
+    const lastLevelLeaves = this.getLeavesInLastLevelClusters();
 
-      const lastLevelLeaves = this.getLeavesInLastLevelClusters();
+    lastLevelLeaves.forEach((leaf) => {
+      if (!leaf.customLabel) return;
 
-      lastLevelLeaves.forEach((leaf) => {
-        if (leaf.customLabel) {
-          const refX = xCoordReferenceMap.get(leaf);
-          const refY = yCoordReferenceMap.get(leaf);
-          
-          if (refX !== undefined && refY !== undefined) {
-            const tempSvg = d3.create("svg");
-            const tempText = tempSvg.append("text")
-              .attr("font-size", "12px")
-              .attr("font-family", "var(--font-main)")
-              .attr("text-anchor", "end")
-              .text(leaf.customLabel);
-            
-            const bbox = tempText.node().getBBox();
-            const textWidth = bbox.width;
-            const textHeight = bbox.height;
-            tempSvg.remove();
-            
-            const padding = 8; // Larger padding for rotated text
-            const groupX = refX;
-            const groupY = refY + cellSize / 2 + 4;
-            
-            // ✅ CREATE GROUP
-            const labelContainer = labelGroup
-              .append("g")
-              .attr("class", "label-container")
-              .attr("transform", `translate(${groupX}, ${groupY}) rotate(-45)`);
-            
-            // ✅ LARGER BOX to account for rotation
-            const boxSize = Math.max(textWidth, textHeight) + padding * 2;
-            
-            labelContainer
-              .append("rect")
-              .attr("class", "label-background")
-              .attr("x", -boxSize / 2)
-              .attr("y", -boxSize / 2)
-              .attr("width", boxSize)
-              .attr("height", boxSize)
-              .attr("fill", "white")
-              .attr("opacity", 0.7)
-              .attr("rx", 4)
-              .attr("ry", 4)
-              .attr("pointer-events", "none");
-            
-            // ✅ ADD TEXT
-            labelContainer
-              .append("text")
-              .attr("class", "leaf-label")
-              .attr("x", 0)
-              .attr("y", 0)
-              .attr("fill", "var(--color-text-body)")
-              .attr("font-size", "12px")
-              .attr("font-family", "var(--font-main)")
-              .attr("text-anchor", "end")
-              .attr("dominant-baseline", "middle")
-              .attr("pointer-events", "none")
-              .style("opacity", 0.9)
-              .text(leaf.customLabel);
-          }
-        }
-});
-            
+      const refX = xCoordReferenceMap.get(leaf);
+      const refY = yCoordReferenceMap.get(leaf);
+      if (refX === undefined || refY === undefined) return;
+
+      const groupX = refX;
+      const groupY = refY + cellSize / 2 + 4;
+      const padding = 1;
+      const rotation = -45;
+
+      // Create container (translate only; we rotate later)
+      const labelContainer = labelGroup
+        .append("g")
+        .attr("class", "label-container")
+        .attr("transform", `translate(${groupX}, ${groupY})`);
+
+      // Add text
+      const textEl = labelContainer
+        .append("text")
+        .attr("class", "leaf-label")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("text-anchor", "end")
+        .attr("dominant-baseline", "middle")
+        .attr("font-size", "14px")
+        .attr("font-family", "var(--font-main)")
+        .attr("font-weight", "bold")
+        .attr("pointer-events", "none")
+        .style("opacity", 0.9)
+        .text(leaf.customLabel);
+
+      (document.fonts?.ready ?? Promise.resolve()).then(() => {
+        requestAnimationFrame(() => {
+          const node = textEl.node();
+          const bbox = node.getBBox();
+
+          // Because text-anchor=end, bbox.x is negative and bbox.width positive.
+          const rectX = bbox.x - padding;
+          const rectY = bbox.y - padding;
+          const rectWidth = bbox.width + padding * 2;
+          const rectHeight = bbox.height + padding;
+
+          // Insert the rect behind the text
+          labelContainer
+            .insert("rect", "text")
+            .attr("class", "label-background")
+            .attr("x", rectX)
+            .attr("y", rectY + padding)
+            .attr("width", rectWidth)
+            .attr("height", rectHeight)
+            .attr("rx", 2)
+            .attr("ry", 2)
+            .attr("fill", "white")
+            .attr("opacity", 0.7)
+            .attr("pointer-events", "none");
+
+          // Finally, rotate the group so text + rect rotate together
+          labelContainer.attr(
+            "transform",
+            `translate(${groupX}, ${groupY}) rotate(${rotation})`
+          );
+        });
+      });
+    });
+
     const maxArcHeight = maxDist / 2.5;
     const minRequiredHeight = linearLayoutY + maxArcHeight;
     const viewBoxHeight = minRequiredHeight + padding;
@@ -928,8 +947,6 @@ export class HierarchicallyClusteredGraphDrawer {
     // Setup zoom behavior
     this.setupZoomBehavior();
   }
-
-
 
   // === ZOOM METHODS ===
   setupZoomBehavior() {

@@ -95,6 +95,7 @@ export function mouseEntersNodeCell() {
         leafIDs.has(d.getSource().getID()) || leafIDs.has(d.getTarget().getID())
     )
     .attr("opacity", 1)
+    .attr("stroke-width", 4)
     .attr("stroke", "rgb(50, 125, 200)");
 
   // Step 5: Highlight all relevant inclusion bands (hovered node and all ancestors)
@@ -158,7 +159,8 @@ export function mouseLeavesNodeCell() {
   // 3. Restore all linear edges
   d3.select(".linear-edges")
     .selectAll("path.edge")
-    .attr("opacity", 1)
+    .attr("opacity", 0.8)
+    .attr("stroke-width", 3)
     .attr("stroke", "var(--edge-color)");
 
   // 4. Restore all inclusion bands
@@ -276,7 +278,7 @@ export function mouseEntersAdjCell() {
       );
     })
     .attr("stroke", "rgb(50, 125, 200)")
-    .attr("stroke-width", "6")
+    .attr("stroke-width", 4)
     .attr("opacity", 1);
 }
 
@@ -298,9 +300,9 @@ export function mouseLeavesAdjCell() {
   // 3. Restore all linear edges
   d3.select(".linear-edges")
     .selectAll("path.edge")
-    .attr("opacity", 1)
+    .attr("opacity", 0.8)
     .attr("stroke", "var(--edge-color)")
-    .attr("stroke-width", "4");
+    .attr("stroke-width", 3);
 
   // 4. Restore all inclusion bands
   d3.select(".cluster-inclusions")
@@ -352,7 +354,7 @@ export function mouseEntersEdge() {
   d3.select(this)
     .attr("opacity", 1)
     .attr("stroke", "var(--edge-color)")
-    .attr("stroke-width", "6");
+    .attr("stroke-width", "4");
 
   // b) Highlight the endpoint leaf nodes (linear layout/hierarchy view)
   allNodes
@@ -401,9 +403,9 @@ export function mouseLeavesEdge() {
   // 3. Restore all linear edges
   d3.select(".linear-edges")
     .selectAll("path.edge")
-    .attr("opacity", 1)
+    .attr("opacity", 0.8)
     .attr("stroke", "var(--edge-color)")
-    .attr("stroke-width", "4");
+    .attr("stroke-width", 3);
 
   // 4. Restore all inclusion bands
   d3.select(".cluster-inclusions")
