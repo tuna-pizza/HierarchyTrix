@@ -197,6 +197,11 @@
           <button id="go-to-instance-button" style="">Go</button>
         </div>
 
+        <!-- Stats Toggle Button -->
+        <button id="stats-toggle-button" style="" title="Show Statistics">
+          Stats
+        </button>
+
         <div
           id="loading-modal"
           style="
@@ -315,6 +320,49 @@
         <button id="downloadButton" style="">Download JSON</button>
       </div>
     </header>
+
+    <!-- Stats Panel -->
+    <div id="stats-panel" style="
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background-color: var(--color-background-medium);
+        border: 1px solid var(--color-secondary);
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        z-index: 100;
+        max-width: 300px;
+        font-family: var(--font-main);
+        font-size: 0.9rem;
+        display: none;
+    ">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h3 style="margin: 0; color: var(--color-secondary);">Graph Statistics</h3>
+            <button id="close-stats" style="
+                background: none;
+                border: none;
+                color: var(--color-text);
+                cursor: pointer;
+                font-size: 1.2rem;
+                padding: 0;
+                width: 20px;
+                height: 20px;
+            ">×</button>
+        </div>
+        <div id="stats-content">
+            <div style="margin-bottom: 8px;"><strong style="color: var(--color-third);">Edges:</strong></div>
+            <div style="margin-left: 15px; margin-bottom: 4px;">• Inlusion Tree Edges: <span id="stat-tree-edges">0</span></div>
+            <div style="margin-left: 15px; margin-bottom: 4px;">• Visible Edges: <span id="stat-visible-edges">0</span></div>
+            <div style="margin-left: 15px; margin-bottom: 8px;">• Internal Cluster Edges: <span id="stat-internal-edges">0</span></div>
+            
+            <div style="margin-bottom: 8px;"><strong style="color: var(--color-third);">Clusters:</strong></div>
+            <div style="margin-left: 15px; margin-bottom: 8px;">• Total Clusters: <span id="stat-total-clusters">0</span></div>
+            
+            <div style="margin-bottom: 8px;"><strong style="color: var(--color-third);">Leaves:</strong></div>
+            <div style="margin-left: 15px; margin-bottom: 4px;">• Total Leaves: <span id="stat-total-leaves">0</span></div>
+        </div>
+    </div>
 
     <script>
       // Function to handle all visualization downloads
@@ -592,6 +640,16 @@
             loadingModal.style.display = "none";
         }
     }
+
+    // Function to update stats panel (called from drawer_d3.js)
+    window.updateStatsPanel = function(stats) {
+        document.getElementById('stat-tree-edges').textContent = stats.totalTreeEdges;
+        document.getElementById('stat-visible-edges').textContent = stats.visibleEdges;
+        document.getElementById('stat-internal-edges').textContent = stats.internalClusterEdges;
+        document.getElementById('stat-total-clusters').textContent = stats.totalClusters;
+        document.getElementById('stat-total-leaves').textContent = stats.totalLeaves;
+    };
+
       document.addEventListener("DOMContentLoaded", () => {
         // Initialization MUST happen inside DOMContentLoaded to ensure elements exist.
 
@@ -644,6 +702,11 @@
         const solverButton = document.getElementById("solver-button");
         const solverDropdown = document.getElementById("solver-dropdown");
 
+        // Stats Panel Elements
+        const statsToggleButton = document.getElementById("stats-toggle-button");
+        const statsPanel = document.getElementById("stats-panel");
+        const closeStatsButton = document.getElementById("close-stats");
+
         const saveVizButton = document.getElementById("saveVizButton");
         const saveVizDropdown = document.getElementById("save-viz-dropdown");
 
@@ -655,6 +718,20 @@
 
         const loadingModal = document.getElementById("loading-modal");
         const returnButton = document.getElementById("return-button");
+
+        // Stats Panel Functionality
+        if (statsToggleButton && statsPanel) {
+            statsToggleButton.addEventListener('click', () => {
+                const isVisible = statsPanel.style.display === 'block';
+                statsPanel.style.display = isVisible ? 'none' : 'block';
+            });
+        }
+
+        if (closeStatsButton && statsPanel) {
+            closeStatsButton.addEventListener('click', () => {
+                statsPanel.style.display = 'none';
+            });
+        }
 
         // Function to signal the server to stop the running solver
         async function stopSolverProcess() {
