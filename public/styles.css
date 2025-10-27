@@ -1,7 +1,8 @@
 /* --- 1. DEFINE DEFAULT VARIABLES --- */
 :root {
---color-primary: #1e1c50; /* Blue (Upload/Go) */
+--color-primary: rgb(19, 2, 59); /* Blue (Upload/Go) */
 --color-secondary: hsl(210, 60%, 49%); /* Blue (Instance/Sample) */
+--color-third:rgb(66, 143, 145); 
 --color-tertiary: #ffd700; /* Yellow (Save Viz) */
 --color-background-dark: #222;
 --color-background-medium: #333;
@@ -52,6 +53,75 @@ margin: 0;
 font-size: 1.2rem;
 }
 
+/* Stats Button Styling */
+#stats-toggle-button {
+  background: var(--color-secondary);
+  border: none;
+  color: var(--color-text-button);
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  font-family: var(--font-main);
+  font-size: 0.9rem;
+}
+
+#stats-toggle-button:hover {
+  /* Keep a slight darker shade for hover in default mode */
+  background: var(--color-secondary);
+  filter: brightness(80%);
+}
+
+/* Stats Panel Styling */
+#stats-panel {
+  backdrop-filter: blur(10px);
+  background-color: var(--color-background-medium);
+  color: var(--color-text-header);
+  font-family: var(--font-main);
+}
+
+#stats-content strong {
+  color: var(--color-primary);
+}
+
+#close-stats {
+  color: var(--color-text-header);
+}
+
+#close-stats:hover {
+  color: var(--color-primary);
+}
+
+/* Cluster Stats Popup Styling */
+#cluster-stats-popup {
+  max-width: 250px;
+  backdrop-filter: blur(10px);
+}
+
+.k00l90z-mode #cluster-stats-popup {
+  border: 2px solid var(--color-secondary) !important;
+  box-shadow: 0 0 8px var(--color-secondary),
+              0 0 15px var(--color-secondary),
+              0 0 25px #ff00ff !important;
+}
+
+/* Cluster hit area styling */
+.cluster-hit-area:hover {
+  stroke: var(--color-primary);
+  stroke-width: 2px;
+  stroke-dasharray: 4,4;
+}
+
+.leaf-label {
+  fill: var(--color-text-body) !important;
+  font-size: 12px !important;
+  font-family: var(--font-main) !important;
+  text-anchor: end !important;
+  dominant-baseline: hanging !important;
+  opacity: 0.9 !important;
+  pointer-events: none !important;
+}
+
 /* Zoom Buttons */
 #zoom-controls {
 display: flex;
@@ -59,7 +129,7 @@ align-items: center;
 gap: 5px;
 }
 .zoom-button {
-background: var(--color-background-medium);
+background: var(--color-button-disabled);
 border: 1px solid var(--color-secondary);
 color: var(--color-text-header);
 padding: 6px 10px;
@@ -176,6 +246,19 @@ font-family: var(--font-main);
 opacity: 0.5; /* Always start disabled visually */
 }
 
+/* Cluster Label Styling */
+.cluster-label {
+    paint-order: stroke;
+    stroke: var(--color-background-medium);
+    stroke-width: 3px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.k00l90z-mode .cluster-label {
+    text-shadow: 0 0 5px var(--color-primary);
+}
+
 .k00l90z-mode .modal-content-container {
 /* Use sharp corners for the 90s look */
 border-radius: 0 !important;
@@ -199,6 +282,24 @@ color: var(--color-primary);
 text-shadow: 0 0 5px var(--color-primary);
 }
 
+/* K00L90Z Theme Stats Overrides */
+.k00l90z-mode #stats-toggle-button {
+  background: var(--color-secondary);
+  color: var(--color-text-button);
+}
+
+.k00l90z-mode #stats-panel {
+  border: 1px solid var(--color-secondary);
+  box-shadow: 0 0 8px var(--color-secondary),
+              0 0 15px var(--color-secondary),
+              0 0 25px #ff00ff;
+}
+
+.k00l90z-mode #stats-content strong {
+  color: var(--color-primary);
+  text-shadow: 0 0 5px var(--color-primary);
+}
+
 /* Modal Styles */
 #custom-modal .modal-content-container {
 background-color: var(--color-background-medium);
@@ -207,10 +308,10 @@ border: 1px solid var(--color-secondary);
 font-family: var(--font-main);
 }
 #custom-modal h2 {
-color: var(--color-primary);
+color: var(--color-secondary);
 }
 #instance-id-input {
-border: 1px solid var(--color-primary);
+border: 1px solid var(--color-secondary);
 background-color: var(--color-background-dark);
 color: var(--color-text-input);
 font-family: var(--font-main);
@@ -221,13 +322,13 @@ color: var(--color-text-button);
 font-family: var(--font-main);
 }
 #go-button {
-background-color: var(--color-primary);
+background-color: var(--color-secondary);
 color: var(--color-text-button);
 font-family: var(--font-main);
 }
 body {
 /* Default Theme Colors */
---node-color: rgb(19, 2, 59);
+--node-color: hsl(210, 60%, 20%);
 --cell-boundary-color: #888b90;
 --tree-color: #dadbdd;
 --edge-color: hsl(210, 60%, 49%);
