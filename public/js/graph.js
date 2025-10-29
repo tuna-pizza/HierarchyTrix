@@ -215,8 +215,10 @@ export class HierarchicallyClusteredGraph {
       }
 
       for (const edge of data.edges) {
+        const edgeLabel = edge.label || null;
+        const edgeColor = edge.color || null;
         this.edges.push(
-          new Edge(nodeMap.get(edge.source), nodeMap.get(edge.target))
+          new Edge(nodeMap.get(edge.source), nodeMap.get(edge.target), edgeLabel, edgeColor)
         );
       }
     } catch (err) {
@@ -231,7 +233,7 @@ export class Node {
     this.parentNode = parentNode;
     this.type = type;
     this.children = [];
-    this.customLabel = null; // ✅ ADD THIS LINE to initialize customLabel
+    this.customLabel = null; 
     if (parentNode != null) {
       parentNode.addChild(this);
     }
@@ -286,16 +288,24 @@ export class Node {
 }
 
 export class Edge {
-  constructor(source, target) {
+  constructor(source, target, label = null, color = null) {
     this.source = source;
     this.target = target;
+    this.label = label;
+    this.color = color;
   }
-
   getSource() {
     return this.source;
   }
 
   getTarget() {
     return this.target;
+  }
+
+    getLabel() {
+    return this.label;
+  }
+  getColor() {
+    return this.color;
   }
 }

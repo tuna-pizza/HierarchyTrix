@@ -126,7 +126,7 @@ async function main() {
 
   // 3. Initialize Drawer
   let HD = new HierarchicallyClusteredGraphDrawer(H);
-  HD.draw("#graph-container");
+  HD.draw();
 
   // Hide the loading modal once the visualization is drawn
   if (isInitialLoad && typeof window.hideLoadingModal === "function") {
@@ -155,6 +155,13 @@ async function main() {
       HD.zoomIn();
     } else {
       console.warn("Zoom in not implemented in drawer");
+    }
+  });
+
+  // Edge display mode change handler
+  window.addEventListener("edgeDisplayModeChange", (e) => {
+    if (HD && typeof HD.redrawAdjacencyCells === "function") {
+      HD.redrawAdjacencyCells();
     }
   });
 

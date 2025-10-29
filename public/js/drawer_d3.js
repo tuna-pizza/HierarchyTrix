@@ -9,7 +9,7 @@ const cellboundaryColor = "var(--cell-boundary-color)";
 const treecolor = "var(--tree-color)";
 const edgeColor = "var(--edge-color)";
 const arrayBoundaryWidth = "3";
-const edgeWidth = "3";
+const edgeWidth = 3;
 const textSize = "18";
 const smallTextSize = "12";
 const textOffset = 2;
@@ -836,11 +836,11 @@ export class HierarchicallyClusteredGraphDrawer {
     // 4. FINAL DRAWING BLOCK (Edges and Nodes use the now-correctly-aligned coordinates)
 
     // --- DRAW EDGES ---
+
     this.zoomGroup.select("g.linear-edges").remove();
     const edgesGroup = this.zoomGroup.append("g").attr("class", "linear-edges");
 
     // === FILTER OUT EDGES INSIDE SAME LAST-LEVEL CLUSTER ===
-    //const clusterLayers = this.H.getClusterLayers();
     let filteredEdges = this.H.getEdges(); // default: all edges
 
     if (clusterLayers.length > 0) {
@@ -866,8 +866,12 @@ export class HierarchicallyClusteredGraphDrawer {
 
     let maxDist = 0;
 
+    // Create edge labels group
+    this.zoomGroup.select("g.edge-labels").remove();
+    const edgeLabelsGroup = this.zoomGroup.append("g").attr("class", "edge-labels");
+
     // === DRAW FILTERED EDGES ===
-    edgesGroup
+    const edgePaths = edgesGroup
       .selectAll("path.edge")
       .data(filteredEdges)
       .join("path")
@@ -897,12 +901,135 @@ export class HierarchicallyClusteredGraphDrawer {
           y + xDist / 2.5
         } Q ${x2} ${y + xDist / 2.5}, ${x2} ${y}`;
       })
-      .attr("stroke", edgeColor)
+      .attr("stroke", (d) => {
+        // Use custom color from edge data if available, otherwise use default
+        return d.getColor ? d.getColor() : edgeColor;
+      })
       .attr("stroke-width", edgeWidth)
       .attr("fill", "none")
       .attr("opacity", 0.8)
-      .on("mouseover", listeners.mouseEntersEdge)
-      .on("mouseleave", listeners.mouseLeavesEdge);
+
+    // In drawer_d3.js - Update the edge hover section in the draw() method:
+
+    .on("mouseover", (event, d) => {
+      const currentEdge = d3.select(event.currentTarget);
+      
+      // Store original width as a data attribute so we can restore it
+      if (!currentEdge.attr('data-original-width')) {
+        currentEdge.attr('data-original-width', edgeWidth);
+      }
+      
+      // Highlight current edge - increase width but keep original opacity
+      currentEdge
+        .transition()
+        .duration(200)
+        .attr("stroke-width", edgeWidth * 2) // Now this will work with numbers
+        .attr("opacity", 0.8);
+
+      // Fade all other edges
+      edgesGroup.selectAll("path.edge")
+        .filter(edge => edge !== d)
+        .transition()
+        .duration(200)
+        .attr("opacity", 0.2);
+
+      // Fade all nodes except the ones connected to this edge
+      const sourceId = d.getSource().getID();
+      const targetId = d.getTarget().getID();
+      
+      this.zoomGroup.selectAll("g.node-cell")
+        .transition()
+        .duration(200)
+        .attr("opacity", node => {
+          const nodeId = node.getID();
+          return (nodeId === sourceId || nodeId === targetId) ? 1 : 0.3;
+        });
+
+      // Fade cluster inclusions and adjacency cells
+      this.zoomGroup.selectAll("path.inclusion")
+        .transition()
+        .duration(200)
+        .attr("opacity", 0.2);
+
+      this.zoomGroup.selectAll("g.adjacency-cell")
+        .transition()
+        .duration(200)
+        .attr("opacity", 0.2);
+
+      // Show edge label
+      const x1 = xCoordMap.get(d.getSource());
+      const x2 = xCoordMap.get(d.getTarget());
+      const y = yCoordMap.get(d.getSource());
+      
+      if (x1 !== undefined && x2 !== undefined && y !== undefined) {
+        const midX = (x1 + x2) / 2;
+        const xDist = Math.abs(x2 - x1);
+        
+        const curveHeight = xDist / 2.5;
+        const midY = y + curveHeight;
+        
+        const labelText = d.getLabel ? d.getLabel() : '';
+        
+        if (labelText) {
+          edgeLabelsGroup.selectAll(".edge-label").remove();
+          
+          edgeLabelsGroup
+            .append("text")
+            .attr("class", "edge-label")
+            .attr("x", midX)
+            .attr("y", midY - 8)
+            .attr("text-anchor", "middle")
+            .attr("dominant-baseline", "middle")
+            .attr("font-family", "var(--font-main)")
+            .attr("font-size", "12px")
+            .attr("font-weight", "bold")
+            .attr("fill", "black")
+            .attr("pointer-events", "none")
+            .style("user-select", "none")
+            .style("opacity", 1)
+            .text(labelText);
+        }
+      }
+    })
+    .on("mouseleave", (event, d) => {
+      const currentEdge = d3.select(event.currentTarget);
+      
+      // Restore current edge to original width - USE THE STORED VALUE
+      const originalWidth = currentEdge.attr('data-original-width') || edgeWidth;
+      
+      currentEdge
+        .transition()
+        .duration(200)
+        .attr("stroke-width", Number(originalWidth)) // Ensure it's a number
+        .attr("opacity", 0.8);
+
+      // Restore all other edges to original width and opacity
+      edgesGroup.selectAll("path.edge")
+        .transition()
+        .duration(200)
+        .attr("stroke-width", edgeWidth)
+        .attr("opacity", 0.8);
+
+      // Restore all nodes
+      this.zoomGroup.selectAll("g.node-cell")
+        .transition()
+        .duration(200)
+        .attr("opacity", 1);
+
+      // Restore cluster inclusions and adjacency cells
+      this.zoomGroup.selectAll("path.inclusion")
+        .transition()
+        .duration(200)
+        .attr("opacity", 1);
+
+      this.zoomGroup.selectAll("g.adjacency-cell")
+        .transition()
+        .duration(200)
+        .attr("opacity", 1);
+
+      // Remove edge label
+      edgeLabelsGroup.selectAll(".edge-label").remove();
+    });
 
     // --- DRAW LEAF NODES ---
     this.zoomGroup.select("g.linear-nodes").remove();
