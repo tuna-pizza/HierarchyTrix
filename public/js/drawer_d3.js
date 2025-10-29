@@ -10,7 +10,7 @@ const treecolor = "var(--tree-color)";
 const edgeColor = "var(--edge-color)";
 const arrayBoundaryWidth = "3";
 const edgeWidth = "3";
-const textSize = "20";
+const textSize = "18";
 const smallTextSize = "12";
 const textOffset = 2;
 const vertexDistance = 60; // Reduced from 80 to 60
@@ -25,6 +25,13 @@ export class HierarchicallyClusteredGraphDrawer {
     this.d3zoom = null;
     this.currentTransform = null;
     this.clusterStatsPopup = null;
+
+    // --- Edge display mode toggle support ---
+    this.edgeDisplayMode = "ratio";
+    window.addEventListener("edgeDisplayModeChange", (e) => {
+      this.edgeDisplayMode = e.detail.mode;
+      this.redrawAdjacencyCells();
+    });
   }
 
   addOrderConstraints(orderString) {
@@ -227,6 +234,31 @@ export class HierarchicallyClusteredGraphDrawer {
     }
   }
 
+  // --- Count all edges between two clusters' subtrees ---
+  countAllEdgesBetweenClusters(clusterA, clusterB) {
+    const leavesA = clusterA.getLeaves();
+    const leavesB = clusterB.getLeaves();
+
+    // Create quick lookup sets for IDs
+    const idsA = new Set(leavesA.map((leaf) => leaf.getID()));
+    const idsB = new Set(leavesB.map((leaf) => leaf.getID()));
+
+    let count = 0;
+    for (const edge of this.H.getEdges()) {
+      const srcId = edge.getSource().getID();
+      const tgtId = edge.getTarget().getID();
+      if (
+        (idsA.has(srcId) && idsB.has(tgtId)) ||
+        (idsB.has(srcId) && idsA.has(tgtId)) ||
+        (idsA.has(srcId) && idsA.has(tgtId)) ||
+        (idsB.has(srcId) && idsB.has(tgtId))
+      ) {
+        count++;
+      }
+    }
+    return count;
+  }
+
   drawCluster(
     cluster,
     offsetX,
@@ -405,20 +437,44 @@ export class HierarchicallyClusteredGraphDrawer {
       .getPropertyValue("--adj-color-high")
       .trim();
 
-    const colorScale = d3
-      .scaleLinear()
-      .domain([0, 1])
-      .range([resolvedAdjColorLow, resolvedAdjColorHigh]);
-
     adjCells.each((d, i, nodes) => {
       const adjCell = d3.select(nodes[i]);
-      const actualEdges = this.H.getNumberOfEdges(d.source, d.target);
+      const actualEdges = this.countAllEdgesBetweenClusters(d.source, d.target);
       const potentialEdges =
-        d.source.getLeaves().length * d.target.getLeaves().length;
-      const connectivity =
-        potentialEdges > 0 ? actualEdges / potentialEdges : 0;
+        d.source.getLeaves().length * d.target.getLeaves().length +
+        (d.source.getLeaves().length * (d.source.getLeaves().length - 1)) / 2 +
+        (d.target.getLeaves().length * (d.target.getLeaves().length - 1)) / 2;
+
+      d.actualEdges = actualEdges;
+      d.potentialEdges = potentialEdges;
+
+      const colorByAbsolute = this.edgeDisplayMode === "absolute";
+
+      // Compute color value
+      let colorValue = colorByAbsolute
+        ? actualEdges
+        : potentialEdges > 0
+        ? actualEdges / potentialEdges
+        : 0;
+
+      let colorScale;
+      if (colorByAbsolute) {
+        const maxEdges = d3.max(adjacencyData, (d) =>
+          this.H.getNumberOfEdges(d.source, d.target)
+        );
+        colorScale = d3
+          .scaleLinear()
+          .domain([0, maxEdges])
+          .range([resolvedAdjColorLow, resolvedAdjColorHigh]);
+      } else {
+        colorScale = d3
+          .scaleLinear()
+          .domain([0, 1])
+          .range([resolvedAdjColorLow, resolvedAdjColorHigh]);
+      }
+
       let cellColor =
-        connectivity === 0 ? "rgb(255,255,255)" : colorScale(connectivity);
+        colorValue === 0 ? "rgb(255,255,255)" : colorScale(colorValue);
 
       adjCell
         .append("polygon")
@@ -432,14 +488,7 @@ export class HierarchicallyClusteredGraphDrawer {
         .attr("stroke-width", arrayBoundaryWidth)
         .attr("fill", cellColor);
 
-      adjCell.datum({
-        color: cellColor,
-        source: d.source,
-        target: d.target,
-        actualEdges: actualEdges,
-        potentialEdges: potentialEdges,
-      });
-
+      // Label depending on mode
       adjCell
         .append("text")
         .attr("y", textOffset)
@@ -449,11 +498,64 @@ export class HierarchicallyClusteredGraphDrawer {
         .attr("text-anchor", "middle")
         .attr("alignment-baseline", "middle")
         .attr("pointer-events", "none")
-        .text(`${actualEdges}/${potentialEdges}`);
+        .text(
+          colorByAbsolute
+            ? `${actualEdges}`
+            : `${actualEdges}/${potentialEdges}`
+        );
 
       adjCells
         .on("mouseover", listeners.mouseEntersAdjCell)
         .on("mouseleave", listeners.mouseLeavesAdjCell);
+    });
+  }
+
+  redrawAdjacencyCells() {
+    d3.selectAll(".adjacency-cell").each((d, i, nodes) => {
+      const adjCell = d3.select(nodes[i]);
+      const actualEdges = d.actualEdges;
+      const potentialEdges = d.potentialEdges;
+
+      const colorByAbsolute = this.edgeDisplayMode === "absolute";
+      const value = colorByAbsolute
+        ? actualEdges
+        : potentialEdges > 0
+        ? actualEdges / potentialEdges
+        : 0;
+
+      const computedStyle = getComputedStyle(document.body);
+      const resolvedAdjColorLow = computedStyle
+        .getPropertyValue("--adj-color-low")
+        .trim();
+      const resolvedAdjColorHigh = computedStyle
+        .getPropertyValue("--adj-color-high")
+        .trim();
+      const colorScale = d3
+        .scaleLinear()
+        .domain(
+          colorByAbsolute
+            ? [
+                0,
+                d3.max(
+                  d3.selectAll(".adjacency-cell").data(),
+                  (c) => c.actualEdges
+                ),
+              ]
+            : [0, 1]
+        )
+        .range([resolvedAdjColorLow, resolvedAdjColorHigh]);
+
+      adjCell
+        .select("polygon")
+        .attr("fill", value === 0 ? "rgb(255,255,255)" : colorScale(value));
+
+      adjCell
+        .select("text")
+        .text(
+          colorByAbsolute
+            ? `${actualEdges}`
+            : `${actualEdges}/${potentialEdges}`
+        );
     });
   }
 
