@@ -340,6 +340,25 @@ body {
   --adj-color-high: hsl(210, 60%, 49%);
 }
 
+.edge-label {
+  font-family: var(--font-main);
+  font-size: 12px;
+  font-weight: bold;
+  fill: black;
+  pointer-events: none;
+  text-shadow: 1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white, -1px 1px 2px white;
+  user-select: none;
+}
+
+/* Ensure proper z-index layering in SVG */
+.edge-labels {
+  pointer-events: none;
+}
+
+.linear-edges {
+  pointer-events: stroke; /* Only the stroke is interactive */
+}
+
 /* K00L90Z Theme Overrides */
 body.k00l90z-mode {
   --node-color: #ff00ff; /* Magenta nodes */
