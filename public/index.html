@@ -52,168 +52,174 @@
           accept=".json"
           style="display: none"
         />
+        <fieldset>
+          <div
+            id="instance-selector"
+            style="
+              display: flex;
+              align-items: center;
+              gap: 5px;
+              position: relative;
+            "
+          >
+            <input
+              type="text"
+              id="instance-id-input-header"
+              placeholder="Instance ID"
+              style=""
+            />
 
-        <div
-          id="instance-selector"
-          style="
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            position: relative;
-          "
-        >
-          <input
-            type="text"
-            id="instance-id-input-header"
-            placeholder="Instance ID"
-            style=""
-          />
+            <div id="samples-popover-container" style="position: relative">
+              <button id="sample-button" title="Select a sample ID" style="">
+                Instance <span style="font-size: 0.7em">&#x25BC;</span>
+              </button>
 
-          <div id="samples-popover-container" style="position: relative">
-            <button id="sample-button" title="Select a sample ID" style="">
-              Instance <span style="font-size: 0.7em">&#x25BC;</span>
-            </button>
-
-            <div
-              id="sample-dropdown"
-              style="
-                display: none;
-                position: absolute;
-                top: 100%;
-                left: 0px;
-                width: 120px;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
-                z-index: 200;
-              "
-            >
-              <a
-                data-instance="animals"
-                href="#"
+              <div
+                id="sample-dropdown"
                 style="
-                  padding: 8px 10px;
-                  text-decoration: none;
-                  display: block;
-                  font-size: 0.9rem;
+                  display: none;
+                  position: absolute;
+                  top: 100%;
+                  left: 0px;
+                  width: 120px;
+                  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+                  z-index: 200;
                 "
-                >animals</a
               >
-              <a
-                data-instance="sample"
-                href="#"
-                style="
-                  padding: 8px 10px;
-                  text-decoration: none;
-                  display: block;
-                  font-size: 0.9rem;
-                "
-                >sample</a
-              >
-              <a
-                data-instance="paper_example"
-                href="#"
-                style="
-                  padding: 8px 10px;
-                  text-decoration: none;
-                  display: block;
-                  font-size: 0.9rem;
-                "
-                >paper_example</a
-              >
-              <a
-                data-instance="graph_1"
-                href="#"
-                style="
-                  padding: 8px 10px;
-                  text-decoration: none;
-                  display: block;
-                  font-size: 0.9rem;
-                "
-                >graph_1</a
-              >
-              <a
-                data-instance="graph_2"
-                href="#"
-                style="
-                  padding: 8px 10px;
-                  text-decoration: none;
-                  display: block;
-                  font-size: 0.9rem;
-                "
-                >graph_2</a
-              >
-              <a
-                data-instance="graph_3"
-                href="#"
-                style="
-                  padding: 8px 10px;
-                  text-decoration: none;
-                  display: block;
-                  font-size: 0.9rem;
-                "
-                >graph_3</a
-              >
+                <a
+                  data-instance="animals"
+                  href="#"
+                  style="
+                    padding: 8px 10px;
+                    text-decoration: none;
+                    display: block;
+                    font-size: 0.9rem;
+                  "
+                  >animals</a
+                >
+                <a
+                  data-instance="sample"
+                  href="#"
+                  style="
+                    padding: 8px 10px;
+                    text-decoration: none;
+                    display: block;
+                    font-size: 0.9rem;
+                  "
+                  >sample</a
+                >
+                <a
+                  data-instance="paper_example"
+                  href="#"
+                  style="
+                    padding: 8px 10px;
+                    text-decoration: none;
+                    display: block;
+                    font-size: 0.9rem;
+                  "
+                  >paper_example</a
+                >
+                <a
+                  data-instance="graph_1"
+                  href="#"
+                  style="
+                    padding: 8px 10px;
+                    text-decoration: none;
+                    display: block;
+                    font-size: 0.9rem;
+                  "
+                  >graph_1</a
+                >
+                <a
+                  data-instance="graph_2"
+                  href="#"
+                  style="
+                    padding: 8px 10px;
+                    text-decoration: none;
+                    display: block;
+                    font-size: 0.9rem;
+                  "
+                  >graph_2</a
+                >
+                <a
+                  data-instance="graph_3"
+                  href="#"
+                  style="
+                    padding: 8px 10px;
+                    text-decoration: none;
+                    display: block;
+                    font-size: 0.9rem;
+                  "
+                  >graph_3</a
+                >
+              </div>
             </div>
-          </div>
 
-          <div id="solver-popover-container" style="position: relative">
-            <button id="solver-button" title="Select solver method" style="">
-              Solver <span style="font-size: 0.7em">&#x25BC;</span>
-            </button>
+            <div id="solver-popover-container" style="position: relative">
+              <button id="solver-button" title="Select solver method" style="">
+                Solver <span style="font-size: 0.7em">&#x25BC;</span>
+              </button>
 
-            <div
-              id="solver-dropdown"
-              style="
-                display: none;
-                position: absolute;
-                top: 100%;
-                left: 0;
-                width: 130px;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
-                z-index: 200;
-              "
-            >
-              <a
-                data-solver="ilp"
-                href="#"
+              <div
+                id="solver-dropdown"
                 style="
-                  padding: 8px 10px;
-                  text-decoration: none;
-                  display: block;
-                  font-size: 0.9rem;
+                  display: none;
+                  position: absolute;
+                  top: 100%;
+                  left: 0;
+                  width: 130px;
+                  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+                  z-index: 200;
                 "
-                >ILP Solver</a
               >
-              <a
-                data-solver="heuristic"
-                href="#"
-                style="
-                  padding: 8px 10px;
-                  text-decoration: none;
-                  display: block;
-                  font-size: 0.9rem;
-                "
-                >Heuristic Solver</a
-              >
-              <a
-                data-solver="hybrid"
-                href="#"
-                style="
-                  padding: 8px 10px;
-                  text-decoration: none;
-                  display: block;
-                  font-size: 0.9rem;
-                "
-                >Hybrid Solver</a
-              >
+                <a
+                  data-solver="ilp"
+                  href="#"
+                  style="
+                    padding: 8px 10px;
+                    text-decoration: none;
+                    display: block;
+                    font-size: 0.9rem;
+                  "
+                  >ILP Solver</a
+                >
+                <a
+                  data-solver="heuristic"
+                  href="#"
+                  style="
+                    padding: 8px 10px;
+                    text-decoration: none;
+                    display: block;
+                    font-size: 0.9rem;
+                  "
+                  >Heuristic Solver</a
+                >
+                <a
+                  data-solver="hybrid"
+                  href="#"
+                  style="
+                    padding: 8px 10px;
+                    text-decoration: none;
+                    display: block;
+                    font-size: 0.9rem;
+                  "
+                  >Hybrid Solver</a
+                >
+              </div>
             </div>
-          </div>
 
-          <button id="go-to-instance-button" style="">Go</button>
-        </div>
+            <button id="go-to-instance-button" style="">Go</button>
+          </div>
+        </fieldset>
 
         <!-- Stats Toggle Button -->
         <button id="stats-toggle-button" style="" title="Show Statistics">
           Stats
+        </button>
+
+        <!-- Edge Display Mode Toggle -->
+        <button id="edge-display-toggle" title="Toggle Edge Display Mode">
+          Show Absolute
         </button>
 
         <div
@@ -774,6 +780,27 @@
         );
         const statsPanel = document.getElementById("stats-panel");
         const closeStatsButton = document.getElementById("close-stats");
+
+        // Edge display mode toggle
+        const edgeDisplayButton = document.getElementById(
+          "edge-display-toggle"
+        );
+        let edgeDisplayMode = "ratio";
+
+        if (edgeDisplayButton) {
+          edgeDisplayButton.addEventListener("click", () => {
+            edgeDisplayMode =
+              edgeDisplayMode === "ratio" ? "absolute" : "ratio";
+            edgeDisplayButton.textContent =
+              edgeDisplayMode === "ratio" ? "Show Absolute" : "Show Ratio";
+
+            window.dispatchEvent(
+              new CustomEvent("edgeDisplayModeChange", {
+                detail: { mode: edgeDisplayMode },
+              })
+            );
+          });
+        }
 
         const saveVizButton = document.getElementById("saveVizButton");
         const saveVizDropdown = document.getElementById("save-viz-dropdown");
