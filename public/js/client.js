@@ -7,21 +7,33 @@ const instanceParam = urlParams.get("instance");
 const instance =
   instanceParam && instanceParam.trim() !== "" ? instanceParam : "animals";
 
-// ✅ Get solver type from URL
+// Get solver type from URL
 const solverParam = urlParams.get("method");
-let solver = "ilp"; // default
+// Default solver is 'input'
+let solver = "input";
 
 if (solverParam) {
   const paramLower = solverParam.toLowerCase();
-  if (paramLower === "heuristic" || paramLower === "hybrid") {
+  if (
+    paramLower === "input" ||
+    paramLower === "ilp" ||
+    paramLower === "heuristic" ||
+    paramLower === "hybrid"
+  ) {
     solver = paramLower;
   }
 }
 
-console.log("🧩 Using solver:", solver);
+document.addEventListener("DOMContentLoaded", () => {
+  const solverSelect = document.getElementById("solver-select");
+  if (solverSelect) {
+    // 'solver' variable is correctly set by URL or to 'input' by default
+    solverSelect.value = solver;
+  }
+});
 
 // --- Fetch order from server ---
-async function getOrder(instance, solver = "ilp") {
+async function getOrder(instance, solver = "input") {
   try {
     const response = await fetch(`/api/order/${instance}?method=${solver}`);
     if (!response.ok) {
@@ -113,15 +125,19 @@ async function main() {
   await H.readFromJSON(instance);
 
   // 2. Get Order from Server
-  const orderString = await getOrder(instance, solver);
-  if (orderString) {
-    const orderList = Array.isArray(orderString)
-      ? orderString
-      : orderString.trim().split(/\s+/);
-    console.log("✅ Applying order:", orderList);
-    applyNodeOrder(H, orderList); // <-- fixed
+  if (solver !== "input") {
+    const orderString = await getOrder(instance, solver);
+    if (orderString) {
+      const orderList = Array.isArray(orderString)
+        ? orderString
+        : orderString.trim().split(/\s+/);
+      console.log(`✅ Applying ${solver} order:`, orderList);
+      applyNodeOrder(H, orderList); // <-- fixed
+    } else {
+      console.warn(`⚠️ No ${solver} order received from server.`);
+    }
   } else {
-    console.warn("⚠️ No order received from server.");
+    console.log("✅ Using Input Order (default order from file).");
   }
 
   // 3. Initialize Drawer
