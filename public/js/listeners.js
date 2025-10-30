@@ -311,8 +311,13 @@ export function mouseLeavesAdjCell() {
     .attr("fill", inclusionColor);
 }
 
-export function mouseEntersEdge() {
-  const data = d3.select(this).datum();
+export function mouseEntersEdge(
+  event,
+  data,
+  xCoordMap,
+  yCoordMap,
+  edgeLabelsGroup
+) {
   const sourceNode = data.getSource();
   const targetNode = data.getTarget();
 
@@ -351,7 +356,7 @@ export function mouseEntersEdge() {
   // 4. HIGHLIGHT RELEVANT ELEMENTS
 
   // a) Highlight the hovered edge
-  d3.select(this)
+  d3.select(event.currentTarget)
     .attr("opacity", 1)
     .attr("stroke", "var(--edge-color)")
     .attr("stroke-width", "4");
@@ -383,9 +388,46 @@ export function mouseEntersEdge() {
     .attr("opacity", 1)
     .selectAll("use")
     .attr("fill", "var(--node-color)");
+
+  // Show edge label
+  const x1 = xCoordMap.get(data.getSource());
+  const x2 = xCoordMap.get(data.getTarget());
+  const y = yCoordMap.get(data.getSource());
+
+  if (x1 !== undefined && x2 !== undefined && y !== undefined) {
+    const midX = (x1 + x2) / 2;
+    const xDist = Math.abs(x2 - x1);
+
+    const curveHeight = xDist / 2.5;
+    const midY = y + curveHeight;
+
+    const labelText = data.getLabel ? data.getLabel() : "";
+
+    if (labelText) {
+      edgeLabelsGroup.selectAll(".edge-label").remove();
+
+      edgeLabelsGroup.raise();
+
+      edgeLabelsGroup
+        .append("text")
+        .attr("class", "edge-label")
+        .attr("x", midX)
+        .attr("y", midY - 12)
+        .attr("text-anchor", "middle")
+        .attr("dominant-baseline", "middle")
+        .attr("font-family", "var(--font-main)")
+        .attr("font-size", "12px")
+        .attr("font-weight", "bold")
+        .attr("fill", "var(--node-color)")
+        .attr("pointer-events", "none")
+        .style("user-select", "none")
+        .style("opacity", 1)
+        .text(labelText);
+    }
+  }
 }
 
-export function mouseLeavesEdge() {
+export function mouseLeavesEdge(event, edgeLabelsGroup) {
   // 1. Restore all adjacency cells
   d3.selectAll(".adjacency g.adjacency-cell")
     .attr("opacity", 1)
@@ -407,9 +449,20 @@ export function mouseLeavesEdge() {
     .attr("stroke", "var(--edge-color)")
     .attr("stroke-width", 3);
 
-  // 4. Restore all inclusion bands
+  // 4. Restore all inclusions
   d3.select(".cluster-inclusions")
     .selectAll("path.inclusion")
     .attr("opacity", 1)
     .attr("fill", inclusionColor);
+
+  // 5. Restore tree cells
+  d3.selectAll(".tree-cell")
+    .attr("opacity", 1)
+    .selectAll("use")
+    .attr("fill", "var(--tree-color)");
+
+  // 6. Hide edge label (New Logic)
+  if (edgeLabelsGroup) {
+    edgeLabelsGroup.selectAll(".edge-label").remove();
+  }
 }
