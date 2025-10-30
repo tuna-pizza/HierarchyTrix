@@ -32,7 +32,6 @@
       </div>
 
       <div style="display: flex; gap: 15px; align-items: center">
-        <!-- Zoom Controls - ADDED BEFORE UPLOAD BUTTON -->
         <div id="zoom-controls">
           <button id="zoom-out-button" class="zoom-button" title="Zoom Out">
             -
@@ -173,6 +172,17 @@
                 "
               >
                 <a
+                  data-solver="input"
+                  href="#"
+                  style="
+                    padding: 8px 10px;
+                    text-decoration: none;
+                    display: block;
+                    font-size: 0.9rem;
+                  "
+                  >Input Order</a
+                >
+                <a
                   data-solver="ilp"
                   href="#"
                   style="
@@ -212,12 +222,10 @@
           </div>
         </fieldset>
 
-        <!-- Stats Toggle Button -->
         <button id="stats-toggle-button" style="" title="Show Statistics">
           Stats
         </button>
 
-        <!-- Edge Display Mode Toggle -->
         <button id="edge-display-toggle" title="Toggle Edge Display Mode">
           Show Absolute
         </button>
@@ -359,7 +367,6 @@
       </div>
     </header>
 
-    <!-- Stats Panel -->
     <div
       id="stats-panel"
       style="
@@ -964,13 +971,15 @@
                 let newUrl = `?instance=${instanceId}`;
 
                 // ✅ FIX: Use 'method' parameter instead of 'solver'
-                if (selectedSolver.toLowerCase() === "ilp") {
+                if (selectedSolver.toLowerCase() === "input") {
+                  newUrl += "&method=input";
+                } else if (selectedSolver.toLowerCase() === "ilp") {
                   newUrl += "&method=ilp";
                 } else if (selectedSolver.toLowerCase() === "heuristic") {
                   newUrl += "&method=heuristic";
                 } else if (selectedSolver.toLowerCase() === "hybrid") {
                   newUrl += "&method=hybrid";
-                }
+                } else newUrl += "&method=input";
 
                 // Keep the 90s theme if active
                 if (isK00lModeActive) {
@@ -1077,8 +1086,7 @@
 
         // --- Solver Dropdown Toggle & Selection ---
         if (solverButton && solverDropdown) {
-          // Set initial solver based on URL parameter (default is 'heuristic')
-          const currentSolver = urlParams.get("method") || "heuristic";
+          const currentSolver = urlParams.get("method") || "input";
           let selectedSolver = currentSolver;
 
           // 1. Initilization
@@ -1086,16 +1094,20 @@
           const currentSolverInUrl = urlParams.get("method");
 
           if (!currentSolverInUrl) {
-            // If no solver is in the URL, set the default display text
-            buttonText = "Choose Solver";
+            // FIX: If no solver is in the URL, set the display text to "Change Order"
+            buttonText = "Change Order";
           } else {
-            // If a solver is in the URL, format it (e.g., 'ilp' -> 'ILP Solver')
-            const formattedSolver =
-              selectedSolver.slice(0) === "ilp"
-                ? "ILP"
-                : selectedSolver.slice(0).charAt(0).toUpperCase() +
-                  selectedSolver.slice(1).toLowerCase();
-            buttonText = `${formattedSolver} Solver`;
+            // If a solver is in the URL, format it
+            if (selectedSolver === "input") {
+              buttonText = "Input Order";
+            } else {
+              const formattedSolver =
+                selectedSolver.slice(0) === "ilp"
+                  ? "ILP"
+                  : selectedSolver.slice(0).charAt(0).toUpperCase() +
+                    selectedSolver.slice(1).toLowerCase();
+              buttonText = `${formattedSolver} Solver`;
+            }
           }
 
           // Update the button HTML
@@ -1116,11 +1128,18 @@
               const solver = link.getAttribute("data-solver");
               selectedSolver = solver;
 
-              // 2. Aggiornamento: Aggiorna il testo del pulsante dopo la selezione
-              const formattedSolver =
-                selectedSolver.charAt(0).toUpperCase() +
-                selectedSolver.slice(1);
-              solverButton.innerHTML = `${formattedSolver} Solver <span style="font-size: 0.7em;">&#x25BC;</span>`;
+              // 2. Updates the text of the button after selection
+              let buttonText;
+              if (selectedSolver === "input") {
+                buttonText = "Input Order";
+              } else {
+                const formattedSolver =
+                  selectedSolver.charAt(0).toUpperCase() +
+                  selectedSolver.slice(1);
+                buttonText = `${formattedSolver} Solver`;
+              }
+
+              solverButton.innerHTML = `${buttonText} <span style="font-size: 0.7em;">&#x25BC;</span>`;
 
               // Hide the dropdown
               solverDropdown.style.display = "none";
@@ -1156,24 +1175,6 @@
                 return; // Stop here
               }
 
-              if (!instanceId) {
-                // Determine the instance to solve again: URL param, or the client.js default "animals"
-                const instanceToSolve = currentInstanceId || "animals";
-
-                if (instanceToSolve) {
-                  if (loadingModal) {
-                    loadingModal.style.display = "block";
-                  }
-                  solveAgain(selectedSolver, instanceToSolve);
-                  return;
-                } else {
-                  // If even the default "animals" is null/empty for some reason, show alert.
-                  alert("Please enter a valid Instance ID.");
-                  return;
-                }
-              }
-
-              // Original logic for a NEW instance ID in the input field
               if (instanceId) {
                 let newUrl = `?instance=${instanceId}&method=${selectedSolver}`;
                 if (isK00lModeActive) {
@@ -1246,9 +1247,9 @@
             border-radius: 4px;
           "
         />
-        <div style="margin-bottom: 20px">
+        <div style="margin-bottom: 10px">
           <label for="solver-select" style="display: block; margin-bottom: 5px"
-            >Select Solver:</label
+            >Input Order:</label
           >
           <select
             id="solver-select"
@@ -1262,6 +1263,7 @@
               color: var(--color-text-input);
             "
           >
+            <option value="input" selected>Input Order</option>
             <option value="ilp">ILP Solver</option>
             <option value="heuristic">Heuristic Solver</option>
             <option value="hybrid">Hybrid Solver</option>
