@@ -727,7 +727,7 @@
         // Initialization MUST happen inside DOMContentLoaded to ensure elements exist.
 
         const urlParams = new URLSearchParams(window.location.search);
-        const currentInstanceId = urlParams.get("instance");
+        const currentInstanceId = urlParams.get("instance") || "animals";
         let currentTheme = urlParams.get("theme"); // Use let as we may override it below
 
         let isK00lModeActive = false;
