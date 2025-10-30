@@ -202,15 +202,47 @@ def get_graph(instance):
 
 @app.route("/api/order/<instance>")
 def get_order(instance):
+    # Retrieve the method from query parameters, defaulting to 'ilp' (if method is absent)
     method = request.args.get("method") or request.args.get("solver") or "ilp"
     method = method.lower()
     
     print(f"🔍 DEBUG: Requested method = '{method}'")
      
-    if method not in ["ilp", "heuristic", "hybrid"]:
-        return jsonify({"error": "Invalid method. Use 'ilp', 'heuristic', or 'hybrid'"}), 400
+    # --- FIX: Handle 'input' method explicitly by reading the graph file ---
+    if method == "input":
+        graph_file = os.path.join(GRAPH_DIR, f"{instance}.json")
+        try:
+            # 1. Open the original graph file
+            with open(graph_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            
+            # 2. Extract the IDs of leaf nodes in the order they appear in the 'nodes' list.
+            node_order = [str(n['id']) for n in data['nodes'] if n.get('type') == 'leaf']
+            order_string = " ".join(node_order)
+            
+            if not node_order and data['nodes']:
+                 # Fallback if 'type' is missing or inconsistent, assume all nodes are ordered.
+                 node_order = [str(n['id']) for n in data['nodes']]
+                 order_string = " ".join(node_order)
+                 print("⚠️ Warning: No nodes with type 'leaf' found. Using all node IDs from input order.")
+            elif not node_order:
+                return jsonify({"error": "Failed to get input order: Graph file is empty or invalid."}), 500
 
-    # Fix the suffix assignment for hybrid method
+            print(f"✅ Input order generated: {len(node_order)} nodes")
+            # 3. Return the input order
+            return jsonify({"order": order_string, "method": method})
+            
+        except FileNotFoundError:
+            return jsonify({"error": "Graph not found for input order"}), 404
+        except Exception as e:
+            return jsonify({"error": "Failed to get input order", "details": str(e)}), 500
+
+    # --- Original Solver Logic (Only runs if method is not 'input') ---
+    if method not in ["ilp", "heuristic", "hybrid"]:
+        # If the method is not 'input' (handled above) AND not a valid solver
+        return jsonify({"error": "Invalid method. Use 'input', 'ilp', 'heuristic', or 'hybrid'"}), 400
+
+    # Assign suffix for pre-computed files
     if method == "heuristic":
         suffix = "_heuristic"
     elif method == "hybrid":
@@ -227,7 +259,8 @@ def get_order(instance):
             order_string = generate_order(instance, method)
             if order_string:
                 with open(filepath, "w", encoding="utf-8") as f:
-                    f.write(order_string if isinstance(order_string, str) else " ".join(order_string))
+                    content_to_write = order_string if isinstance(order_string, str) else " ".join(order_string)
+                    f.write(content_to_write)
             else:
                 return jsonify({"error": f"{method.capitalize()} solver failed"}), 500
 
