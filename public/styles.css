@@ -382,6 +382,13 @@ fieldset {
   border-radius: 6px;
 }
 
+legend {
+  font-family: var(--font-main);
+  font-size: 0.9rem;
+  font-weight: 100;
+  color: var(--color-secondary);
+}
+
 #edge-display-toggle {
   background: var(--color-secondary);
   border: none;
@@ -395,5 +402,42 @@ fieldset {
 }
 
 #edge-display-toggle:hover {
+  filter: brightness(80%);
+}
+
+/* --- CONTROL PANEL STYLING (Right of screen, on top of SVG) --- */
+#control-panel {
+  position: fixed;
+  top: 80px; /* Position slightly below the header */
+  right: 20px;
+  /* White background with 80% opacity */
+  background-color: rgba(255, 255, 255, 0.5);
+  /* Ensure it's on top of the SVG */
+  z-index: 100;
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  /* Use theme fonts/colors for consistency */
+  font-family: var(--font-main);
+}
+
+/* Style the button inside the control panel to maintain theme consistency */
+#control-panel #edge-display-toggle {
+  background: var(--color-secondary);
+  border: none;
+  color: var(--color-text-button);
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  font-family: var(--font-main);
+  font-size: 0.9rem;
+  margin: 0;
+  display: block;
+}
+
+#control-panel #edge-display-toggle:hover {
+  /* Keep a slight darker shade for hover in default mode */
+  background: var(--color-secondary);
   filter: brightness(80%);
 }

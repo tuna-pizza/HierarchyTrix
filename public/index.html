@@ -226,10 +226,6 @@
           Stats
         </button>
 
-        <button id="edge-display-toggle" title="Toggle Edge Display Mode">
-          Show Absolute
-        </button>
-
         <div
           id="loading-modal"
           style="
@@ -366,6 +362,30 @@
         <button id="downloadButton" style="">Download JSON</button>
       </div>
     </header>
+
+    <fieldset id="control-panel">
+      <legend>Drawing styles</legend>
+      <div
+        id="edges-styles"
+        style="
+          text-decoration: none;
+          display: block;
+          font-size: 0.9rem;
+          font-family: var(--font-main);
+          font-size: 0.9rem;
+          color: var(--color-secondary);
+        "
+      >
+        <a> Edges: </a>
+        <button
+          id="edge-display-toggle"
+          title="Toggle Edge Display Mode"
+          style="margin-top: 3px"
+        >
+          Show Absolute
+        </button>
+      </div>
+    </fieldset>
 
     <div
       id="stats-panel"
