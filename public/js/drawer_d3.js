@@ -899,9 +899,9 @@ export class HierarchicallyClusteredGraphDrawer {
         const xDist = tempX2 - tempX1;
         if (xDist > maxDist) maxDist = xDist;
         // Draw a cubic Bézier curve
-        return `M ${x1} ${y} Q ${x1} ${y + xDist / 2.5}, ${x1 + xDist / 2.0} ${
-          y + xDist / 2.5
-        } Q ${x2} ${y + xDist / 2.5}, ${x2} ${y}`;
+        return `M ${x1} ${y} Q ${x1} ${y + xDist / 3}, ${x1 + xDist / 2.0} ${
+          y + xDist / 3
+        } Q ${x2} ${y + xDist / 3}, ${x2} ${y}`;
       })
       .attr("stroke", edgeColor)
       .attr("stroke-width", edgeWidth)
@@ -1044,7 +1044,7 @@ export class HierarchicallyClusteredGraphDrawer {
       });
     });
 
-    const maxArcHeight = maxDist / 2.5;
+    const maxArcHeight = maxDist / 3;
     const minRequiredHeight = linearLayoutY + maxArcHeight;
     const viewBoxHeight = minRequiredHeight + padding;
 

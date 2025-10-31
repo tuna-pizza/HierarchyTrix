@@ -398,7 +398,7 @@ export function mouseEntersEdge(
     const midX = (x1 + x2) / 2;
     const xDist = Math.abs(x2 - x1);
 
-    const curveHeight = xDist / 2.5;
+    const curveHeight = xDist / 3;
     const midY = y + curveHeight;
 
     const labelText = data.getLabel ? data.getLabel() : "";
