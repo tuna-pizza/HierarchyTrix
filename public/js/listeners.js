@@ -96,7 +96,7 @@ export function mouseEntersNodeCell() {
     )
     .attr("opacity", 1)
     .attr("stroke-width", 4)
-    .attr("stroke", "rgb(50, 125, 200)");
+    .attr("stroke", (d) => d.edgeColor || "rgb(50, 125, 200)");
 
   // Step 5: Highlight all relevant inclusion bands (hovered node and all ancestors)
   allInclusions
@@ -161,7 +161,7 @@ export function mouseLeavesNodeCell() {
     .selectAll("path.edge")
     .attr("opacity", 0.8)
     .attr("stroke-width", 3)
-    .attr("stroke", "var(--edge-color)");
+    .attr("stroke", (d) => d.edgeColor || "var(--edge-color)"); 
 
   // 4. Restore all inclusion bands
   d3.select(".cluster-inclusions")
@@ -277,7 +277,7 @@ export function mouseEntersAdjCell() {
         (sourceLeaves.has(dTargetID) && targetLeaves.has(dSourceID))
       );
     })
-    .attr("stroke", "rgb(50, 125, 200)")
+    .attr("stroke", (d) => d.edgeColor || "rgb(50, 125, 200)") 
     .attr("stroke-width", 4)
     .attr("opacity", 1);
 }
@@ -291,7 +291,7 @@ export function mouseLeavesAdjCell() {
       d3.select(this).select("use").attr("fill", cellColor);
     });
 
-  // 2. Restore ALL nodes (cluster and leaf) <--- NEW LOGIC ADDED HERE
+  // 2. Restore ALL nodes (cluster and leaf) 
   d3.selectAll("g.node-cell")
     .attr("opacity", 1)
     .selectAll("use")
@@ -301,7 +301,7 @@ export function mouseLeavesAdjCell() {
   d3.select(".linear-edges")
     .selectAll("path.edge")
     .attr("opacity", 0.8)
-    .attr("stroke", "var(--edge-color)")
+    .attr("stroke", (d) => d.edgeColor || "var(--edge-color)")
     .attr("stroke-width", 3);
 
   // 4. Restore all inclusion bands
@@ -358,7 +358,7 @@ export function mouseEntersEdge(
   // a) Highlight the hovered edge
   d3.select(event.currentTarget)
     .attr("opacity", 1)
-    .attr("stroke", "var(--edge-color)")
+    .attr("stroke", data.edgeColor || "var(--edge-color)")
     .attr("stroke-width", "4");
 
   // b) Highlight the endpoint leaf nodes (linear layout/hierarchy view)
@@ -418,7 +418,7 @@ export function mouseEntersEdge(
         .attr("font-family", "var(--font-main)")
         .attr("font-size", "12px")
         .attr("font-weight", "bold")
-        .attr("fill", "var(--node-color)")
+        .attr("fill", data.edgeColor || "var(--edge-color)")
         .attr("pointer-events", "none")
         .style("user-select", "none")
         .style("opacity", 1)
@@ -446,7 +446,7 @@ export function mouseLeavesEdge(event, edgeLabelsGroup) {
   d3.select(".linear-edges")
     .selectAll("path.edge")
     .attr("opacity", 0.8)
-    .attr("stroke", "var(--edge-color)")
+    .attr("stroke", (d) => d.edgeColor || "var(--edge-color)")
     .attr("stroke-width", 3);
 
   // 4. Restore all inclusions
