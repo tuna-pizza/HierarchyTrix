@@ -344,7 +344,7 @@ body {
   font-family: var(--font-main);
   font-size: 12px;
   font-weight: bold;
-  fill: var(--edge-color);
+  /*fill: var(--edge-color);*/
   pointer-events: none;
   text-shadow: 1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white,
     -1px 1px 2px white;
