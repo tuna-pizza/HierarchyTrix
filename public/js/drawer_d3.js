@@ -1179,7 +1179,7 @@ export class HierarchicallyClusteredGraphDrawer {
     this.initialTransform = d3.zoomIdentity;
     const zoom = d3
       .zoom()
-      .scaleExtent([0.1, 4]) // Min and max zoom levels
+      .scaleExtent([0.1, 8]) // Min and max zoom levels
       .on("zoom", (event) => {
         this.zoomGroup.attr("transform", event.transform);
         this.currentTransform = event.transform; // Store current transform
@@ -1210,5 +1210,6 @@ export class HierarchicallyClusteredGraphDrawer {
       .duration(250)
       .call(this.d3zoom.transform, d3.zoomIdentity);
   }
+
 
 }
