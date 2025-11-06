@@ -34,38 +34,48 @@ export class HierarchicallyClusteredGraphDrawer {
       this.edgeDisplayMode = e.detail.mode;
       this.redrawAdjacencyCells();
     });
+
+    window.addEventListener("labelSizeChange", (e) => {
+      const size = e.detail.size || 15;
+
+      // Update all text labels in the visualization
+      d3.selectAll(".leaf-label, .edge-label, .cluster-label").attr(
+        "font-size",
+        size
+      );
+    });
   }
 
   hasNumericEdgeLabels() {
     const edges = this.H.getEdges();
     if (edges.length === 0) return false;
-    
+
     let allNumeric = true;
     let minValue = Infinity;
     let maxValue = -Infinity;
-    
+
     for (const edge of edges) {
       const label = edge.getLabel ? edge.getLabel() : "";
       if (label === "" || label === null || label === undefined) {
         allNumeric = false;
         break;
       }
-      
+
       const numValue = parseFloat(label);
       if (isNaN(numValue)) {
         allNumeric = false;
         break;
       }
-      
+
       minValue = Math.min(minValue, numValue);
       maxValue = Math.max(maxValue, numValue);
     }
-    
+
     if (allNumeric) {
       this.edgeLabelStats = {
         isNumeric: true,
         min: minValue,
-        max: maxValue
+        max: maxValue,
       };
       return true;
     } else {
@@ -74,58 +84,63 @@ export class HierarchicallyClusteredGraphDrawer {
     }
   }
 
-
   createNumericColorScale() {
     if (!this.edgeLabelStats || !this.edgeLabelStats.isNumeric) {
       return null;
     }
-    
+
     const { min, max } = this.edgeLabelStats;
-    
+
     // Create color scale: dark green -> green -> orange -> dark orange -> red -> dark red
-    return d3.scaleLinear()
-      .domain([min, min + (max - min) * 0.2, min + (max - min) * 0.4, 
-              min + (max - min) * 0.6, min + (max - min) * 0.8, max])
+    return d3
+      .scaleLinear()
+      .domain([
+        min,
+        min + (max - min) * 0.2,
+        min + (max - min) * 0.4,
+        min + (max - min) * 0.6,
+        min + (max - min) * 0.8,
+        max,
+      ])
       .range([
         "#006400", // dark green
-        "#00FF00", // green  
+        "#00FF00", // green
         "#FFA500", // orange
         "#FF8C00", // dark orange
         "#FF0000", // red
-        "#8B0000"  // dark red
+        "#8B0000", // dark red
       ]);
   }
-
 
   computeEdgeColors() {
     const edges = this.H.getEdges();
     this.edgeColors = new Map();
-    
+
     if (!this.hasNumericEdgeLabels()) {
       // Not numeric, use default colors
-      edges.forEach(edge => {
+      edges.forEach((edge) => {
         const color = "var(--edge-color)";
         this.edgeColors.set(edge, color);
-        edge.edgeColor = color; 
+        edge.edgeColor = color;
       });
       return;
     }
-    
+
     const colorScale = this.createNumericColorScale();
     if (!colorScale) return;
-    
+
     // Compute and store color for each edge
-     edges.forEach(edge => {
+    edges.forEach((edge) => {
       const label = edge.getLabel ? edge.getLabel() : "";
       const numValue = parseFloat(label);
       if (!isNaN(numValue)) {
         const color = colorScale(numValue);
         this.edgeColors.set(edge, color);
-        edge.edgeColor = color; 
+        edge.edgeColor = color;
       } else {
         const color = "var(--edge-color)";
         this.edgeColors.set(edge, color);
-        edge.edgeColor = color; 
+        edge.edgeColor = color;
       }
     });
   }
@@ -399,7 +414,7 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "baseline")
       .attr("font-family", "var(--font-main)")
-      .attr("font-size", "15px")
+      .attr("font-size", window.currentLabelSize || 15)
       .attr("font-weight", "bold")
       .attr("fill", "var(--node-color)")
       .attr("pointer-events", "none")
@@ -415,9 +430,9 @@ export class HierarchicallyClusteredGraphDrawer {
       .append("rect")
       .attr("class", "cluster-hit-area")
       .attr("x", startX - cellSize / 2 - 5)
-      .attr("y", hitAreaTopY - 5) // NEW Y START
+      .attr("y", hitAreaTopY - 15)
       .attr("width", children.length * cellSize + 10)
-      .attr("height", hitAreaHeight + 10) // NEW HEIGHT
+      .attr("height", hitAreaHeight + 10)
       .attr("fill", "transparent")
       .attr("pointer-events", "all")
       .style("cursor", "pointer");
@@ -440,7 +455,7 @@ export class HierarchicallyClusteredGraphDrawer {
           .transition()
           .duration(200)
           .attr("fill", "var(--node-color)")
-          .attr("font-size", "16px");
+          .attr("font-size", window.currentLabelSize + 1 || 16);
       })
       .on("mouseout", () => {
         this.hideClusterStatsPopup();
@@ -456,7 +471,7 @@ export class HierarchicallyClusteredGraphDrawer {
           .transition()
           .duration(200)
           .attr("fill", "var(--node-color)")
-          .attr("font-size", "14px");
+          .attr("font-size", window.currentLabelSize || 15);
       })
       .on("mousemove", (event) => {
         const [x, y] = d3.pointer(event, document.body);
@@ -499,17 +514,54 @@ export class HierarchicallyClusteredGraphDrawer {
         return id;
       });
 
+    // Build adjacencyData and attach the underlying Edge's label/color if any
     const adjacencyData = [];
+    // Pull current edges once for performance
+    const allGraphEdges = this.H.getEdges ? this.H.getEdges() : [];
+
     for (let i = 0; i < children.length; i++) {
       for (let j = i + 1; j < children.length; j++) {
+        const src = children[i];
+        const tgt = children[j];
+
+        // Try to find a concrete Edge object that links these two nodes
+        // Accept either direction (src->tgt or tgt->src)
+        const matchingEdge =
+          allGraphEdges.find(
+            (e) =>
+              (e.getSource &&
+                e.getTarget &&
+                e.getSource() === src &&
+                e.getTarget() === tgt) ||
+              (e.getSource &&
+                e.getTarget &&
+                e.getSource() === tgt &&
+                e.getTarget() === src)
+          ) || null;
+
+        const edgeLabel =
+          matchingEdge && matchingEdge.getLabel ? matchingEdge.getLabel() : "";
+        const edgeColor =
+          matchingEdge &&
+          (matchingEdge.color ||
+            (matchingEdge.getColor && matchingEdge.getColor()))
+            ? matchingEdge.color ||
+              (matchingEdge.getColor && matchingEdge.getColor())
+            : null;
+
         adjacencyData.push({
-          source: children[i],
-          target: children[j],
+          source: src,
+          target: tgt,
           x1: startX + i * cellSize,
           x2: startX + j * cellSize,
+          // attach the matched edge info (may be empty string/null if no single edge exists)
+          edgeLabel,
+          edgeColor,
+          matchingEdge, // optional: keeps a reference if you want it later
         });
       }
     }
+
     const adjCells = clusterContainer
       .append("g")
       .attr("class", "adjacency")
@@ -667,7 +719,6 @@ export class HierarchicallyClusteredGraphDrawer {
       this.nodeOrder = this.H.getVertices();
     }
 
-  
     let currentX = initialOffsetX;
     const leafPositions = new Map(); // Get the filtered leaves (last-level cluster leaves)
 
@@ -833,7 +884,7 @@ export class HierarchicallyClusteredGraphDrawer {
     }
 
     this.computeEdgeColors();
-  
+
     const numVertices = this.nodeOrder.length;
     const clusterLayers = this.H.getClusterLayers(false);
 
@@ -1004,8 +1055,17 @@ export class HierarchicallyClusteredGraphDrawer {
         } Q ${x2} ${y + xDist / 3}, ${x2} ${y}`;
       })
       .attr("stroke", (d) => {
-        const color = this.edgeColors ? this.edgeColors.get(d) || "var(--edge-color)" : "var(--edge-color)";
-        console.log("Drawing edge - Label:", d.getLabel ? d.getLabel() : "", "Color:", color, "Has edgeColor:", d.edgeColor);
+        const color = this.edgeColors
+          ? this.edgeColors.get(d) || "var(--edge-color)"
+          : "var(--edge-color)";
+        console.log(
+          "Drawing edge - Label:",
+          d.getLabel ? d.getLabel() : "",
+          "Color:",
+          color,
+          "Has edgeColor:",
+          d.edgeColor
+        );
         return color;
       })
       .attr("stroke-width", edgeWidth)
@@ -1015,7 +1075,7 @@ export class HierarchicallyClusteredGraphDrawer {
         const edgeColor = this.edgeColors ? this.edgeColors.get(d) : null;
         // Store it on the edge object temporarily for the listener
         d.edgeColor = edgeColor;
-        
+
         listeners.mouseEntersEdge(
           event,
           d,
@@ -1025,7 +1085,9 @@ export class HierarchicallyClusteredGraphDrawer {
         );
       })
 
-      .on("mouseleave", (event) => listeners.mouseLeavesEdge(event, edgeLabelsGroup));
+      .on("mouseleave", (event) =>
+        listeners.mouseLeavesEdge(event, edgeLabelsGroup)
+      );
 
     // --- DRAW LEAF NODES ---
     this.zoomGroup.select("g.linear-nodes").remove();
@@ -1108,7 +1170,7 @@ export class HierarchicallyClusteredGraphDrawer {
         .attr("y", 0)
         .attr("text-anchor", "end")
         .attr("dominant-baseline", "middle")
-        .attr("font-size", "14px")
+        .attr("font-size", window.currentLabelSize || 15)
         .attr("font-family", "var(--font-main)")
         .attr("font-weight", "bold")
         .attr("pointer-events", "none")
@@ -1210,6 +1272,4 @@ export class HierarchicallyClusteredGraphDrawer {
       .duration(250)
       .call(this.d3zoom.transform, d3.zoomIdentity);
   }
-
-
 }

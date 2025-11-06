@@ -161,7 +161,7 @@ export function mouseLeavesNodeCell() {
     .selectAll("path.edge")
     .attr("opacity", 0.8)
     .attr("stroke-width", 3)
-    .attr("stroke", (d) => d.edgeColor || "var(--edge-color)"); 
+    .attr("stroke", (d) => d.edgeColor || "var(--edge-color)");
 
   // 4. Restore all inclusion bands
   d3.select(".cluster-inclusions")
@@ -260,14 +260,21 @@ export function mouseEntersAdjCell() {
     .selectAll("use")
     .attr("fill", "var(--node-color)");
 
-  // f) Highlight the source and target nodes defining the hovered cell (hierarchy view) <--- FIX
+  // f) Highlight the source and target nodes defining the hovered cell (hierarchy view)
   allNodes
     .filter((d) => d === data.source || d === data.target)
     .attr("opacity", 1)
     .selectAll("use")
     .attr("fill", "var(--node-color)");
 
-  // g) Highlight only the relevant edges
+  // g) Highlight all the relevant nodes
+  allNodes
+    .filter((d) => allRelevantNodes.has(d))
+    .attr("opacity", 1)
+    .selectAll("use")
+    .attr("fill", "var(--node-color)");
+
+  // h) Highlight only the relevant edges
   allEdges
     .filter((d) => {
       const dSourceID = d.getSource().getID();
@@ -277,12 +284,227 @@ export function mouseEntersAdjCell() {
         (sourceLeaves.has(dTargetID) && targetLeaves.has(dSourceID))
       );
     })
-    .attr("stroke", (d) => d.edgeColor || "rgb(50, 125, 200)") 
+    .attr("stroke", (d) => d.edgeColor || "rgb(50, 125, 200)")
     .attr("stroke-width", 4)
     .attr("opacity", 1);
+
+  // === SHOW EDGE LABEL ON HOVER (only for bottommost clusters) ===
+  try {
+    // Skip if either source or target cluster still has children
+    const src = data && data.source;
+    const tgt = data && data.target;
+
+    // The cluster object has a .children array if it’s not bottommost
+    const srcHasChildren =
+      src && Array.isArray(src.children) && src.children.length > 0;
+    const tgtHasChildren =
+      tgt && Array.isArray(tgt.children) && tgt.children.length > 0;
+
+    if (srcHasChildren || tgtHasChildren) {
+      // One of the clusters isn’t bottommost — don’t show label
+      return;
+    }
+    try {
+      // 1) Ensure there's an .edge-labels group inside the zoom group (so labels scale/translate with zoom)
+      let edgeLabelsGroup = d3.select(".edge-labels");
+      if (edgeLabelsGroup.empty()) {
+        const zoomGroup = d3.select(".zoom-group");
+        if (!zoomGroup.empty()) {
+          edgeLabelsGroup = zoomGroup.append("g").attr("class", "edge-labels");
+        } else {
+          // fallback: append directly to svg (less ideal, but safe)
+          edgeLabelsGroup = d3
+            .select("svg")
+            .append("g")
+            .attr("class", "edge-labels");
+        }
+      }
+
+      // remove previous hover labels
+      edgeLabelsGroup.selectAll(".adj-hover-label").remove();
+
+      // 2) Compute center point of the hovered element in screen coordinates
+      const cellNode = d3.select(event.currentTarget).node();
+      let screenPoint;
+      try {
+        const bbox = cellNode.getBBox();
+        const cx = bbox.x + bbox.width / 2;
+        const cy = bbox.y + bbox.height / 2;
+
+        // create an SVGPoint in the cell's local coordinates
+        const pt = cellNode.ownerSVGElement.createSVGPoint();
+        pt.x = cx;
+        pt.y = cy;
+
+        // transform that point to screen coordinates using the cell's CTM
+        const cellCTM = cellNode.getScreenCTM();
+        screenPoint = pt.matrixTransform(cellCTM);
+      } catch (err) {
+        // if anything fails, fall back to (0,0) screen coords
+        console.warn("Could not compute screen point for hovered cell:", err);
+        screenPoint = { x: 0, y: 0 };
+      }
+
+      // 3) Convert screen coordinates into the coordinate system of the edgeLabelsGroup
+      //    so x/y we set are local to edgeLabelsGroup (so labels follow .zoom-group transform)
+      let localPoint = { x: 0, y: 0 };
+      try {
+        const groupNode = edgeLabelsGroup.node();
+        const groupCTM = groupNode.getScreenCTM(); // screen transform of the group
+        const inv = groupCTM.inverse(); // inverse to convert screen -> group local
+        const svgPoint = cellNode.ownerSVGElement.createSVGPoint();
+        svgPoint.x = screenPoint.x;
+        svgPoint.y = screenPoint.y;
+        const transformed = svgPoint.matrixTransform(inv);
+        localPoint.x = transformed.x;
+        localPoint.y = transformed.y;
+      } catch (err) {
+        console.warn("Could not convert screen -> group coords:", err);
+        // fallback to using screenPoint directly (may be off when zoomed)
+        localPoint.x = screenPoint.x;
+        localPoint.y = screenPoint.y;
+      }
+
+      // 4) Determine label text
+      const labelText =
+        (data && (data.edgeLabel || data.label)) ||
+        (data && data.data && (data.data.label || data.data.edgeLabel)) ||
+        "";
+
+      // 5) Append the label into the edgeLabelsGroup at the computed local coords
+      if (labelText) {
+        // --- Place the label to the right of the cluster (robust, uses class "cluster") ---
+        try {
+          const OFFSET_X = 0; // gap to the right of the cluster
+          const OFFSET_Y = 0;
+
+          // Ensure edge-labels group exists under zoom-group when possible
+          let edgeLabelsGroup = d3.select(".edge-labels");
+          if (edgeLabelsGroup.empty()) {
+            const zoomGroup = d3.select(".zoom-group");
+            if (!zoomGroup.empty())
+              edgeLabelsGroup = zoomGroup
+                .append("g")
+                .attr("class", "edge-labels");
+            else
+              edgeLabelsGroup = d3
+                .select("svg")
+                .append("g")
+                .attr("class", "edge-labels");
+          }
+
+          // Remove previous hover labels
+          edgeLabelsGroup.selectAll(".adj-hover-label").remove();
+
+          // Fallback coords (cell center), will be replaced if cluster bbox is found
+          let labelX = localPoint.x + OFFSET_X;
+          let labelY = localPoint.y + OFFSET_Y;
+
+          // Walk up from the hovered element to find the nearest ancestor with class "cluster"
+          let domNode = event.currentTarget;
+          while (
+            domNode &&
+            domNode !== document &&
+            !(
+              domNode.classList &&
+              domNode.classList.contains &&
+              domNode.classList.contains("cluster")
+            )
+          ) {
+            domNode = domNode.parentNode;
+          }
+
+          if (domNode && domNode.nodeType === 1) {
+            try {
+              const clusterNode = domNode; // <g class="cluster"> element
+              const svg = clusterNode.ownerSVGElement;
+              if (svg && clusterNode.getBBox && clusterNode.getScreenCTM) {
+                // Get bbox in cluster-local coordinates
+                const bbox = clusterNode.getBBox();
+
+                // Right-edge midpoint in cluster local coordinates
+                const localRightX = bbox.x + bbox.width - bbox.width / 4 + 5;
+                const localRightY = bbox.y + bbox.height / 2;
+
+                // Create an SVGPoint and transform it to screen coordinates via clusterNode CTM
+                const pt = svg.createSVGPoint();
+                pt.x = localRightX;
+                pt.y = localRightY;
+                const screenPt = pt.matrixTransform(clusterNode.getScreenCTM());
+
+                // Now transform screen coordinates into edgeLabelsGroup local coordinates
+                const groupNode = edgeLabelsGroup.node();
+                if (groupNode && groupNode.getScreenCTM) {
+                  const inv = groupNode.getScreenCTM().inverse();
+                  const svgPt = svg.createSVGPoint();
+                  svgPt.x = screenPt.x;
+                  svgPt.y = screenPt.y;
+                  const localForGroup = svgPt.matrixTransform(inv);
+
+                  // Anchor label a bit to the right of the cluster right edge
+                  labelX = localForGroup.x + OFFSET_X;
+                  labelY = localForGroup.y + OFFSET_Y;
+                }
+              }
+            } catch (err) {
+              console.warn(
+                "Could not compute cluster right-edge position, falling back to cell center:",
+                err
+              );
+            }
+          }
+
+          // Compute label text (your existing logic should have set labelText)
+          const textToShow = labelText || "";
+
+          if (textToShow) {
+            edgeLabelsGroup
+              .append("text")
+              .attr("class", "edge-label adj-hover-label")
+              .attr("x", labelX)
+              .attr("y", labelY)
+              .attr("text-anchor", "start")
+              .attr("dominant-baseline", "middle")
+              .attr("font-family", "var(--font-main)")
+              .attr("font-weight", "bold")
+              .attr("font-size", window.currentLabelSize || 15)
+              .attr(
+                "fill",
+                data.edgeColor ||
+                  (data.matchingEdge &&
+                    (data.matchingEdge.color ||
+                      (data.matchingEdge.getColor &&
+                        data.matchingEdge.getColor()))) ||
+                  "var(--edge-color)"
+              )
+              .attr("pointer-events", "none")
+              .style("opacity", 0)
+              .text(textToShow)
+              .transition()
+              .duration(120)
+              .style("opacity", 0.9);
+          }
+        } catch (err) {
+          console.warn("mouseEntersAdjCell: label placement failed", err);
+        }
+      }
+    } catch (err) {
+      console.warn("mouseEntersAdjCell: could not show label:", err);
+    }
+  } catch (err) {
+    console.warn("mouseEntersAdjCell: could not show label:", err);
+  }
 }
 
 export function mouseLeavesAdjCell() {
+  // === REMOVE HOVER LABEL ===
+  d3.select(".edge-labels")
+    .selectAll(".adj-hover-label")
+    .transition()
+    .duration(100)
+    .style("opacity", 0)
+    .remove();
+
   // 1. Restore all adjacency cells
   d3.selectAll(".adjacency g.adjacency-cell")
     .attr("opacity", 1)
@@ -291,7 +513,7 @@ export function mouseLeavesAdjCell() {
       d3.select(this).select("use").attr("fill", cellColor);
     });
 
-  // 2. Restore ALL nodes (cluster and leaf) 
+  // 2. Restore ALL nodes (cluster and leaf)
   d3.selectAll("g.node-cell")
     .attr("opacity", 1)
     .selectAll("use")
@@ -416,7 +638,7 @@ export function mouseEntersEdge(
         .attr("text-anchor", "middle")
         .attr("dominant-baseline", "middle")
         .attr("font-family", "var(--font-main)")
-        .attr("font-size", "12px")
+        .attr("font-size", window.currentLabelSize || 15)
         .attr("font-weight", "bold")
         .attr("fill", data.edgeColor || "var(--edge-color)")
         .attr("pointer-events", "none")
