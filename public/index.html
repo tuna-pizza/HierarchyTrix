@@ -366,6 +366,24 @@
     <fieldset id="control-panel">
       <legend>Drawing styles</legend>
       <div
+        id="label-size-control"
+        style="margin-top: 10px; margin-bottom: 10px"
+      >
+        <a>Label Size:</a>
+        <div class="slider-container">
+          <input
+            type="range"
+            id="label-size-slider"
+            min="12"
+            max="30"
+            value="15"
+            step="1"
+            title="Adjust label font size"
+          />
+          <span id="label-size-value" style="font-weight: normal">15px</span>
+        </div>
+      </div>
+      <div
         id="edges-styles"
         style="
           text-decoration: none;
@@ -376,14 +394,20 @@
           color: var(--color-secondary);
         "
       >
-        <a> Edges: </a>
-        <button
-          id="edge-display-toggle"
-          title="Toggle Edge Display Mode"
-          style="margin-top: 3px"
-        >
-          Show Absolute
-        </button>
+        <div class="toggle-container">
+          <a>Edge-cells weight:</a>
+          <br />
+          <label class="toggle-switch" title="Toggle Edge Display Mode">
+            <span class="toggle-label-left" style="font-weight: normal"
+              >Ratio</span
+            >
+            <input type="checkbox" id="edge-display-toggle" />
+            <span class="slider"></span>
+            <span class="toggle-label-right" style="font-weight: normal"
+              >Absolute</span
+            >
+          </label>
+        </div>
       </div>
     </fieldset>
 
@@ -809,17 +833,14 @@
         const closeStatsButton = document.getElementById("close-stats");
 
         // Edge display mode toggle
-        const edgeDisplayButton = document.getElementById(
+        const edgeDisplayToggle = document.getElementById(
           "edge-display-toggle"
         );
         let edgeDisplayMode = "ratio";
 
-        if (edgeDisplayButton) {
-          edgeDisplayButton.addEventListener("click", () => {
-            edgeDisplayMode =
-              edgeDisplayMode === "ratio" ? "absolute" : "ratio";
-            edgeDisplayButton.textContent =
-              edgeDisplayMode === "ratio" ? "Show Absolute" : "Show Ratio";
+        if (edgeDisplayToggle) {
+          edgeDisplayToggle.addEventListener("change", () => {
+            edgeDisplayMode = edgeDisplayToggle.checked ? "absolute" : "ratio";
 
             window.dispatchEvent(
               new CustomEvent("edgeDisplayModeChange", {
@@ -1219,6 +1240,26 @@
 
         // Expose the current theme to the module script
         window.currentAppTheme = currentTheme;
+
+        // --- LABEL SIZE SLIDER ---
+        const labelSizeSlider = document.getElementById("label-size-slider");
+        const labelSizeValue = document.getElementById("label-size-value");
+
+        // default size
+        window.currentLabelSize = parseInt(labelSizeSlider.value, 10);
+
+        if (labelSizeSlider && labelSizeValue) {
+          labelSizeSlider.addEventListener("input", () => {
+            const newSize = parseInt(labelSizeSlider.value, 10);
+            labelSizeValue.textContent = `${newSize}px`;
+            window.currentLabelSize = newSize;
+
+            // Dispatch event so drawer can react dynamically
+            window.dispatchEvent(
+              new CustomEvent("labelSizeChange", { detail: { size: newSize } })
+            );
+          });
+        }
       }); // <-- End of DOMContentLoaded listener
     </script>
 

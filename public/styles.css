@@ -113,7 +113,6 @@ h1 {
 
 .leaf-label {
   fill: var(--node-color);
-  font-size: 12px !important;
   font-family: var(--font-main) !important;
   text-anchor: end !important;
   dominant-baseline: hanging !important;
@@ -342,7 +341,6 @@ body {
 
 .edge-label {
   font-family: var(--font-main);
-  font-size: 12px;
   font-weight: bold;
   /*fill: var(--edge-color);*/
   pointer-events: none;
@@ -380,12 +378,13 @@ fieldset {
   padding: 0.2em;
   border-color: var(--color-secondary);
   border-radius: 6px;
+  font-weight: bold;
 }
 
 legend {
   font-family: var(--font-main);
   font-size: 0.9rem;
-  font-weight: 100;
+  font-weight: bold;
   color: var(--color-secondary);
 }
 
@@ -440,4 +439,102 @@ legend {
   /* Keep a slight darker shade for hover in default mode */
   background: var(--color-secondary);
   filter: brightness(80%);
+}
+
+/* --- Rounded Toggle Switch: Ratio left, Absolute right --- */
+.toggle-container {
+  margin-top: 6px;
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-family: var(--font-main);
+  font-size: 0.9rem;
+  color: var(--color-secondary);
+  user-select: none;
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+/* --- Vibrant slider --- */
+.toggle-switch .slider {
+  position: relative;
+  width: 36px;
+  height: 18px;
+  background-color: var(--color-secondary);
+  border-radius: 18px;
+  transition: background-color 0.3s;
+}
+
+/* Move the inner circle smoothly */
+.toggle-switch .slider::before {
+  content: "";
+  position: absolute;
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  top: 2px;
+  background-color: var(--color-text-button);
+  border-radius: 50%;
+  transition: transform 0.3s;
+}
+
+/* Move knob to right when checked */
+.toggle-switch input:checked + .slider::before {
+  transform: translateX(18px);
+}
+
+/* Keep the same bright color for both states */
+.toggle-switch input:checked + .slider {
+  background-color: var(--color-secondary);
+}
+
+/* Labels always fully visible */
+.toggle-label-left,
+.toggle-label-right {
+  font-weight: bold;
+  color: var(--color-secondary);
+  opacity: 1;
+}
+
+/* --- Label Size Slider --- */
+#label-size-control {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-main);
+  font-size: 0.9rem;
+  color: var(--color-secondary);
+}
+
+#label-size-control a {
+  margin-bottom: 4px;
+}
+
+.slider-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#label-size-slider {
+  width: 120px;
+  accent-color: var(--color-secondary);
+  cursor: pointer;
+}
+
+#label-size-value {
+  min-width: 40px;
+  color: var(--color-secondary);
 }
