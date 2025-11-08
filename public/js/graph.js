@@ -137,7 +137,7 @@ export class HierarchicallyClusteredGraph {
       return;
     }
 
-    const nodeMap = new Map(this.nodes.map(node => [node.getID(), node]));
+    const nodeMap = new Map(this.nodes.map((node) => [node.getID(), node]));
     const reorderedNodes = [];
 
     for (const id of order) {
@@ -178,12 +178,12 @@ export class HierarchicallyClusteredGraph {
             type = NodeType.Cluster;
           }
           let vertex = new Node(node.id, null, type);
-          
+
           // ✅ STORE LABEL IF PROVIDED
           if (node.label) {
             vertex.customLabel = node.label;
           }
-          
+
           nodeMap.set(node.id, vertex);
           this.nodes.push(vertex);
           queue.push(node);
@@ -201,12 +201,12 @@ export class HierarchicallyClusteredGraph {
               type = NodeType.Cluster;
             }
             let vertex = new Node(node.id, nodeMap.get(node.parent), type);
-            
+
             // ✅ STORE LABEL IF PROVIDED
             if (node.label) {
               vertex.customLabel = node.label;
             }
-            
+
             nodeMap.set(node.id, vertex);
             this.nodes.push(vertex);
             queue.push(node);
@@ -216,9 +216,14 @@ export class HierarchicallyClusteredGraph {
 
       for (const edge of data.edges) {
         const edgeLabel = edge.label || null;
-        const edgeColor = edge.color || null;
+        const edgeWeight = edge.weight || null;
         this.edges.push(
-          new Edge(nodeMap.get(edge.source), nodeMap.get(edge.target), edgeLabel, edgeColor)
+          new Edge(
+            nodeMap.get(edge.source),
+            nodeMap.get(edge.target),
+            edgeLabel,
+            edgeWeight
+          )
         );
       }
     } catch (err) {
@@ -233,7 +238,7 @@ export class Node {
     this.parentNode = parentNode;
     this.type = type;
     this.children = [];
-    this.customLabel = null; 
+    this.customLabel = null;
     if (parentNode != null) {
       parentNode.addChild(this);
     }
@@ -288,11 +293,11 @@ export class Node {
 }
 
 export class Edge {
-  constructor(source, target, label = null, color = null) {
+  constructor(source, target, label = null, weight = null) {
     this.source = source;
     this.target = target;
     this.label = label;
-    this.color = color;
+    this.weight = weight;
   }
   getSource() {
     return this.source;
@@ -302,10 +307,10 @@ export class Edge {
     return this.target;
   }
 
-    getLabel() {
+  getLabel() {
     return this.label;
   }
-  getColor() {
-    return this.color;
+  getWeight() {
+    return this.weight;
   }
 }

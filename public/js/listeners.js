@@ -159,7 +159,7 @@ export function mouseLeavesNodeCell() {
   // 3. Restore all linear edges
   d3.select(".linear-edges")
     .selectAll("path.edge")
-    .attr("opacity", 0.8)
+    .attr("opacity", 1)
     .attr("stroke-width", 3)
     .attr("stroke", (d) => d.edgeColor || "var(--edge-color)");
 
@@ -468,15 +468,7 @@ export function mouseEntersAdjCell() {
               .attr("font-family", "var(--font-main)")
               .attr("font-weight", "bold")
               .attr("font-size", window.currentLabelSize || 15)
-              .attr(
-                "fill",
-                data.edgeColor ||
-                  (data.matchingEdge &&
-                    (data.matchingEdge.color ||
-                      (data.matchingEdge.getColor &&
-                        data.matchingEdge.getColor()))) ||
-                  "var(--edge-color)"
-              )
+              .attr("fill", "var(--edge-color)")
               .attr("pointer-events", "none")
               .style("opacity", 0)
               .text(textToShow)
@@ -522,7 +514,7 @@ export function mouseLeavesAdjCell() {
   // 3. Restore all linear edges
   d3.select(".linear-edges")
     .selectAll("path.edge")
-    .attr("opacity", 0.8)
+    .attr("opacity", 1)
     .attr("stroke", (d) => d.edgeColor || "var(--edge-color)")
     .attr("stroke-width", 3);
 
@@ -634,13 +626,13 @@ export function mouseEntersEdge(
         .append("text")
         .attr("class", "edge-label")
         .attr("x", midX)
-        .attr("y", midY - 12)
+        .attr("y", midY + 5)
         .attr("text-anchor", "middle")
-        .attr("dominant-baseline", "middle")
+        .attr("dominant-baseline", "hanging")
         .attr("font-family", "var(--font-main)")
         .attr("font-size", window.currentLabelSize || 15)
         .attr("font-weight", "bold")
-        .attr("fill", data.edgeColor || "var(--edge-color)")
+        .attr("fill", "var(--edge-color)") //data.edgeColor || "var(--edge-color)")
         .attr("pointer-events", "none")
         .style("user-select", "none")
         .style("opacity", 1)
@@ -667,7 +659,7 @@ export function mouseLeavesEdge(event, edgeLabelsGroup) {
   // 3. Restore all linear edges
   d3.select(".linear-edges")
     .selectAll("path.edge")
-    .attr("opacity", 0.8)
+    .attr("opacity", 1)
     .attr("stroke", (d) => d.edgeColor || "var(--edge-color)")
     .attr("stroke-width", 3);
 

@@ -42,7 +42,7 @@ async function getOrder(instance, solver = "input") {
     const data = await response.json();
     return data.order;
   } catch (err) {
-    console.error("❌ Failed to fetch order:", err);
+    console.error("Failed to fetch order:", err);
     return null;
   }
 }
@@ -65,7 +65,7 @@ async function uploadGraph(file) {
     const result = await response.json();
     showSuccessModal(result.filename.replace(".json", ""));
   } catch (error) {
-    console.error("❌ Upload failed:", error);
+    console.error("Upload failed:", error);
     alert("Failed to upload graph. Check console for details.");
   }
 }
@@ -131,13 +131,13 @@ async function main() {
       const orderList = Array.isArray(orderString)
         ? orderString
         : orderString.trim().split(/\s+/);
-      console.log(`✅ Applying ${solver} order:`, orderList);
+      console.log(`Applying ${solver} order:`, orderList);
       applyNodeOrder(H, orderList); // <-- fixed
     } else {
-      console.warn(`⚠️ No ${solver} order received from server.`);
+      console.warn(`No ${solver} order received from server.`);
     }
   } else {
-    console.log("✅ Using Input Order (default order from file).");
+    console.log("Using Input Order (default order from file).");
   }
 
   // 3. Initialize Drawer

@@ -55,13 +55,17 @@ export class HierarchicallyClusteredGraphDrawer {
     let maxValue = -Infinity;
 
     for (const edge of edges) {
-      const label = edge.getLabel ? edge.getLabel() : "";
-      if (label === "" || label === null || label === undefined) {
+      const attributeValue = edge.getWeight ? edge.getWeight() : "";
+      if (
+        attributeValue === "" ||
+        attributeValue === null ||
+        attributeValue === undefined
+      ) {
         allNumeric = false;
         break;
       }
 
-      const numValue = parseFloat(label);
+      const numValue = parseFloat(attributeValue); // Now parse the weight
       if (isNaN(numValue)) {
         allNumeric = false;
         break;
@@ -91,25 +95,39 @@ export class HierarchicallyClusteredGraphDrawer {
 
     const { min, max } = this.edgeLabelStats;
 
-    // Create color scale: dark green -> green -> orange -> dark orange -> red -> dark red
+    // The scale will vary the Lightness (L) component, keeping Hue (H=210) and Saturation (S=60%) constant.
+    const hue = 210;
+    const saturation = 60;
+
+    // Define the range: from 90% Lightness (very light blue) to 49% Lightness (the requested dark blue).
+    const lightColor = `hsl(${hue}, ${saturation}%, 90%)`; // Min value color
+    const darkColor = `hsl(${hue}, ${saturation}%, 49%)`; // Max value color (matches edge-color)
+
+    // The scale will go from min value (light blue) to max value (dark blue)
     return d3
       .scaleLinear()
-      .domain([
-        min,
-        min + (max - min) * 0.2,
-        min + (max - min) * 0.4,
-        min + (max - min) * 0.6,
-        min + (max - min) * 0.8,
-        max,
-      ])
-      .range([
-        "#006400", // dark green
-        "#00FF00", // green
-        "#FFA500", // orange
-        "#FF8C00", // dark orange
-        "#FF0000", // red
-        "#8B0000", // dark red
-      ]);
+      .domain([min, max]) // Simple two-point domain
+      .range([lightColor, darkColor]); // Simple two-point range
+
+    // // Create color scale: dark green -> green -> orange -> dark orange -> red -> dark red
+    // return d3
+    //   .scaleLinear()
+    //   .domain([
+    //     min,
+    //     min + (max - min) * 0.2,
+    //     min + (max - min) * 0.4,
+    //     min + (max - min) * 0.6,
+    //     min + (max - min) * 0.8,
+    //     max,
+    //   ])
+    //   .range([
+    //     "#006400", // dark green
+    //     "#00FF00", // green
+    //     "#FFA500", // orange
+    //     "#FF8C00", // dark orange
+    //     "#FF0000", // red
+    //     "#8B0000", // dark red
+    //   ]);
   }
 
   computeEdgeColors() {
@@ -131,8 +149,8 @@ export class HierarchicallyClusteredGraphDrawer {
 
     // Compute and store color for each edge
     edges.forEach((edge) => {
-      const label = edge.getLabel ? edge.getLabel() : "";
-      const numValue = parseFloat(label);
+      const attributeValue = edge.getWeight ? edge.getWeight() : "";
+      const numValue = parseFloat(attributeValue); // Now parse the weight
       if (!isNaN(numValue)) {
         const color = colorScale(numValue);
         this.edgeColors.set(edge, color);
@@ -379,7 +397,8 @@ export class HierarchicallyClusteredGraphDrawer {
     yCoordMap,
     widthMap,
     xCoordReferenceMap,
-    yCoordReferenceMap
+    yCoordReferenceMap,
+    isLastLevel = false
   ) {
     const children = [...cluster.getChildren()].sort(
       (a, b) => xCoordMap.get(a) - xCoordMap.get(b)
@@ -621,9 +640,19 @@ export class HierarchicallyClusteredGraphDrawer {
           .range([resolvedAdjColorLow, resolvedAdjColorHigh]);
       }
 
-      let cellColor =
-        colorValue === 0 ? "rgb(255,255,255)" : colorScale(colorValue);
+      d.isLastLevel = isLastLevel;
+      d.isWeightColored = isLastLevel && d.matchingEdge;
 
+      let cellColor;
+
+      if (d.isWeightColored) {
+        // Use the color pre-calculated from edge weight (HSL scale)
+        cellColor = d.matchingEdge.edgeColor;
+      } else {
+        // Existing ratio/absolute coloring logic for other layers
+        cellColor =
+          colorValue === 0 ? "rgb(255,255,255)" : colorScale(colorValue);
+      }
       adjCell
         .append("polygon")
         .attr(
@@ -640,17 +669,60 @@ export class HierarchicallyClusteredGraphDrawer {
       adjCell
         .append("text")
         .attr("y", textOffset)
-        .attr("fill", "black")
+        .attr("fill", (d) => {
+          // If it's the bottommost layer, make the text transparent/invisible
+          if (d.isLastLevel) {
+            return "transparent";
+          }
+          // Otherwise, use the node color (as previously requested)
+          return nodeColor;
+        })
         .attr("font-size", smallTextSize)
         .attr("font-family", "var(--font-main)")
         .attr("text-anchor", "middle")
         .attr("alignment-baseline", "middle")
         .attr("pointer-events", "none")
-        .text(
-          colorByAbsolute
-            ? `${actualEdges}`
-            : `${actualEdges}/${potentialEdges}`
-        );
+        .text((d) => {
+          // Access the flag indicating if the graph has numeric edge weights
+          const isNumeric =
+            this.edgeLabelStats && this.edgeLabelStats.isNumeric;
+
+          // Case 1: Bottom-level cell
+          if (d.isLastLevel) {
+            // Sub-Case 1a: Graph HAS numeric weights (use existing weight display logic)
+            if (isNumeric) {
+              const weight = d.matchingEdge
+                ? d.matchingEdge.getWeight()
+                : undefined;
+
+              // Display "" for missing/null/numeric weight
+              if (weight === undefined || weight === null || weight === 0) {
+                return "";
+              }
+
+              // Format all other numeric weights to one decimal place
+              return d3.format(".1f")(weight);
+            }
+
+            // Sub-Case 1b: Graph DOES NOT have numeric weights (User's request: Adjacency Matrix Binary 1/0)
+            else {
+              // Display "1" if an edge exists (d.matchingEdge is truthy), "0" otherwise.
+              return "";
+            }
+          }
+
+          // Case 2: Higher-level matrix cell (Fallback for all higher layers)
+          else {
+            // Fallback to ratio/absolute for higher layers
+            const actualEdges = d.actualEdges;
+            const potentialEdges = d.potentialEdges;
+            const colorByAbsolute = this.edgeDisplayMode === "absolute";
+
+            return colorByAbsolute
+              ? `${actualEdges}`
+              : `${actualEdges}/${potentialEdges}`;
+          }
+        });
 
       adjCells
         .on("mouseover", listeners.mouseEntersAdjCell)
@@ -660,6 +732,10 @@ export class HierarchicallyClusteredGraphDrawer {
 
   redrawAdjacencyCells() {
     d3.selectAll(".adjacency-cell").each((d, i, nodes) => {
+      if (d.isLastLevel) {
+        return;
+      }
+
       const adjCell = d3.select(nodes[i]);
       const actualEdges = d.actualEdges;
       const potentialEdges = d.potentialEdges;
@@ -874,9 +950,6 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("fill", treecolor); //
   }
 
-  // ----------------------------------------------------------------------
-  // CORRECTED: draw function
-  // ----------------------------------------------------------------------
   draw() {
     // Determine the necessary dimensions
     if (this.nodeOrder === null) {
@@ -945,6 +1018,7 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("class", "clusters-container");
 
     for (let i = depth - 1; i >= 0; i--) {
+      const isLastLevel = i === depth - 1;
       for (const cluster of clusterLayers.at(i)) {
         const children = cluster.getChildren();
         // Calculate cluster center X based on children's spaced-out X coordinates
@@ -960,7 +1034,8 @@ export class HierarchicallyClusteredGraphDrawer {
           yCoordMap,
           widthMap,
           xCoordReferenceMap,
-          yCoordReferenceMap
+          yCoordReferenceMap,
+          isLastLevel
         );
       }
     }
@@ -1070,6 +1145,7 @@ export class HierarchicallyClusteredGraphDrawer {
       })
       .attr("stroke-width", edgeWidth)
       .attr("fill", "none")
+      .attr("opacity", 1)
       .on("mouseover", (event, d) => {
         // Get the computed color for this edge
         const edgeColor = this.edgeColors ? this.edgeColors.get(d) : null;
@@ -1233,6 +1309,8 @@ export class HierarchicallyClusteredGraphDrawer {
 
     // Setup zoom behavior
     this.setupZoomBehavior();
+
+    this.drawEdgeColorLegend();
   }
 
   // === ZOOM METHODS ===
@@ -1271,5 +1349,103 @@ export class HierarchicallyClusteredGraphDrawer {
       .transition()
       .duration(250)
       .call(this.d3zoom.transform, d3.zoomIdentity);
+  }
+
+  drawEdgeColorLegend() {
+    const container = d3.select("#edge-legend-container");
+    container.html(""); // Clear previous content on redraw
+
+    if (!this.edgeLabelStats || !this.edgeLabelStats.isNumeric) {
+      return; // No legend if data is not numeric
+    }
+
+    const { min, max } = this.edgeLabelStats;
+
+    // --- Legend Constants ---
+    const containerWidth = container.node().clientWidth;
+    const barWidth = containerWidth;
+    const barHeight = 15;
+    const formatValue = d3.format(".1f");
+    // HSL components (matching your requested colorscale)
+    const hue = 210;
+    const saturation = 60;
+    const gradientId = "edge-weight-gradient-html"; // Unique ID for the HTML-based SVG gradient
+
+    // Define colors
+    const lightColor = `hsl(${hue}, ${saturation}%, 90%)`;
+    const darkColor = `hsl(${hue}, ${saturation}%, 49%)`;
+
+    // --- 1. Title ---
+    container
+      .append("div")
+      .style("font-size", "var(--font-size)")
+      .style("margin-bottom", "5px")
+      .style("color", "var(--color-secondary)")
+      .style("font-family", "var(--font-main)")
+      .text("Edge weight:");
+
+    // --- 2. Create an SVG inside the HTML container for the color bar and gradient ---
+    const svg = container
+      .append("svg")
+      .attr("width", barWidth)
+      .attr("height", barHeight);
+
+    const defs = svg.append("defs");
+
+    // Define the linear gradient
+    const linearGradient = defs
+      .append("linearGradient")
+      .attr("id", gradientId)
+      .attr("x1", "0%")
+      .attr("y1", "0%")
+      .attr("x2", "100%")
+      .attr("y2", "0%");
+
+    // Color stops
+    linearGradient
+      .append("stop")
+      .attr("offset", "0%")
+      .attr("stop-color", lightColor);
+
+    linearGradient
+      .append("stop")
+      .attr("offset", "100%")
+      .attr("stop-color", darkColor);
+
+    // Color Bar Rectangle
+    svg
+      .append("rect")
+      .attr("x", 0)
+      .attr("y", 0)
+      .attr("width", barWidth)
+      .attr("height", barHeight)
+      .style("fill", `url(#${gradientId})`)
+      .style("stroke", "var(--color-text-header)")
+      .style("stroke-width", 1);
+
+    // --- 3. Add Min/Max labels below the bar using HTML/D3 ---
+
+    // Min/Max values container
+    const valueContainer = container
+      .append("div")
+      .style("display", "flex")
+      .style("justify-content", "space-between")
+      .style("width", `${barWidth}px`)
+      .style("font-size", "0.9rem")
+      .style("font-weight", "normal")
+      .style("color", "var(--color-secondary)")
+      .style("font-family", "var(--font-main)");
+
+    // Min Label (Left)
+    valueContainer
+      .append("span")
+      .style("text-align", "left")
+      .text(formatValue(min));
+
+    // Max Label (Right)
+    valueContainer
+      .append("span")
+      .style("text-align", "right")
+      .text(formatValue(max));
   }
 }
