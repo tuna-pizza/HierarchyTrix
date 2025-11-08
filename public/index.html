@@ -32,17 +32,20 @@
       </div>
 
       <div style="display: flex; gap: 15px; align-items: center">
-        <div id="zoom-controls">
+        <fieldset id="zoom-controls">
+          <span style="font-size: 0.9rem; font-weight: normal; margin-left: 2px"
+            >Zoom:</span
+          >
           <button id="zoom-out-button" class="zoom-button" title="Zoom Out">
             -
           </button>
           <button id="zoom-reset-button" class="zoom-button" title="Reset Zoom">
-            Reset
+            Full view
           </button>
           <button id="zoom-in-button" class="zoom-button" title="Zoom In">
             +
           </button>
-        </div>
+        </fieldset>
 
         <button id="uploadButton">Upload JSON</button>
         <input
@@ -365,11 +368,8 @@
 
     <fieldset id="control-panel">
       <legend>Drawing styles</legend>
-      <div
-        id="label-size-control"
-        style="margin-top: 10px; margin-bottom: 10px"
-      >
-        <a>Label Size:</a>
+      <div id="label-size-control" style="margin-bottom: 12px">
+        <a>Label size:</a>
         <div class="slider-container">
           <input
             type="range"
@@ -394,8 +394,8 @@
           color: var(--color-secondary);
         "
       >
-        <div class="toggle-container">
-          <a>Edge-cells weight:</a>
+        <div class="toggle-container" style="margin-bottom: 12px">
+          <a>Edge-cells value:</a>
           <br />
           <label class="toggle-switch" title="Toggle Edge Display Mode">
             <span class="toggle-label-left" style="font-weight: normal"
@@ -408,6 +408,15 @@
             >
           </label>
         </div>
+        <div
+          id="edge-legend-container"
+          style="
+            margin-top: 0px;
+            /* margin-bottom: 12px; */
+            font-family: var(--font-main);
+            font-size: 0.9rem;
+          "
+        ></div>
       </div>
     </fieldset>
 
@@ -979,11 +988,11 @@
             const data = await res.json();
 
             if (!res.ok || !data.success) {
-              alert("❌ Upload failed: " + (data.message || "Unknown error"));
+              alert("Upload failed: " + (data.message || "Unknown error"));
             } else {
               const instanceId = data.filename.replace(".json", "");
 
-              // CRITICAL CHECK: If modal elements are still null, alert and stop.
+              // If modal elements are still null, alert and stop.
               if (!modal || !instanceIdInput || !goButton || !stayButton) {
                 alert(
                   "Configuration Error: The custom modal elements were not found in the HTML."
@@ -1011,7 +1020,7 @@
                 modal.style.display = "none";
                 let newUrl = `?instance=${instanceId}`;
 
-                // ✅ FIX: Use 'method' parameter instead of 'solver'
+                // Use 'method' parameter
                 if (selectedSolver.toLowerCase() === "input") {
                   newUrl += "&method=input";
                 } else if (selectedSolver.toLowerCase() === "ilp") {
@@ -1038,7 +1047,7 @@
               // --- END CUSTOM MODAL LOGIC ---
             }
           } catch (err) {
-            alert("⚠️ Network or server error: " + err.message);
+            alert("Network or server error: " + err.message);
           }
 
           // Reset input, falls gleiche Datei nochmal gewählt wird
@@ -1289,10 +1298,8 @@
           box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
         "
       >
-        <h2 style="margin-top: 0">✅ Success!</h2>
-        <p style="margin-bottom: 20px">
-          Your new graph instance is ready. Copy the ID below:
-        </p>
+        <h2 style="margin-top: 0">Success!</h2>
+        <p style="margin-bottom: 20px">Your new graph instance is ready.</p>
 
         <input
           type="text"
