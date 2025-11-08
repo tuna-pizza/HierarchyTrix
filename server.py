@@ -111,7 +111,7 @@ def generate_order(instance, method="ilp"):
     """
     graph_file = os.path.join(GRAPH_DIR, f"{instance}.json")
     if not os.path.exists(graph_file):
-        print(f"❌ Graph file not found: {graph_file}")
+        print(f"Graph file not found: {graph_file}")
         return ""
 
     try:
@@ -123,50 +123,50 @@ def generate_order(instance, method="ilp"):
                 layout = solve_layout_for_graph_heuristic(G)
 
                 if not layout:
-                    print("❌ Heuristic solver returned empty layout")
+                    print("Heuristic solver returned empty layout")
                     return []
 
                 return " ".join(layout)
             except Exception as e:
-                print(f"❌ Error in heuristic solver: {e}")
+                print(f"Error in heuristic solver: {e}")
                 import traceback
                 traceback.print_exc()
                 return []
 
         elif method == "hybrid":
-            print("🎯 EXECUTING HYBRID SOLVER")
+            print("EXECUTING HYBRID SOLVER")
             try:
-                print(f"🔀 Running TRUE HYBRID solver for {instance}")
+                print(f"Running TRUE HYBRID solver for {instance}")
                 hybrid_order = solve_layout_for_graph_hybrid(graph_file)
                 
                 if hybrid_order:
                     order_string = " ".join(hybrid_order)
-                    print(f"✅ TRUE HYBRID order generated: {len(hybrid_order)} nodes")
+                    print(f"TRUE HYBRID order generated: {len(hybrid_order)} nodes")
                     return order_string
                 else:
-                    print("❌ TRUE HYBRID solver failed, falling back to heuristic")
+                    print("TRUE HYBRID solver failed, falling back to heuristic")
                     return generate_order(instance, "heuristic")
                     
             except Exception as e:
-                print(f"❌ Error in TRUE hybrid solver: {e}")
+                print(f"Error in TRUE hybrid solver: {e}")
                 import traceback
                 traceback.print_exc()
                 return generate_order(instance, "heuristic")
 
         else:  # default ILP
-            print("🎯 EXECUTING ILP SOLVER")
-            print(f"🔧 Running ILP solver for {instance}")
+            print("EXECUTING ILP SOLVER")
+            print(f"Running ILP solver for {instance}")
             leaf_order = solve_layout_for_graph(graph_file)
             if not leaf_order:
-                print("❌ ILP solver returned empty order")
+                print("ILP solver returned empty order")
                 return ""
 
             order_string = " ".join(leaf_order)
-            print(f"✅ ILP order generated: {len(leaf_order)} nodes")
+            print(f"ILP order generated: {len(leaf_order)} nodes")
             return order_string
 
     except Exception as e:
-        print(f"❌ Error in {method} solver: {e}")
+        print(f"Error in {method} solver: {e}")
         import traceback
         traceback.print_exc()
         return ""
@@ -203,12 +203,12 @@ def get_graph(instance):
 @app.route("/api/order/<instance>")
 def get_order(instance):
     # Retrieve the method from query parameters, defaulting to 'ilp' (if method is absent)
-    method = request.args.get("method") or request.args.get("solver") or "ilp"
+    method = request.args.get("method") or request.args.get("solver") or "input"
     method = method.lower()
     
     print(f"🔍 DEBUG: Requested method = '{method}'")
      
-    # --- FIX: Handle 'input' method explicitly by reading the graph file ---
+    # --- Handle 'input' method explicitly by reading the graph file ---
     if method == "input":
         graph_file = os.path.join(GRAPH_DIR, f"{instance}.json")
         try:
@@ -224,11 +224,11 @@ def get_order(instance):
                  # Fallback if 'type' is missing or inconsistent, assume all nodes are ordered.
                  node_order = [str(n['id']) for n in data['nodes']]
                  order_string = " ".join(node_order)
-                 print("⚠️ Warning: No nodes with type 'leaf' found. Using all node IDs from input order.")
+                 print("Warning: No nodes with type 'leaf' found. Using all node IDs from input order.")
             elif not node_order:
                 return jsonify({"error": "Failed to get input order: Graph file is empty or invalid."}), 500
 
-            print(f"✅ Input order generated: {len(node_order)} nodes")
+            print(f"Input order generated: {len(node_order)} nodes")
             # 3. Return the input order
             return jsonify({"order": order_string, "method": method})
             
@@ -283,41 +283,28 @@ def upload_graph():
         return jsonify({"success": False, "message": "Only .json files are allowed"}), 400
 
     try:
+        # Read file content and decode it
         file_content = file.read().decode("utf-8")
+        # Parse the JSON data
         data = json.loads(file_content)
     except Exception as e:
         return jsonify({"success": False, "message": "Invalid JSON format", "details": str(e)}), 400
 
+    # Validate the graph structure
     is_valid, msg = validate_graph_structure(data)
     if not is_valid:
         return jsonify({"success": False, "message": "Invalid graph structure", "details": msg}), 400
 
-    unique_name = uuid.uuid4().hex[:12]
-    filename = f"{unique_name}.json"
-    save_path = os.path.join(GRAPH_DIR, filename)
-
-    while os.path.exists(save_path):
-        unique_name = uuid.uuid4().hex[:12]
-        filename = f"{unique_name}.json"
-        save_path = os.path.join(GRAPH_DIR, filename)
-
-    file.stream = io.BytesIO(file_content.encode("utf-8"))
-
-    try:
-        file.save(save_path)
-    except Exception as e:
-        if os.path.exists(save_path):
-            try:
-                os.remove(save_path)
-                os.remove(os.path.join(ORDER_DIR, f"{unique_name}_ilp.txt"))
-                os.remove(os.path.join(ORDER_DIR, f"{unique_name}_heuristic.txt"))
-                os.remove(os.path.join(ORDER_DIR, f"{unique_name}_hybrid.txt"))
-            except Exception as cleanup_err:
-                print(f"Cleanup failed: {cleanup_err}")
-        return jsonify({"success": False, "message": "Failed to save file", "details": str(e)}), 500
-
-    return jsonify({"success": True, "message": "File uploaded and validated successfully", "filename": filename}), 201
-
+    # Return success without saving the file.
+    # We still provide a 'filename' key for client-side compatibility, 
+    # using the original uploaded filename or a placeholder.
+    original_filename = file.filename if file.filename else "uploaded_graph.json" 
+    
+    return jsonify({
+        "success": True, 
+        "message": "File uploaded and validated successfully (not saved)", 
+        "filename": original_filename # Use original filename or a placeholder
+    }), 201
 
 @app.route("/api/download/<filename>", methods=["GET"])
 def download_json(filename):
