@@ -7,6 +7,7 @@ export class HierarchicallyClusteredGraph {
   constructor() {
     this.nodes = [];
     this.edges = [];
+    this.isDirected = false;
   }
 
   getNumberOfEdges(node1, node2) {
@@ -55,6 +56,14 @@ export class HierarchicallyClusteredGraph {
       }
     }
     return vertices;
+  }
+
+  setIsDirected(directed) {
+    this.isDirected = directed;
+  }
+
+  getIsDirected() {
+    return this.isDirected;
   }
 
   getClusterLayers(topmost = true) {
@@ -130,10 +139,10 @@ export class HierarchicallyClusteredGraph {
     return clusters;
   }
 
-  // ✅ NEW METHOD: Reorder nodes based on solver output
+  // Reorder nodes based on solver output
   setNodeOrder(order, drawer = null) {
     if (!Array.isArray(order)) {
-      console.error("❌ Invalid order data. Expected an array:", order);
+      console.error("Invalid order data. Expected an array:", order);
       return;
     }
 
@@ -153,11 +162,11 @@ export class HierarchicallyClusteredGraph {
     }
 
     this.nodes = reorderedNodes;
-    console.log("✅ Node order updated successfully.");
+    console.log("Node order updated successfully.");
 
-    // ✅ Auto redraw if drawer provided
+    // Auto redraw if drawer provided
     if (drawer && typeof drawer.draw === "function") {
-      console.log("🔄 Redrawing graph with new order...");
+      console.log("Redrawing graph with new order...");
       drawer.draw("#graph-container");
     }
   }
@@ -166,6 +175,9 @@ export class HierarchicallyClusteredGraph {
     try {
       const response = await fetch("/api/graph/" + instance);
       const data = await response.json();
+
+      const isDirected = data.directed === 1;
+      this.setIsDirected(isDirected);
 
       const queue = [];
       const nodeMap = new Map();
@@ -179,7 +191,7 @@ export class HierarchicallyClusteredGraph {
           }
           let vertex = new Node(node.id, null, type);
 
-          // ✅ STORE LABEL IF PROVIDED
+          // STORE LABEL IF PROVIDED
           if (node.label) {
             vertex.customLabel = node.label;
           }
@@ -202,7 +214,7 @@ export class HierarchicallyClusteredGraph {
             }
             let vertex = new Node(node.id, nodeMap.get(node.parent), type);
 
-            // ✅ STORE LABEL IF PROVIDED
+            // STORE LABEL IF PROVIDED
             if (node.label) {
               vertex.customLabel = node.label;
             }
@@ -310,6 +322,7 @@ export class Edge {
   getLabel() {
     return this.label;
   }
+
   getWeight() {
     return this.weight;
   }

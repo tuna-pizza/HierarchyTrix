@@ -451,7 +451,7 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("x", startX - cellSize / 2 - 5)
       .attr("y", hitAreaTopY - 15)
       .attr("width", children.length * cellSize + 10)
-      .attr("height", hitAreaHeight + 10)
+      .attr("height", hitAreaHeight + 18)
       .attr("fill", "transparent")
       .attr("pointer-events", "all")
       .style("cursor", "pointer");
@@ -1105,42 +1105,44 @@ export class HierarchicallyClusteredGraphDrawer {
       .join("path")
       .attr("class", "edge")
       .attr("d", (d) => {
-        // Use the finalized, aligned coordinates from the map
         let x1 = xCoordMap.get(d.getSource());
         let x2 = xCoordMap.get(d.getTarget());
-        let y = yCoordMap.get(d.getSource());
-
+        const y = yCoordMap.get(d.getSource());
         if (x1 === undefined || x2 === undefined || y === undefined) return "";
 
-        let tempX1 = x1;
-        let tempX2 = x2;
-        if (tempX1 > tempX2) [tempX1, tempX2] = [tempX2, tempX1];
+        // Remove the logic that swaps x1/x2 to force left-to-right drawing.
+        // This allows the path to be drawn from Source (x1) to Target (x2).
 
-        if (x1 > x2) {
-          let swap = x1;
-          x1 = x2;
-          x2 = swap;
-        }
+        // xDist is now the absolute distance between nodes, used for curve height
+        const xDist = Math.abs(x2 - x1);
 
-        const xDist = tempX2 - tempX1;
+        // The midpoint must be correctly calculated as the average of the two x-coordinates.
+        const x_mid = (x1 + x2) / 2.0;
+
+        // maxDist calculation is fine, as it uses the absolute distance
         if (xDist > maxDist) maxDist = xDist;
-        // Draw a cubic Bézier curve
-        return `M ${x1} ${y} Q ${x1} ${y + xDist / 3}, ${x1 + xDist / 2.0} ${
-          y + xDist / 3
-        } Q ${x2} ${y + xDist / 3}, ${x2} ${y}`;
+
+        const curveHeight = xDist / 3;
+
+        // Use original x1 and x2 coordinates for the path.
+        // Path: M (start) Q (ctl1), (mid) Q (ctl2), (end)
+        // This formula works for left-to-right (x1 < x2) and right-to-left (x1 > x2) curves.
+        return `M ${x1} ${y} Q ${x1} ${y + curveHeight}, ${x_mid} ${
+          y + curveHeight
+        } Q ${x2} ${y + curveHeight}, ${x2} ${y}`;
+      })
+      // NEW: Apply the arrowhead marker if the graph is directed
+      .attr("marker-end", (d) => {
+        // Check the graph's directed flag
+        if (this.H.getIsDirected && this.H.getIsDirected()) {
+          return "url(#arrowhead)";
+        }
+        return null;
       })
       .attr("stroke", (d) => {
         const color = this.edgeColors
           ? this.edgeColors.get(d) || "var(--edge-color)"
           : "var(--edge-color)";
-        console.log(
-          "Drawing edge - Label:",
-          d.getLabel ? d.getLabel() : "",
-          "Color:",
-          color,
-          "Has edgeColor:",
-          d.edgeColor
-        );
         return color;
       })
       .attr("stroke-width", edgeWidth)
@@ -1287,8 +1289,12 @@ export class HierarchicallyClusteredGraphDrawer {
       });
     });
 
-    const maxArcHeight = maxDist / 3;
-    const minRequiredHeight = linearLayoutY + maxArcHeight;
+    const maxArcHeight = maxDist / 2.6;
+    const minRequiredHeight =
+      linearLayoutY +
+      maxArcHeight +
+      document.getElementById("main-header-container").getBoundingClientRect()
+        .height;
     const viewBoxHeight = minRequiredHeight + padding;
 
     // Calculate and display statistics
@@ -1297,14 +1303,7 @@ export class HierarchicallyClusteredGraphDrawer {
 
     // Store SVG reference for zoom
     this.svg = svg;
-    svg.attr(
-      "viewBox",
-      `0 0 ${viewBoxWidth} ${
-        viewBoxHeight +
-        document.getElementById("main-header-container").getBoundingClientRect()
-          .height
-      }`
-    );
+    svg.attr("viewBox", `0 0 ${viewBoxWidth} ${viewBoxHeight}`);
     d3.select("body").append(() => svg.node());
 
     // Setup zoom behavior
