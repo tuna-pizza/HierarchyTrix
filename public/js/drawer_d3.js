@@ -44,6 +44,13 @@ export class HierarchicallyClusteredGraphDrawer {
         size
       );
     });
+
+    this.edgeWeightThreshold = null;
+
+    window.addEventListener("edgeWeightThresholdChange", (e) => {
+      this.edgeWeightThreshold = e.detail.threshold;
+      this.filterEdgesByWeight();
+    });
   }
 
   hasNumericEdgeLabels() {
@@ -142,6 +149,45 @@ export class HierarchicallyClusteredGraphDrawer {
         edge.edgeColor = color;
       });
       return;
+    }
+
+    if (this.edgeLabelStats && this.edgeLabelStats.isNumeric) {
+      const { min, max } = this.edgeLabelStats;
+      const filterContainer = document.getElementById("edge-weight-filter");
+      const sliderEl = document.getElementById("edge-weight-slider");
+      const valueLabel = document.getElementById("edge-weight-value");
+
+      if (filterContainer && sliderEl && valueLabel) {
+        // Show the filter controls
+        filterContainer.style.display = "block";
+
+        // Set slider bounds and initial value
+        sliderEl.min = min;
+        sliderEl.max = max;
+        sliderEl.step = (max - min) / 100 || 1;
+        sliderEl.value = min;
+        valueLabel.textContent = min.toFixed(1);
+
+        // Listen for user changes
+        sliderEl.oninput = (e) => {
+          const threshold = parseFloat(e.target.value);
+          valueLabel.textContent = threshold.toFixed(1);
+          window.dispatchEvent(
+            new CustomEvent("edgeWeightThresholdChange", {
+              detail: { threshold },
+            })
+          );
+        };
+
+        // Dispatch once initially to set up filtering
+        window.dispatchEvent(
+          new CustomEvent("edgeWeightThresholdChange", {
+            detail: { threshold: min },
+          })
+        );
+      } else {
+        console.warn("Edge weight filter slider elements not found in DOM.");
+      }
     }
 
     const colorScale = this.createNumericColorScale();
@@ -404,6 +450,8 @@ export class HierarchicallyClusteredGraphDrawer {
       (a, b) => xCoordMap.get(a) - xCoordMap.get(b)
     );
 
+    const isDirected = this.H.getIsDirected();
+
     xCoordMap.set(cluster, offsetX);
     yCoordMap.set(cluster, offsetY);
     widthMap.set(cluster, children.length * cellSize);
@@ -463,13 +511,6 @@ export class HierarchicallyClusteredGraphDrawer {
         const [x, y] = d3.pointer(event, document.body);
         this.showClusterStatsPopup(cluster, stats, x, y);
 
-        // Highlight the cluster and label
-        clusterContainer
-          .selectAll(".nodes use")
-          .transition()
-          .duration(200)
-          .attr("fill", "var(--color-primary)");
-
         clusterLabel
           .transition()
           .duration(200)
@@ -478,13 +519,6 @@ export class HierarchicallyClusteredGraphDrawer {
       })
       .on("mouseout", () => {
         this.hideClusterStatsPopup();
-
-        // Remove highlight
-        clusterContainer
-          .selectAll(".nodes use")
-          .transition()
-          .duration(200)
-          .attr("fill", nodeColor);
 
         clusterLabel
           .transition()
@@ -540,23 +574,21 @@ export class HierarchicallyClusteredGraphDrawer {
 
     for (let i = 0; i < children.length; i++) {
       for (let j = i + 1; j < children.length; j++) {
-        const src = children[i];
-        const tgt = children[j];
+        const src = children[i]; // Left node (s)
+        const tgt = children[j]; // Right node (t)
 
-        // Try to find a concrete Edge object that links these two nodes
-        // Accept either direction (src->tgt or tgt->src)
-        const matchingEdge =
+        // Find directed edges: i (src) is the left node, j (tgt) is the right node
+        const edge_s_to_t =
           allGraphEdges.find(
-            (e) =>
-              (e.getSource &&
-                e.getTarget &&
-                e.getSource() === src &&
-                e.getTarget() === tgt) ||
-              (e.getSource &&
-                e.getTarget &&
-                e.getSource() === tgt &&
-                e.getTarget() === src)
+            (e) => e.getSource() === src && e.getTarget() === tgt
           ) || null;
+        const edge_t_to_s =
+          allGraphEdges.find(
+            (e) => e.getSource() === tgt && e.getTarget() === src
+          ) || null;
+
+        // For non-directed/non-last-level cells, we still use a single 'matchingEdge' for label/color
+        const matchingEdge = edge_s_to_t || edge_t_to_s; // Use either one
 
         const edgeLabel =
           matchingEdge && matchingEdge.getLabel ? matchingEdge.getLabel() : "";
@@ -573,10 +605,14 @@ export class HierarchicallyClusteredGraphDrawer {
           target: tgt,
           x1: startX + i * cellSize,
           x2: startX + j * cellSize,
-          // attach the matched edge info (may be empty string/null if no single edge exists)
+          // attach the matched edge info
           edgeLabel,
           edgeColor,
-          matchingEdge, // optional: keeps a reference if you want it later
+          // Store directional edges and flags for triangle drawing
+          edge_s_to_t: edge_s_to_t,
+          edge_t_to_s: edge_t_to_s,
+          isLastLevel: isLastLevel,
+          isDirected: isDirected,
         });
       }
     }
@@ -653,17 +689,83 @@ export class HierarchicallyClusteredGraphDrawer {
         cellColor =
           colorValue === 0 ? "rgb(255,255,255)" : colorScale(colorValue);
       }
-      adjCell
-        .append("polygon")
-        .attr(
-          "points",
-          `${-cellSize / 2},0 0,${cellSize / 2} ${cellSize / 2},0 0,${
-            -cellSize / 2
-          }`
-        )
-        .attr("stroke", cellboundaryColor)
-        .attr("stroke-width", arrayBoundaryWidth)
-        .attr("fill", cellColor);
+
+      const isDirectedAndLastLevel = d.isLastLevel && d.isDirected;
+      const isEdgePresent =
+        d.edge_s_to_t || d.edge_t_to_s || (d.matchingEdge && !d.isDirected);
+
+      const halfCell = cellSize / 2;
+      // Use an offset (1.5 is half the arrayBoundaryWidth, which is 3)
+      // to shrink the filled triangles so they fit inside the cell's border,
+      // preventing overlap with adjacent cell strokes.
+      const triangleOffset = arrayBoundaryWidth / 2;
+
+      if (isDirectedAndLastLevel) {
+        // Clear the existing polygon if it was appended earlier in a loop (not in the provided snippet, but good practice)
+        adjCell.selectAll("polygon").remove();
+
+        // Always draw a white diamond first to ensure the cell background is filled
+        // and the stroke (border) is created.
+        adjCell
+          .append("polygon")
+          .attr(
+            "points",
+            `${-halfCell},0 0,${halfCell} ${halfCell},0 0,${-halfCell}`
+          )
+          .attr("stroke", cellboundaryColor)
+          .attr("stroke-width", arrayBoundaryWidth)
+          .attr("fill", "rgb(255,255,255)"); // White background
+
+        if (isEdgePresent) {
+          // Edge from s (left node) to t (right node)?
+          if (d.edge_s_to_t) {
+            // Right triangle (points towards t). Reduced size for fill to fit within the border
+            adjCell
+              .append("polygon")
+              .attr(
+                "points",
+                // Top point pulled down: (0, -halfCell + offset)
+                `0,${-halfCell + triangleOffset} ` +
+                  // Right point pulled left: (halfCell - offset, 0)
+                  `${halfCell - triangleOffset},0 ` +
+                  // Bottom point pulled up: (0, halfCell - offset)
+                  `0,${halfCell - triangleOffset}`
+              )
+              .attr("stroke-width", 0) // No extra stroke for the filled triangle
+              .attr("fill", cellColor);
+          }
+
+          // Edge from t (right node) to s (left node)?
+          if (d.edge_t_to_s) {
+            // Left triangle (points towards s). Reduced size for fill
+            adjCell
+              .append("polygon")
+              .attr(
+                "points",
+                // Top point pulled down: (0, -halfCell + offset)
+                `0,${-halfCell + triangleOffset} ` +
+                  // Left point pulled right: (-halfCell + offset, 0)
+                  `${-halfCell + triangleOffset},0 ` +
+                  // Bottom point pulled up: (0, halfCell - offset)
+                  `0,${halfCell - triangleOffset}`
+              )
+              .attr("stroke-width", 0) // No extra stroke for the filled triangle
+              .attr("fill", cellColor);
+          }
+        }
+      } else {
+        // Existing logic for drawing full diamond (undirected or non-last level)
+        adjCell.select("polygon").remove(); // Remove potential existing polygon before re-drawing
+        adjCell
+          .append("polygon")
+          .attr(
+            "points",
+            `${-halfCell},0 0,${halfCell} ${halfCell},0 0,${-halfCell}`
+          )
+          .attr("stroke", cellboundaryColor)
+          .attr("stroke-width", arrayBoundaryWidth)
+          .attr("fill", cellColor);
+      }
 
       // Label depending on mode
       adjCell
@@ -1131,14 +1233,6 @@ export class HierarchicallyClusteredGraphDrawer {
           y + curveHeight
         } Q ${x2} ${y + curveHeight}, ${x2} ${y}`;
       })
-      // NEW: Apply the arrowhead marker if the graph is directed
-      .attr("marker-end", (d) => {
-        // Check the graph's directed flag
-        if (this.H.getIsDirected && this.H.getIsDirected()) {
-          return "url(#arrowhead)";
-        }
-        return null;
-      })
       .attr("stroke", (d) => {
         const color = this.edgeColors
           ? this.edgeColors.get(d) || "var(--edge-color)"
@@ -1166,6 +1260,8 @@ export class HierarchicallyClusteredGraphDrawer {
       .on("mouseleave", (event) =>
         listeners.mouseLeavesEdge(event, edgeLabelsGroup)
       );
+
+    this.filterEdgesByWeight();
 
     // --- DRAW LEAF NODES ---
     this.zoomGroup.select("g.linear-nodes").remove();
@@ -1378,7 +1474,7 @@ export class HierarchicallyClusteredGraphDrawer {
     container
       .append("div")
       .style("font-size", "var(--font-size)")
-      .style("margin-bottom", "5px")
+      .style("margin-bottom", "4px")
       .style("color", "var(--color-secondary)")
       .style("font-family", "var(--font-main)")
       .text("Edge weight:");
@@ -1446,5 +1542,21 @@ export class HierarchicallyClusteredGraphDrawer {
       .append("span")
       .style("text-align", "right")
       .text(formatValue(max));
+  }
+
+  filterEdgesByWeight() {
+    if (!this.edgeLabelStats || !this.edgeLabelStats.isNumeric) return;
+
+    const threshold = this.edgeWeightThreshold ?? this.edgeLabelStats.min;
+
+    d3.selectAll(".linear-edges path").each((d, i, nodes) => {
+      const edge = d3.select(nodes[i]).datum();
+      if (!edge || !edge.getWeight) return;
+
+      const weight = parseFloat(edge.getWeight());
+      const visible = !isNaN(weight) && weight >= threshold;
+
+      d3.select(nodes[i]).attr("display", visible ? null : "none");
+    });
   }
 }
