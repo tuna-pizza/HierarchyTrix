@@ -507,6 +507,17 @@ legend {
   opacity: 1;
 }
 
+.slider-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.slider-container a,
+#control-panel a {
+  white-space: nowrap;
+}
+
 /* --- Label Size Slider --- */
 #label-size-control {
   margin-top: 2px;
@@ -515,16 +526,6 @@ legend {
   font-family: var(--font-main);
   font-size: 0.9rem;
   color: var(--color-secondary);
-}
-
-#label-size-control a {
-  margin-bottom: 4px;
-}
-
-.slider-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 #label-size-slider {
@@ -538,44 +539,27 @@ legend {
   color: var(--color-secondary);
 }
 
-/* 1. Standard accordion styling for the container */
-.accordion-item {
-  margin-bottom: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-/* 2. Style the clickable header */
-.accordion-header {
-  display: block;
-  padding: 10px 15px;
-  background-color: #f7f7f7;
-  cursor: pointer;
-  list-style: none; /* Hide the default marker */
-}
-
-/* Hide the marker/disclosure triangle in all major browsers */
-.accordion-header::-webkit-details-marker {
-  display: none;
-}
-.accordion-header::marker {
-  display: none;
-}
-
-.accordion-header h3 {
-  margin: 0;
-  font-size: 1.1em;
-}
-
-/* 3. Style the fieldset body */
-.accordion-body {
-  /* Remove default fieldset styling to blend with the accordion box */
-  border: none;
-  padding: 15px; /* Use this padding instead of the default fieldset padding */
-  margin: 0;
-
-  /* Example layout for the controls */
+/* --- Minimum edge weight Slider --- */
+#edge-weight-filter {
+  margin-top: 2px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  font-family: var(--font-main);
+  font-size: 0.9rem;
+  color: var(--color-secondary);
+}
+
+#edge-weight-filter a {
+  margin-bottom: 4px;
+}
+
+#edge-weight-filter {
+  width: 120px;
+  accent-color: var(--color-secondary);
+  cursor: pointer;
+}
+
+#edge-weight-filter {
+  min-width: 40px;
+  color: var(--color-secondary);
 }

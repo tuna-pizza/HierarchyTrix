@@ -383,6 +383,7 @@
           <span id="label-size-value" style="font-weight: normal">15px</span>
         </div>
       </div>
+
       <div
         id="edges-styles"
         style="
@@ -421,11 +422,26 @@
           id="edge-legend-container"
           style="
             margin-top: 0px;
-            /* margin-bottom: 12px; */
+            margin-bottom: 12px;
             font-family: var(--font-main);
             font-size: 0.9rem;
           "
         ></div>
+      </div>
+      <div id="edge-weight-filter" style="margin-bottom: 12px; display: none">
+        <a>Filter edges by weight:</a>
+        <div class="slider-container">
+          <input
+            type="range"
+            id="edge-weight-slider"
+            min="0"
+            max="1"
+            value="0"
+            step="0.1"
+            title="Filter linear edges by minimum weight"
+          />
+          <span id="edge-weight-value" style="font-weight: normal">0</span>
+        </div>
       </div>
     </fieldset>
 
