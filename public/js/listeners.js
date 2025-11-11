@@ -58,7 +58,10 @@ export function mouseEntersNodeCell() {
     .attr("fill", "gray");
 
   // b) Fade all edges
-  allEdges.attr("opacity", 0.1).attr("stroke", "lightgray");
+  allEdges
+    .attr("opacity", 0.1)
+    .attr("stroke", "lightgray")
+    .attr("fill", "lightgray");
 
   // c) Fade all inclusion bands
   allInclusions.attr("opacity", 0.1).attr("fill", "lightgray");
@@ -95,8 +98,9 @@ export function mouseEntersNodeCell() {
         leafIDs.has(d.getSource().getID()) || leafIDs.has(d.getTarget().getID())
     )
     .attr("opacity", 1)
-    .attr("stroke-width", 4)
-    .attr("stroke", (d) => d.edgeColor || "rgb(50, 125, 200)");
+    .attr("stroke-width", 3)
+    .attr("stroke", (d) => d.edgeColor || "rgb(50, 125, 200)")
+    .attr("fill", (d) => d.edgeColor || "rgb(50, 125, 200)");
 
   // Step 5: Highlight all relevant inclusion bands (hovered node and all ancestors)
   allInclusions
@@ -154,8 +158,9 @@ export function mouseLeavesNodeCell() {
   d3.select(".linear-edges")
     .selectAll("path.edge")
     .attr("opacity", 1)
-    .attr("stroke-width", 3)
-    .attr("stroke", (d) => d.edgeColor || "var(--edge-color)");
+    .attr("stroke-width", 2)
+    .attr("stroke", (d) => d.edgeColor || "var(--edge-color)")
+    .attr("fill", (d) => d.edgeColor || "var(--edge-color)");
 
   // 4. Restore all inclusion bands
   d3.select(".cluster-inclusions")
@@ -206,6 +211,7 @@ export function mouseEntersAdjCell() {
   // c) Gray out all edges
   allEdges
     .attr("stroke", "lightgray")
+    .attr("fill", "lightgray")
     .attr("stroke-width", "2")
     .attr("opacity", 0.4);
 
@@ -279,7 +285,8 @@ export function mouseEntersAdjCell() {
       );
     })
     .attr("stroke", (d) => d.edgeColor || "rgb(50, 125, 200)")
-    .attr("stroke-width", 4)
+    .attr("fill", (d) => d.edgeColor || "rgb(50, 125, 200)")
+    .attr("stroke-width", 3)
     .attr("opacity", 1);
 
   // === SHOW EDGE LABEL ON HOVER (only for bottommost clusters) ===
@@ -310,12 +317,31 @@ export function mouseEntersAdjCell() {
 
       // Rule 2 & 3: If no label, fall back to end-node rules (label -> ID)
       if (!textToShow) {
-        // Determine the text for the source node: label -> ID
-        const sourceText = sourceNode.customLabel || sourceNode.getID();
-        // Determine the text for the target node: label -> ID
-        const targetText = targetNode.customLabel || targetNode.getID();
+        let trueSourceNode, trueTargetNode;
 
-        // Format the combined label: "SourceNodeLabel/ID — TargetNodeLabel/ID"
+        // A. Check for S -> T edge (S is left, T is right in matrix)
+        if (data.edge_s_to_t) {
+          trueSourceNode = data.source; // S is the true source
+          trueTargetNode = data.target; // T is the true target
+        }
+        // B. Check for T -> S edge (T is right, S is left in matrix)
+        else if (data.edge_t_to_s) {
+          trueSourceNode = data.target; // T is the true source
+          trueTargetNode = data.source; // S is the true target
+        }
+        // C. Non-directional (Undirected or higher-level cluster cell)
+        else {
+          // Fall back to matrix order for non-directional/higher-level cells
+          trueSourceNode = sourceNode;
+          trueTargetNode = targetNode;
+        }
+
+        // Determine the text for the actual Source node: label -> ID
+        const sourceText = trueSourceNode.customLabel || trueSourceNode.getID();
+        // Determine the text for the actual Target node: label -> ID
+        const targetText = trueTargetNode.customLabel || trueTargetNode.getID();
+
+        // Format the combined label: "TrueSourceNode — TrueTargetNode"
         textToShow = `${sourceText} — ${targetText}`;
       } else {
         // Convert number to string if we are using the weight
@@ -519,7 +545,8 @@ export function mouseLeavesAdjCell() {
     .selectAll("path.edge")
     .attr("opacity", 1)
     .attr("stroke", (d) => d.edgeColor || "var(--edge-color)")
-    .attr("stroke-width", 3);
+    .attr("stroke-width", 2)
+    .attr("fill", (d) => d.edgeColor || "var(--edge-color)");
 
   // 4. Restore all inclusion bands
   d3.select(".cluster-inclusions")
@@ -533,7 +560,8 @@ export function mouseEntersEdge(
   data,
   xCoordMap,
   yCoordMap,
-  edgeLabelsGroup
+  edgeLabelsGroup,
+  cellSize
 ) {
   const sourceNode = data.getSource();
   const targetNode = data.getTarget();
@@ -632,7 +660,7 @@ export function mouseEntersEdge(
     const midX = (x1 + x2) / 2;
     const xDist = Math.abs(x2 - x1);
 
-    const curveHeight = xDist / 3;
+    const curveHeight = xDist / 4 + cellSize / 1.5;
     const midY = y + curveHeight;
 
     if (labelText) {
@@ -679,7 +707,7 @@ export function mouseLeavesEdge(event, edgeLabelsGroup) {
     .selectAll("path.edge")
     .attr("opacity", 1)
     .attr("stroke", (d) => d.edgeColor || "var(--edge-color)")
-    .attr("stroke-width", 3);
+    .attr("stroke-width", 2);
 
   // 4. Restore all inclusions
   d3.select(".cluster-inclusions")

@@ -9,11 +9,11 @@ const cellboundaryColor = "var(--cell-boundary-color)";
 const treecolor = "var(--tree-color)";
 const edgeColor = "var(--edge-color)";
 const arrayBoundaryWidth = "3";
-let edgeWidth = 3;
+let edgeWidth = 2;
 const textSize = "18";
 const smallTextSize = "12";
 const textOffset = 2;
-const vertexDistance = 60; // Reduced from 80 to 60
+const vertexDistance = 60;
 const clusterDistanceScalar = 1;
 
 export class HierarchicallyClusteredGraphDrawer {
@@ -424,9 +424,7 @@ export class HierarchicallyClusteredGraphDrawer {
       const tgtId = edge.getTarget().getID();
       if (
         (idsA.has(srcId) && idsB.has(tgtId)) ||
-        (idsB.has(srcId) && idsA.has(tgtId)) ||
-        (idsA.has(srcId) && idsA.has(tgtId)) ||
-        (idsB.has(srcId) && idsB.has(tgtId))
+        (idsB.has(srcId) && idsA.has(tgtId))
       ) {
         count++;
       }
@@ -605,7 +603,7 @@ export class HierarchicallyClusteredGraphDrawer {
           target: tgt,
           x1: startX + i * cellSize,
           x2: startX + j * cellSize,
-          // attach the matched edge info
+          matchingEdge: matchingEdge,
           edgeLabel,
           edgeColor,
           // Store directional edges and flags for triangle drawing
@@ -644,9 +642,7 @@ export class HierarchicallyClusteredGraphDrawer {
       const adjCell = d3.select(nodes[i]);
       const actualEdges = this.countAllEdgesBetweenClusters(d.source, d.target);
       const potentialEdges =
-        d.source.getLeaves().length * d.target.getLeaves().length +
-        (d.source.getLeaves().length * (d.source.getLeaves().length - 1)) / 2 +
-        (d.target.getLeaves().length * (d.target.getLeaves().length - 1)) / 2;
+        d.source.getLeaves().length * d.target.getLeaves().length;
 
       d.actualEdges = actualEdges;
       d.potentialEdges = potentialEdges;
@@ -732,7 +728,7 @@ export class HierarchicallyClusteredGraphDrawer {
                   `0,${halfCell - triangleOffset}`
               )
               .attr("stroke-width", 0) // No extra stroke for the filled triangle
-              .attr("fill", cellColor);
+              .attr("fill", d.edge_s_to_t.edgeColor);
           }
 
           // Edge from t (right node) to s (left node)?
@@ -750,7 +746,7 @@ export class HierarchicallyClusteredGraphDrawer {
                   `0,${halfCell - triangleOffset}`
               )
               .attr("stroke-width", 0) // No extra stroke for the filled triangle
-              .attr("fill", cellColor);
+              .attr("fill", d.edge_t_to_s.edgeColor);
           }
         }
       } else {
@@ -996,9 +992,9 @@ export class HierarchicallyClusteredGraphDrawer {
             referenceX - cellSize / 2 + 2.5 * parseInt(arrayBoundaryWidth, 10); //
           const upperMiddleRightX =
             referenceX + cellSize / 2 - 2.5 * parseInt(arrayBoundaryWidth, 10); //
-			let topOfArrayOffset = Math.min(1.25*cellSize,width/2);
-			let topOfArrayLeftX = x  - topOfArrayOffset;
-			let topOfArrayRightX = x  + topOfArrayOffset;
+          let topOfArrayOffset = Math.min(1.25 * cellSize, width / 2);
+          let topOfArrayLeftX = x - topOfArrayOffset;
+          let topOfArrayRightX = x + topOfArrayOffset;
           let lowerMiddleLeftX = topOfArrayLeftX; //
           let lowerMiddleRightX = topOfArrayRightX; //
           let belowTopY = topY + 0.4 * clusterDistance; //
@@ -1007,59 +1003,60 @@ export class HierarchicallyClusteredGraphDrawer {
           let aboveBottomY = currentBottomY - 0.6 * clusterDistance; //
           const verticalSpan = Math.abs(bottomY - topY) / clusterDistance;
           let currentBottomLeftX = lowerMiddleLeftX;
-		  let currentBottomRightX = lowerMiddleRightX;
+          let currentBottomRightX = lowerMiddleRightX;
           let leftPath = "";
-		  let rightPath = "";
-		  if (verticalSpan === 1) {
+          let rightPath = "";
+          if (verticalSpan === 1) {
             currentBottomLeftX = bottomLeftX;
-			currentBottomRightX = bottomRightX;
-			lowerMiddleLeftX = topOfArrayLeftX;
-			lowerMiddleRightX = topOfArrayRightX;
-			let topOfArrayY = y - width/2- cellSize/2;
-			let belowTopOfArrayY = topOfArrayY + 0.2 * width/2;
-			let aboveBottomOfArrayY = currentBottomY - 0.6 * width/2; 
-			belowTopY = topY + 0.5 * (clusterDistance-width/2);
-			aboveBottomY = topOfArrayY - 0.5 * (clusterDistance-width/2); 
-			belowTopY = belowTopY ;
-			leftPath = `C ${upperMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${topOfArrayLeftX} ${topOfArrayY}
+            currentBottomRightX = bottomRightX;
+            lowerMiddleLeftX = topOfArrayLeftX;
+            lowerMiddleRightX = topOfArrayRightX;
+            let topOfArrayY = y - width / 2 - cellSize / 2;
+            let belowTopOfArrayY = topOfArrayY + (0.2 * width) / 2;
+            let aboveBottomOfArrayY = currentBottomY - (0.6 * width) / 2;
+            belowTopY = topY + 0.5 * (clusterDistance - width / 2);
+            aboveBottomY = topOfArrayY - 0.5 * (clusterDistance - width / 2);
+            belowTopY = belowTopY;
+            leftPath = `C ${upperMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${topOfArrayLeftX} ${topOfArrayY}
 			C ${topOfArrayLeftX} ${belowTopOfArrayY}, ${currentBottomLeftX} ${aboveBottomOfArrayY}, ${currentBottomLeftX} ${currentBottomY}`;
-			rightPath = `C ${currentBottomRightX} ${aboveBottomOfArrayY},${topOfArrayRightX} ${belowTopOfArrayY},${topOfArrayRightX} ${topOfArrayY}
+            rightPath = `C ${currentBottomRightX} ${aboveBottomOfArrayY},${topOfArrayRightX} ${belowTopOfArrayY},${topOfArrayRightX} ${topOfArrayY}
 			C ${lowerMiddleRightX} ${aboveBottomY}, ${upperMiddleRightX} ${belowTopY}, ${topRightX} ${currentTopY}`;
+          } else {
+            leftPath = `C ${upperMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${currentBottomLeftX} ${currentBottomY}`;
+            rightPath = `C ${lowerMiddleRightX} ${aboveBottomY}, ${upperMiddleRightX} ${belowTopY}, ${topRightX} ${currentTopY}`;
           }
-		  else{
-			leftPath = `C ${upperMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${currentBottomLeftX} ${currentBottomY}`;
-			rightPath = `C ${lowerMiddleRightX} ${aboveBottomY}, ${upperMiddleRightX} ${belowTopY}, ${topRightX} ${currentTopY}`;
-		  }
           for (let i = 1; i < verticalSpan; i++) {
             currentBottomY = currentBottomY + clusterDistance;
             currentTopY = currentTopY + clusterDistance;
             let belowTopY = currentTopY + 0.4 * clusterDistance; //
             let aboveBottomY = currentBottomY - 0.6 * clusterDistance; //
-			if (verticalSpan === i + 1) {
+            if (verticalSpan === i + 1) {
               currentBottomLeftX = bottomLeftX;
-			  currentBottomRightX = bottomRightX;
-			  lowerMiddleLeftX = topOfArrayLeftX;
-			  lowerMiddleRightX = topOfArrayRightX;
-			  let topOfArrayY = y - width/2- cellSize/2;
-			  let belowTopOfArrayY = topOfArrayY + 0.2 * width/2;
-			  let aboveBottomOfArrayY = currentBottomY - 0.6 * width/2; 
-			  belowTopY = currentTopY + 0.5 * (clusterDistance-width/2);
-			  aboveBottomY = topOfArrayY - 0.5 * (clusterDistance-width/2); 
-			  belowTopY = belowTopY ;
-			  leftPath = leftPath + `C ${lowerMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${topOfArrayLeftX} ${topOfArrayY}
+              currentBottomRightX = bottomRightX;
+              lowerMiddleLeftX = topOfArrayLeftX;
+              lowerMiddleRightX = topOfArrayRightX;
+              let topOfArrayY = y - width / 2 - cellSize / 2;
+              let belowTopOfArrayY = topOfArrayY + (0.2 * width) / 2;
+              let aboveBottomOfArrayY = currentBottomY - (0.6 * width) / 2;
+              belowTopY = currentTopY + 0.5 * (clusterDistance - width / 2);
+              aboveBottomY = topOfArrayY - 0.5 * (clusterDistance - width / 2);
+              belowTopY = belowTopY;
+              leftPath =
+                leftPath +
+                `C ${lowerMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${topOfArrayLeftX} ${topOfArrayY}
 				C ${topOfArrayLeftX} ${belowTopOfArrayY}, ${currentBottomLeftX} ${aboveBottomOfArrayY}, ${currentBottomLeftX} ${currentBottomY}`;
-			  rightPath = `C ${currentBottomRightX} ${aboveBottomOfArrayY},${topOfArrayRightX} ${belowTopOfArrayY},${topOfArrayRightX} ${topOfArrayY}
-				C ${lowerMiddleRightX} ${aboveBottomY}, ${lowerMiddleRightX} ${belowTopY}, ${lowerMiddleRightX} ${currentTopY}` + rightPath;
+              rightPath =
+                `C ${currentBottomRightX} ${aboveBottomOfArrayY},${topOfArrayRightX} ${belowTopOfArrayY},${topOfArrayRightX} ${topOfArrayY}
+				C ${lowerMiddleRightX} ${aboveBottomY}, ${lowerMiddleRightX} ${belowTopY}, ${lowerMiddleRightX} ${currentTopY}` +
+                rightPath;
+            } else {
+              leftPath =
+                leftPath +
+                `\nC ${lowerMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${currentBottomLeftX} ${currentBottomY}`;
+              rightPath =
+                `C ${lowerMiddleRightX} ${aboveBottomY}, ${lowerMiddleRightX} ${belowTopY}, ${lowerMiddleRightX} ${currentTopY}\n` +
+                rightPath;
             }
-			else
-			{	
-            leftPath =
-              leftPath +
-              `\nC ${lowerMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${currentBottomLeftX} ${currentBottomY}`;
-            rightPath =
-              `C ${lowerMiddleRightX} ${aboveBottomY}, ${lowerMiddleRightX} ${belowTopY}, ${lowerMiddleRightX} ${currentTopY}\n` +
-              rightPath;
-			}
           } // FIX: Removed the trailing newline and indentation before the final Z
 
           const pathString =
@@ -1076,8 +1073,8 @@ export class HierarchicallyClusteredGraphDrawer {
         }
       }
     }
-	//TODO: END COPYING HERE
-	// 3. Bind the array of objects. The second argument to .attr("d", ...) is now an accessor function.
+    //TODO: END COPYING HERE
+    // 3. Bind the array of objects. The second argument to .attr("d", ...) is now an accessor function.
 
     svg
       .append("g")
@@ -1250,18 +1247,16 @@ export class HierarchicallyClusteredGraphDrawer {
         let x1 = xCoordMap.get(d.getSource());
         let x2 = xCoordMap.get(d.getTarget());
         const y = yCoordMap.get(d.getSource());
-		let sourceLeft = true;
+        let sourceLeft = true;
         if (x1 === undefined || x2 === undefined || y === undefined) return "";
-		if (x1 > x2)
-		{
-			let swap = x1;
-			x1 = x2;
-			x2 = swap;
-			if (this.H.getIsDirected())
-			{
-				sourceLeft = false;
-			}
-		}
+        if (x1 > x2) {
+          let swap = x1;
+          x1 = x2;
+          x2 = swap;
+          if (this.H.getIsDirected()) {
+            sourceLeft = false;
+          }
+        }
 
         // Remove the logic that swaps x1/x2 to force left-to-right drawing.
         // This allows the path to be drawn from Source (x1) to Target (x2).
@@ -1280,45 +1275,88 @@ export class HierarchicallyClusteredGraphDrawer {
         // Use original x1 and x2 coordinates for the path.
         // Path: M (start) Q (ctl1), (mid) Q (ctl2), (end)
         // This formula works for left-to-right (x1 < x2) and right-to-left (x1 > x2) curves
-		//TODO: START COPYING HERE
-		if (!this.H.getIsDirected())
-		{
-			return `M ${x1} ${y+cellSize/2} C ${x1} ${y + cellSize/2 + curveHeight/1.5}, ${x1 + xDist / 4.0} ${y + cellSize/2 + curveHeight}, ${x1 + xDist / 2.0} ${
-			  y + cellSize/2 + curveHeight} C ${x2 - xDist / 4.0} ${y + cellSize/2 + curveHeight}, ${x2} ${y + cellSize/2 + curveHeight/1.5}, ${x2} ${y+cellSize/2}`;
-			//TODO: END COPYING HERE
-		}
-		else
-		{
-			let taperedWidth=4;
-			if (this.H.getIsDirected())
-			{
-				edgeWidth = 1;
-			}
-			if (sourceLeft)
-			{
-				return `M ${x1-taperedWidth} ${y+cellSize/2-taperedWidth} 
-				C ${x1} ${y + cellSize/2 + curveHeight/1.5 + taperedWidth}, ${x1 + xDist / 4.0} ${y + cellSize/2 + curveHeight + taperedWidth/1.5}, ${x1 + xDist / 2.0} ${
-			  y + cellSize/2 + curveHeight + taperedWidth/2} 
-			  C ${x2 - xDist / 4.0} ${y + cellSize/2 + curveHeight+ taperedWidth/3.5}, ${x2} ${y + cellSize/2 + curveHeight/1.5}, ${x2} ${y+cellSize/2-taperedWidth}
-			  C  ${x2} ${y + cellSize/2 + curveHeight/1.5}, ${x2 - xDist / 4.0} ${y + cellSize/2 + curveHeight- taperedWidth/3.5},${x1 + xDist / 2.0} ${
-			  y + cellSize/2 + curveHeight - taperedWidth/2}
-				C  ${x1 + xDist / 4.0} ${y + cellSize/2 + curveHeight - taperedWidth/1.5} ${x1} ${y + cellSize/2 + curveHeight/1.5 - taperedWidth},${x1+taperedWidth} ${y+cellSize/2-taperedWidth}
-		        L ${x1-taperedWidth} ${y+cellSize/2-taperedWidth} 
+        //TODO: START COPYING HERE
+        if (!this.H.getIsDirected()) {
+          let normalWidth = 1;
+          return `M ${x1 - normalWidth} ${y + cellSize / 2 - normalWidth} C ${
+            x1 - normalWidth
+          } ${y + cellSize / 2 + curveHeight / 1.5 + normalWidth}, ${
+            x1 + xDist / 4.0 - normalWidth / 2
+          } ${y + cellSize / 2 + curveHeight + normalWidth}, ${
+            x1 + xDist / 2.0
+          } ${y + cellSize / 2 + curveHeight + normalWidth} 
+			  C ${x2 - xDist / 4.0 + normalWidth / 2} ${
+            y + cellSize / 2 + curveHeight + normalWidth
+          }, ${x2 + normalWidth} ${
+            y + cellSize / 2 + curveHeight / 1.5 + normalWidth
+          }, ${x2 + normalWidth} ${y + cellSize / 2 - normalWidth}
+			  L ${x2 - normalWidth} ${y + cellSize / 2 - normalWidth}
+			  C ${x2 - normalWidth} ${
+            y + cellSize / 2 + curveHeight / 1.5 - normalWidth
+          }, ${x2 - xDist / 4.0 - normalWidth / 2} ${
+            y + cellSize / 2 + curveHeight - normalWidth
+          }, ${x1 + xDist / 2.0} ${
+            y + cellSize / 2 + curveHeight - normalWidth
+          } 
+			  C ${x1 + xDist / 4.0 + normalWidth / 2} ${
+            y + cellSize / 2 + curveHeight - normalWidth
+          }, ${x1 + normalWidth} ${
+            y + cellSize / 2 + curveHeight / 1.5 - normalWidth
+          },${x1 + normalWidth} ${y + cellSize / 2 + normalWidth}
+			  L ${x1 - normalWidth} ${y + cellSize / 2 - normalWidth}`;
+          //TODO: END COPYING HERE
+        } else {
+          let taperedWidth = 4;
+          if (sourceLeft) {
+            return `M ${x1 - taperedWidth} ${y + cellSize / 2 - taperedWidth} 
+				C ${x1} ${y + cellSize / 2 + curveHeight / 1.5 + taperedWidth}, ${
+              x1 + xDist / 4.0
+            } ${y + cellSize / 2 + curveHeight + taperedWidth / 1.5}, ${
+              x1 + xDist / 2.0
+            } ${y + cellSize / 2 + curveHeight + taperedWidth / 2} 
+			  C ${x2 - xDist / 4.0} ${
+              y + cellSize / 2 + curveHeight + taperedWidth / 3.5
+            }, ${x2} ${y + cellSize / 2 + curveHeight / 1.5}, ${x2} ${
+              y + cellSize / 2 - taperedWidth
+            }
+			  C  ${x2} ${y + cellSize / 2 + curveHeight / 1.5}, ${x2 - xDist / 4.0} ${
+              y + cellSize / 2 + curveHeight - taperedWidth / 3.5
+            },${x1 + xDist / 2.0} ${
+              y + cellSize / 2 + curveHeight - taperedWidth / 2
+            }
+				C  ${x1 + xDist / 4.0} ${
+              y + cellSize / 2 + curveHeight - taperedWidth / 1.5
+            } ${x1} ${y + cellSize / 2 + curveHeight / 1.5 - taperedWidth},${
+              x1 + taperedWidth
+            } ${y + cellSize / 2 - taperedWidth}
+		        L ${x1 - taperedWidth} ${y + cellSize / 2 - taperedWidth} 
 			  `;
-			}
-			else
-			{
-				return `M ${x1} ${y+cellSize/2-taperedWidth} 
-				C ${x1} ${y + cellSize/2 + curveHeight/1.5}, ${x1 + xDist / 4.0} ${y + cellSize/2 + curveHeight + taperedWidth/3.5}, ${x1 + xDist / 2.0} ${
-			  y + cellSize/2 + curveHeight + taperedWidth/2} 
-			  C ${x2 - xDist / 4.0} ${y + cellSize/2 + curveHeight+ taperedWidth/1.5}, ${x2} ${y + cellSize/2 + curveHeight/1.5+taperedWidth}, ${x2+taperedWidth} ${y+cellSize/2-taperedWidth}
-			  L ${x2-taperedWidth} ${y+cellSize/2-taperedWidth}
-			  C  ${x2} ${y + cellSize/2 + curveHeight/1.5-taperedWidth}, ${x2 - xDist / 4.0} ${y + cellSize/2 + curveHeight- taperedWidth/1.5},${x1 + xDist / 2.0} ${
-			  y + cellSize/2 + curveHeight - taperedWidth/2}
-				C  ${x1 + xDist / 4.0} ${y + cellSize/2 + curveHeight - taperedWidth/3.5} ${x1} ${y + cellSize/2 + curveHeight/1.5 },${x1} ${y+cellSize/2-taperedWidth}	         
+          } else {
+            return `M ${x1} ${y + cellSize / 2 - taperedWidth} 
+				C ${x1} ${y + cellSize / 2 + curveHeight / 1.5}, ${x1 + xDist / 4.0} ${
+              y + cellSize / 2 + curveHeight + taperedWidth / 3.5
+            }, ${x1 + xDist / 2.0} ${
+              y + cellSize / 2 + curveHeight + taperedWidth / 2
+            } 
+			  C ${x2 - xDist / 4.0} ${
+              y + cellSize / 2 + curveHeight + taperedWidth / 1.5
+            }, ${x2} ${y + cellSize / 2 + curveHeight / 1.5 + taperedWidth}, ${
+              x2 + taperedWidth
+            } ${y + cellSize / 2 - taperedWidth}
+			  L ${x2 - taperedWidth} ${y + cellSize / 2 - taperedWidth}
+			  C  ${x2} ${y + cellSize / 2 + curveHeight / 1.5 - taperedWidth}, ${
+              x2 - xDist / 4.0
+            } ${y + cellSize / 2 + curveHeight - taperedWidth / 1.5},${
+              x1 + xDist / 2.0
+            } ${y + cellSize / 2 + curveHeight - taperedWidth / 2}
+				C  ${x1 + xDist / 4.0} ${
+              y + cellSize / 2 + curveHeight - taperedWidth / 3.5
+            } ${x1} ${y + cellSize / 2 + curveHeight / 1.5},${x1} ${
+              y + cellSize / 2 - taperedWidth
+            }	         
 			  `;
-			}
-		}
+          }
+        }
       })
       .attr("stroke", (d) => {
         const color = this.edgeColors
@@ -1328,16 +1366,11 @@ export class HierarchicallyClusteredGraphDrawer {
       })
       .attr("stroke-width", edgeWidth)
       .attr("fill", (d) => {
-		  if (!this.H.getIsDirected())
-		  {
-			  return "none";
-		  }
-		  else
-		  {
         const color = this.edgeColors
           ? this.edgeColors.get(d) || "var(--edge-color)"
           : "var(--edge-color)";
-	  return color;}})
+        return color;
+      })
       .attr("opacity", 1)
       .on("mouseover", (event, d) => {
         // Get the computed color for this edge
@@ -1350,7 +1383,8 @@ export class HierarchicallyClusteredGraphDrawer {
           d,
           xCoordMap,
           yCoordMap,
-          edgeLabelsGroup
+          edgeLabelsGroup,
+          cellSize
         );
       })
 
@@ -1482,7 +1516,7 @@ export class HierarchicallyClusteredGraphDrawer {
       });
     });
 
-    const maxArcHeight = maxDist / 2.6;
+    const maxArcHeight = maxDist / 3.4;
     const minRequiredHeight =
       linearLayoutY +
       maxArcHeight +
