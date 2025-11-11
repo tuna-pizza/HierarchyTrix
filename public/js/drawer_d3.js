@@ -9,7 +9,7 @@ const cellboundaryColor = "var(--cell-boundary-color)";
 const treecolor = "var(--tree-color)";
 const edgeColor = "var(--edge-color)";
 const arrayBoundaryWidth = "3";
-const edgeWidth = 3;
+let edgeWidth = 3;
 const textSize = "18";
 const smallTextSize = "12";
 const textOffset = 2;
@@ -969,6 +969,7 @@ export class HierarchicallyClusteredGraphDrawer {
     clusterDistance
   ) {
     // 1. Create an array to hold rich data objects, not just strings.
+    //TODO: START COPYING HERE
     const pathData = [];
     const leavesToSkip = new Set(this.getLeavesInLastLevelClusters());
     for (const node of this.H.getNodes()) {
@@ -995,33 +996,70 @@ export class HierarchicallyClusteredGraphDrawer {
             referenceX - cellSize / 2 + 2.5 * parseInt(arrayBoundaryWidth, 10); //
           const upperMiddleRightX =
             referenceX + cellSize / 2 - 2.5 * parseInt(arrayBoundaryWidth, 10); //
-          const lowerMiddleLeftX = x - width / 3; //
-          const lowerMiddleRightX = x + width / 3; //
-          const belowTopY = topY + 0.4 * clusterDistance; //
+			let topOfArrayOffset = Math.min(1.25*cellSize,width/2);
+			let topOfArrayLeftX = x  - topOfArrayOffset;
+			let topOfArrayRightX = x  + topOfArrayOffset;
+          let lowerMiddleLeftX = topOfArrayLeftX; //
+          let lowerMiddleRightX = topOfArrayRightX; //
+          let belowTopY = topY + 0.4 * clusterDistance; //
           let currentBottomY = topY + clusterDistance;
           let currentTopY = topY;
-          const aboveBottomY = currentBottomY - 0.6 * clusterDistance; //
+          let aboveBottomY = currentBottomY - 0.6 * clusterDistance; //
           const verticalSpan = Math.abs(bottomY - topY) / clusterDistance;
           let currentBottomLeftX = lowerMiddleLeftX;
-          if (verticalSpan === 1) {
+		  let currentBottomRightX = lowerMiddleRightX;
+          let leftPath = "";
+		  let rightPath = "";
+		  if (verticalSpan === 1) {
             currentBottomLeftX = bottomLeftX;
+			currentBottomRightX = bottomRightX;
+			lowerMiddleLeftX = topOfArrayLeftX;
+			lowerMiddleRightX = topOfArrayRightX;
+			let topOfArrayY = y - width/2- cellSize/2;
+			let belowTopOfArrayY = topOfArrayY + 0.2 * width/2;
+			let aboveBottomOfArrayY = currentBottomY - 0.6 * width/2; 
+			belowTopY = topY + 0.5 * (clusterDistance-width/2);
+			aboveBottomY = topOfArrayY - 0.5 * (clusterDistance-width/2); 
+			belowTopY = belowTopY ;
+			leftPath = `C ${upperMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${topOfArrayLeftX} ${topOfArrayY}
+			C ${topOfArrayLeftX} ${belowTopOfArrayY}, ${currentBottomLeftX} ${aboveBottomOfArrayY}, ${currentBottomLeftX} ${currentBottomY}`;
+			rightPath = `C ${currentBottomRightX} ${aboveBottomOfArrayY},${topOfArrayRightX} ${belowTopOfArrayY},${topOfArrayRightX} ${topOfArrayY}
+			C ${lowerMiddleRightX} ${aboveBottomY}, ${upperMiddleRightX} ${belowTopY}, ${topRightX} ${currentTopY}`;
           }
-          let leftPath = `C ${upperMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${currentBottomLeftX} ${currentBottomY}`;
-          let rightPath = `C ${lowerMiddleRightX} ${aboveBottomY}, ${upperMiddleRightX} ${belowTopY}, ${topRightX} ${currentTopY}`;
+		  else{
+			leftPath = `C ${upperMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${currentBottomLeftX} ${currentBottomY}`;
+			rightPath = `C ${lowerMiddleRightX} ${aboveBottomY}, ${upperMiddleRightX} ${belowTopY}, ${topRightX} ${currentTopY}`;
+		  }
           for (let i = 1; i < verticalSpan; i++) {
             currentBottomY = currentBottomY + clusterDistance;
             currentTopY = currentTopY + clusterDistance;
-            const belowTopY = currentTopY + 0.4 * clusterDistance; //
-            const aboveBottomY = currentBottomY - 0.6 * clusterDistance; //
-            if (verticalSpan === i + 1) {
+            let belowTopY = currentTopY + 0.4 * clusterDistance; //
+            let aboveBottomY = currentBottomY - 0.6 * clusterDistance; //
+			if (verticalSpan === i + 1) {
               currentBottomLeftX = bottomLeftX;
+			  currentBottomRightX = bottomRightX;
+			  lowerMiddleLeftX = topOfArrayLeftX;
+			  lowerMiddleRightX = topOfArrayRightX;
+			  let topOfArrayY = y - width/2- cellSize/2;
+			  let belowTopOfArrayY = topOfArrayY + 0.2 * width/2;
+			  let aboveBottomOfArrayY = currentBottomY - 0.6 * width/2; 
+			  belowTopY = currentTopY + 0.5 * (clusterDistance-width/2);
+			  aboveBottomY = topOfArrayY - 0.5 * (clusterDistance-width/2); 
+			  belowTopY = belowTopY ;
+			  leftPath = leftPath + `C ${lowerMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${topOfArrayLeftX} ${topOfArrayY}
+				C ${topOfArrayLeftX} ${belowTopOfArrayY}, ${currentBottomLeftX} ${aboveBottomOfArrayY}, ${currentBottomLeftX} ${currentBottomY}`;
+			  rightPath = `C ${currentBottomRightX} ${aboveBottomOfArrayY},${topOfArrayRightX} ${belowTopOfArrayY},${topOfArrayRightX} ${topOfArrayY}
+				C ${lowerMiddleRightX} ${aboveBottomY}, ${lowerMiddleRightX} ${belowTopY}, ${lowerMiddleRightX} ${currentTopY}` + rightPath;
             }
+			else
+			{	
             leftPath =
               leftPath +
               `\nC ${lowerMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${currentBottomLeftX} ${currentBottomY}`;
             rightPath =
               `C ${lowerMiddleRightX} ${aboveBottomY}, ${lowerMiddleRightX} ${belowTopY}, ${lowerMiddleRightX} ${currentTopY}\n` +
               rightPath;
+			}
           } // FIX: Removed the trailing newline and indentation before the final Z
 
           const pathString =
@@ -1037,7 +1075,9 @@ export class HierarchicallyClusteredGraphDrawer {
           });
         }
       }
-    } // 3. Bind the array of objects. The second argument to .attr("d", ...) is now an accessor function.
+    }
+	//TODO: END COPYING HERE
+	// 3. Bind the array of objects. The second argument to .attr("d", ...) is now an accessor function.
 
     svg
       .append("g")
@@ -1210,7 +1250,18 @@ export class HierarchicallyClusteredGraphDrawer {
         let x1 = xCoordMap.get(d.getSource());
         let x2 = xCoordMap.get(d.getTarget());
         const y = yCoordMap.get(d.getSource());
+		let sourceLeft = true;
         if (x1 === undefined || x2 === undefined || y === undefined) return "";
+		if (x1 > x2)
+		{
+			let swap = x1;
+			x1 = x2;
+			x2 = swap;
+			if (this.H.getIsDirected())
+			{
+				sourceLeft = false;
+			}
+		}
 
         // Remove the logic that swaps x1/x2 to force left-to-right drawing.
         // This allows the path to be drawn from Source (x1) to Target (x2).
@@ -1224,14 +1275,50 @@ export class HierarchicallyClusteredGraphDrawer {
         // maxDist calculation is fine, as it uses the absolute distance
         if (xDist > maxDist) maxDist = xDist;
 
-        const curveHeight = xDist / 3;
+        const curveHeight = xDist / 4;
 
         // Use original x1 and x2 coordinates for the path.
         // Path: M (start) Q (ctl1), (mid) Q (ctl2), (end)
-        // This formula works for left-to-right (x1 < x2) and right-to-left (x1 > x2) curves.
-        return `M ${x1} ${y} Q ${x1} ${y + curveHeight}, ${x_mid} ${
-          y + curveHeight
-        } Q ${x2} ${y + curveHeight}, ${x2} ${y}`;
+        // This formula works for left-to-right (x1 < x2) and right-to-left (x1 > x2) curves
+		//TODO: START COPYING HERE
+		if (!this.H.getIsDirected())
+		{
+			return `M ${x1} ${y+cellSize/2} C ${x1} ${y + cellSize/2 + curveHeight/1.5}, ${x1 + xDist / 4.0} ${y + cellSize/2 + curveHeight}, ${x1 + xDist / 2.0} ${
+			  y + cellSize/2 + curveHeight} C ${x2 - xDist / 4.0} ${y + cellSize/2 + curveHeight}, ${x2} ${y + cellSize/2 + curveHeight/1.5}, ${x2} ${y+cellSize/2}`;
+			//TODO: END COPYING HERE
+		}
+		else
+		{
+			let taperedWidth=4;
+			if (this.H.getIsDirected())
+			{
+				edgeWidth = 1;
+			}
+			if (sourceLeft)
+			{
+				return `M ${x1-taperedWidth} ${y+cellSize/2-taperedWidth} 
+				C ${x1} ${y + cellSize/2 + curveHeight/1.5 + taperedWidth}, ${x1 + xDist / 4.0} ${y + cellSize/2 + curveHeight + taperedWidth/1.5}, ${x1 + xDist / 2.0} ${
+			  y + cellSize/2 + curveHeight + taperedWidth/2} 
+			  C ${x2 - xDist / 4.0} ${y + cellSize/2 + curveHeight+ taperedWidth/3.5}, ${x2} ${y + cellSize/2 + curveHeight/1.5}, ${x2} ${y+cellSize/2-taperedWidth}
+			  C  ${x2} ${y + cellSize/2 + curveHeight/1.5}, ${x2 - xDist / 4.0} ${y + cellSize/2 + curveHeight- taperedWidth/3.5},${x1 + xDist / 2.0} ${
+			  y + cellSize/2 + curveHeight - taperedWidth/2}
+				C  ${x1 + xDist / 4.0} ${y + cellSize/2 + curveHeight - taperedWidth/1.5} ${x1} ${y + cellSize/2 + curveHeight/1.5 - taperedWidth},${x1+taperedWidth} ${y+cellSize/2-taperedWidth}
+		        L ${x1-taperedWidth} ${y+cellSize/2-taperedWidth} 
+			  `;
+			}
+			else
+			{
+				return `M ${x1} ${y+cellSize/2-taperedWidth} 
+				C ${x1} ${y + cellSize/2 + curveHeight/1.5}, ${x1 + xDist / 4.0} ${y + cellSize/2 + curveHeight + taperedWidth/3.5}, ${x1 + xDist / 2.0} ${
+			  y + cellSize/2 + curveHeight + taperedWidth/2} 
+			  C ${x2 - xDist / 4.0} ${y + cellSize/2 + curveHeight+ taperedWidth/1.5}, ${x2} ${y + cellSize/2 + curveHeight/1.5+taperedWidth}, ${x2+taperedWidth} ${y+cellSize/2-taperedWidth}
+			  L ${x2-taperedWidth} ${y+cellSize/2-taperedWidth}
+			  C  ${x2} ${y + cellSize/2 + curveHeight/1.5-taperedWidth}, ${x2 - xDist / 4.0} ${y + cellSize/2 + curveHeight- taperedWidth/1.5},${x1 + xDist / 2.0} ${
+			  y + cellSize/2 + curveHeight - taperedWidth/2}
+				C  ${x1 + xDist / 4.0} ${y + cellSize/2 + curveHeight - taperedWidth/3.5} ${x1} ${y + cellSize/2 + curveHeight/1.5 },${x1} ${y+cellSize/2-taperedWidth}	         
+			  `;
+			}
+		}
       })
       .attr("stroke", (d) => {
         const color = this.edgeColors
@@ -1240,7 +1327,17 @@ export class HierarchicallyClusteredGraphDrawer {
         return color;
       })
       .attr("stroke-width", edgeWidth)
-      .attr("fill", "none")
+      .attr("fill", (d) => {
+		  if (!this.H.getIsDirected())
+		  {
+			  return "none";
+		  }
+		  else
+		  {
+        const color = this.edgeColors
+          ? this.edgeColors.get(d) || "var(--edge-color)"
+          : "var(--edge-color)";
+	  return color;}})
       .attr("opacity", 1)
       .on("mouseover", (event, d) => {
         // Get the computed color for this edge
