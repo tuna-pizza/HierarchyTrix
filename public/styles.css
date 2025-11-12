@@ -335,8 +335,10 @@ body {
   --cell-boundary-color: #888b90;
   --tree-color: #dadbdd;
   --edge-color: hsl(210, 60%, 49%);
-  --adj-color-low: hsl(210, 60%, 90%); /* Light default blue */
-  --adj-color-high: hsl(210, 60%, 49%);
+  /* --adj-color-low: hsl(210, 60%, 90%);
+  --adj-color-high: hsl(210, 60%, 49%); */
+  --adj-color-low: hsl(0, 0%, 90%);
+  --adj-color-high: hsl(0, 0%, 49%);
 }
 
 .edge-label {
