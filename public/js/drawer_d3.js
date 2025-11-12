@@ -143,10 +143,12 @@ export class HierarchicallyClusteredGraphDrawer {
 
     if (!this.hasNumericEdgeLabels()) {
       // Not numeric, use default colors
+      const hue = 210;
+      const saturation = 60;
+      const mediumColor = `hsl(${hue}, ${saturation}%, 75%)`;
       edges.forEach((edge) => {
-        const color = "var(--edge-color)";
-        this.edgeColors.set(edge, color);
-        edge.edgeColor = color;
+        this.edgeColors.set(edge, mediumColor);
+        edge.edgeColor = mediumColor;
       });
       return;
     }
@@ -1273,9 +1275,6 @@ export class HierarchicallyClusteredGraphDrawer {
         const curveHeight = xDist / 4;
 
         // Use original x1 and x2 coordinates for the path.
-        // Path: M (start) Q (ctl1), (mid) Q (ctl2), (end)
-        // This formula works for left-to-right (x1 < x2) and right-to-left (x1 > x2) curves
-        //TODO: START COPYING HERE
         if (!this.H.getIsDirected()) {
           let normalWidth = 1;
           return `M ${x1 - normalWidth} ${y + cellSize / 2 - normalWidth} C ${
@@ -1303,8 +1302,7 @@ export class HierarchicallyClusteredGraphDrawer {
           }, ${x1 + normalWidth} ${
             y + cellSize / 2 + curveHeight / 1.5 - normalWidth
           },${x1 + normalWidth} ${y + cellSize / 2 + normalWidth}
-			  L ${x1 - normalWidth} ${y + cellSize / 2 - normalWidth}`;
-          //TODO: END COPYING HERE
+			  L ${x1 - normalWidth} ${y + cellSize / 2 - normalWidth} Z`;
         } else {
           let taperedWidth = 4;
           if (sourceLeft) {
@@ -1329,7 +1327,7 @@ export class HierarchicallyClusteredGraphDrawer {
             } ${x1} ${y + cellSize / 2 + curveHeight / 1.5 - taperedWidth},${
               x1 + taperedWidth
             } ${y + cellSize / 2 - taperedWidth}
-		        L ${x1 - taperedWidth} ${y + cellSize / 2 - taperedWidth} 
+		        L ${x1 - taperedWidth} ${y + cellSize / 2 - taperedWidth} Z
 			  `;
           } else {
             return `M ${x1} ${y + cellSize / 2 - taperedWidth} 
@@ -1372,6 +1370,7 @@ export class HierarchicallyClusteredGraphDrawer {
         return color;
       })
       .attr("opacity", 1)
+      .style("pointer-events", "visibleFill")
       .on("mouseover", (event, d) => {
         // Get the computed color for this edge
         const edgeColor = this.edgeColors ? this.edgeColors.get(d) : null;
