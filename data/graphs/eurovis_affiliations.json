@@ -6,7 +6,8 @@
       "type": "cluster"
     },
     {
-      "id": "Northeastern University",
+      "id": 0,
+      "label": "Northeastern University",
       "parent": "USA",
       "type": "leaf"
     },
@@ -16,7 +17,8 @@
       "type": "cluster"
     },
     {
-      "id": "St. Pölten University of Applied Sciences",
+      "id": 1,
+      "label": "St. Pölten University of Applied Sciences",
       "parent": "Austria",
       "type": "leaf"
     },
@@ -26,7 +28,8 @@
       "type": "cluster"
     },
     {
-      "id": "University of Edinburgh",
+      "id": 2,
+      "label": "University of Edinburgh",
       "parent": "UK",
       "type": "leaf"
     },
@@ -36,12 +39,14 @@
       "type": "cluster"
     },
     {
-      "id": "King Abdullah University of Science & Technology (KAUST)",
+      "id": 3,
+      "label": "King Abdullah University of Science & Technology (KAUST)",
       "parent": "Saudi-Arabia",
       "type": "leaf"
     },
     {
-      "id": "Worcester Polytechnic Institute",
+      "id": 4,
+      "label": "Worcester Polytechnic Institute",
       "parent": "USA",
       "type": "leaf"
     },
@@ -51,7 +56,8 @@
       "type": "cluster"
     },
     {
-      "id": "Sapienza University of Rome",
+      "id": 5,
+      "label": "Sapienza University of Rome",
       "parent": "Italy",
       "type": "leaf"
     },
@@ -61,12 +67,14 @@
       "type": "cluster"
     },
     {
-      "id": "Eindhoven University of Technology",
+      "id": 6,
+      "label": "Eindhoven University of Technology",
       "parent": "The Netherlands",
       "type": "leaf"
     },
     {
-      "id": "Oak Ridge National Laboratory",
+      "id": 7,
+      "label": "Oak Ridge National Laboratory",
       "parent": "USA",
       "type": "leaf"
     },
@@ -76,7 +84,8 @@
       "type": "cluster"
     },
     {
-      "id": "Inria",
+      "id": 8,
+      "label": "Inria",
       "parent": "France",
       "type": "leaf"
     },
@@ -86,22 +95,26 @@
       "type": "cluster"
     },
     {
-      "id": "Northeast Normal University",
+      "id": 9,
+      "label": "Northeast Normal University",
       "parent": "China",
       "type": "leaf"
     },
     {
-      "id": "The Jackson Laboratory",
+      "id": 10,
+      "label": "The Jackson Laboratory",
       "parent": "USA",
       "type": "leaf"
     },
     {
-      "id": "TU Wien",
+      "id": 11,
+      "label": "TU Wien",
       "parent": "Austria",
       "type": "leaf"
     },
     {
-      "id": "University of California, Davis",
+      "id": 12,
+      "label": "University of California, Davis",
       "parent": "USA",
       "type": "leaf"
     },
@@ -111,42 +124,50 @@
       "type": "cluster"
     },
     {
-      "id": "University of Stuttgart",
+      "id": 13,
+      "label": "University of Stuttgart",
       "parent": "Germany",
       "type": "leaf"
     },
     {
-      "id": "Utrecht University",
+      "id": 14,
+      "label": "Utrecht University",
       "parent": "The Netherlands",
       "type": "leaf"
     },
     {
-      "id": "University of Arizona",
+      "id": 15,
+      "label": "University of Arizona",
       "parent": "USA",
       "type": "leaf"
     },
     {
-      "id": "University of Münster",
+      "id": 16,
+      "label": "University of Münster",
       "parent": "Germany",
       "type": "leaf"
     },
     {
-      "id": "Tableau Research",
+      "id": 17,
+      "label": "Tableau Research",
       "parent": "USA",
       "type": "leaf"
     },
     {
-      "id": "Arizona State University",
+      "id": 18,
+      "label": "Arizona State University",
       "parent": "USA",
       "type": "leaf"
     },
     {
-      "id": "University of Osnabrück",
+      "id": 19,
+      "label": "University of Osnabrück",
       "parent": "Germany",
       "type": "leaf"
     },
     {
-      "id": "Los Alamos National Laboratory",
+      "id": 20,
+      "label": "Los Alamos National Laboratory",
       "parent": "USA",
       "type": "leaf"
     },
@@ -156,27 +177,32 @@
       "type": "cluster"
     },
     {
-      "id": "University of Bergen",
+      "id": 21,
+      "label": "University of Bergen",
       "parent": "Norway",
       "type": "leaf"
     },
     {
-      "id": "Max Planck Institute for Biogeochemistry",
+      "id": 22,
+      "label": "Max Planck Institute for Biogeochemistry",
       "parent": "Germany",
       "type": "leaf"
     },
     {
-      "id": "Apple",
+      "id": 23,
+      "label": "Apple",
       "parent": "USA",
       "type": "leaf"
     },
     {
-      "id": "Princeton Plasma Physics Laboratory",
+      "id": 24,
+      "label": "Princeton Plasma Physics Laboratory",
       "parent": "USA",
       "type": "leaf"
     },
     {
-      "id": "University of Oregon",
+      "id": 25,
+      "label": "University of Oregon",
       "parent": "USA",
       "type": "leaf"
     },
@@ -186,22 +212,26 @@
       "type": "cluster"
     },
     {
-      "id": "The University of Queensland",
+      "id": 26,
+      "label": "The University of Queensland",
       "parent": "Australia",
       "type": "leaf"
     },
     {
-      "id": "University of Utah",
+      "id": 27,
+      "label": "University of Utah",
       "parent": "USA",
       "type": "leaf"
     },
     {
-      "id": "Karlsruhe Institute of Technology",
+      "id": 28,
+      "label": "Karlsruhe Institute of Technology",
       "parent": "Germany",
       "type": "leaf"
     },
     {
-      "id": "University of Konstanz",
+      "id": 29,
+      "label": "University of Konstanz",
       "parent": "Germany",
       "type": "leaf"
     },
@@ -211,22 +241,26 @@
       "type": "cluster"
     },
     {
-      "id": "ETH Zürich",
+      "id": 30,
+      "label": "ETH Zürich",
       "parent": "Switzerland",
       "type": "leaf"
     },
     {
-      "id": "École Centrale de Lyon",
+      "id": 31,
+      "label": "École Centrale de Lyon",
       "parent": "France",
       "type": "leaf"
     },
     {
-      "id": "University of Groningen",
+      "id": 32,
+      "label": "University of Groningen",
       "parent": "The Netherlands",
       "type": "leaf"
     },
     {
-      "id": "Georgia Institute of Technology",
+      "id": 33,
+      "label": "Georgia Institute of Technology",
       "parent": "USA",
       "type": "leaf"
     },
@@ -236,87 +270,104 @@
       "type": "cluster"
     },
     {
-      "id": "Masaryk University",
+      "id": 34,
+      "label": "Masaryk University",
       "parent": "Czech Republic",
       "type": "leaf"
     },
     {
-      "id": "Splunk Technology",
+      "id": 35,
+      "label": "Splunk Technology",
       "parent": "USA",
       "type": "leaf"
     },
     {
-      "id": "Sichuan University",
+      "id": 36,
+      "label": "Sichuan University",
       "parent": "China",
       "type": "leaf"
     },
     {
-      "id": "The Ohio State University",
+      "id": 37,
+      "label": "The Ohio State University",
       "parent": "USA",
       "type": "leaf"
     },
     {
-      "id": "Bosch Research North America",
+      "id": 38,
+      "label": "Bosch Research North America",
       "parent": "USA",
       "type": "leaf"
     },
     {
-      "id": "Friedrich-Alexander-Universität Erlangen-Nürnberg",
+      "id": 39,
+      "label": "Friedrich-Alexander-Universität Erlangen-Nürnberg",
       "parent": "Germany",
       "type": "leaf"
     },
     {
-      "id": "University College London",
+      "id": 40,
+      "label": "University College London",
       "parent": "UK",
       "type": "leaf"
     },
     {
-      "id": "University of Iowa",
+      "id": 41,
+      "label": "University of Iowa",
       "parent": "USA",
       "type": "leaf"
     },
     {
-      "id": "East China Normal University",
+      "id": 42,
+      "label": "East China Normal University",
       "parent": "China",
       "type": "leaf"
     },
     {
-      "id": "University Medicine Greifswald",
+      "id": 43,
+      "label": "University Medicine Greifswald",
       "parent": "Germany",
       "type": "leaf"
     },
     {
-      "id": "Technical University of Munich",
+      "id": 44,
+      "label": "Technical University of Munich",
       "parent": "Germany",
       "type": "leaf"
     },
     {
-      "id": "Robert Bosch GmbH",
+      "id": 45,
+      "label": "Robert Bosch GmbH",
       "parent": "Germany",
       "type": "leaf"
     },
     {
-      "id": "Luminary Cloud, Inc.",
+      "id": 46,
+      "label": "Luminary Cloud, Inc.",
       "parent": "USA",
       "type": "leaf"
     },
     {
-      "id": "University of Jena",
+      "id": 47,
+      "label": "University of Jena",
       "parent": "Germany",
       "type": "leaf"
     },
     {
-      "id": "Chinese Academy of Sciences",
+      "id": 48,
+      "label": "Chinese Academy of Sciences",
       "parent": "China",
       "type": "leaf"
     },
     {
-      "id": "Harvard University",
+      "id": 49,
+      "label": "Harvard University",
       "parent": "USA",
       "type": "leaf"
     },
     {
-      "id": "Northwestern Polytechnical University",
+      "id": 50,
+      "label": "Northwestern Polytechnical University",
       "parent": "China",
       "type": "leaf"
     },
@@ -326,27 +377,32 @@
       "type": "cluster"
     },
     {
-      "id": "Linköping University",
+      "id": 51,
+      "label": "Linköping University",
       "parent": "Sweden",
       "type": "leaf"
     },
     {
-      "id": "University of Washington",
+      "id": 52,
+      "label": "University of Washington",
       "parent": "USA",
       "type": "leaf"
     },
     {
-      "id": "University of Magdeburg",
+      "id": 53,
+      "label": "University of Magdeburg",
       "parent": "Germany",
       "type": "leaf"
     },
     {
-      "id": "Washington University in St. Louis",
+      "id": 54,
+      "label": "Washington University in St. Louis",
       "parent": "USA",
       "type": "leaf"
     },
     {
-      "id": "University of Colorado Boulder",
+      "id": 55,
+      "label": "University of Colorado Boulder",
       "parent": "USA",
       "type": "leaf"
     },
@@ -356,37 +412,44 @@
       "type": "cluster"
     },
     {
-      "id": "University of Victoria",
+      "id": 56,
+      "label": "University of Victoria",
       "parent": "Canada",
       "type": "leaf"
     },
     {
-      "id": "University of Michigan",
+      "id": 57,
+      "label": "University of Michigan",
       "parent": "USA",
       "type": "leaf"
     },
     {
-      "id": "Monash University",
+      "id": 58,
+      "label": "Monash University",
       "parent": "Australia",
       "type": "leaf"
     },
     {
-      "id": "Wageningen University & Research",
+      "id": 59,
+      "label": "Wageningen University & Research",
       "parent": "The Netherlands",
       "type": "leaf"
     },
     {
-      "id": "University of Rostock",
+      "id": 60,
+      "label": "University of Rostock",
       "parent": "Germany",
       "type": "leaf"
     },
     {
-      "id": "The Roux Institute at Northeastern University",
+      "id": 61,
+      "label": "The Roux Institute at Northeastern University",
       "parent": "USA",
       "type": "leaf"
     },
     {
-      "id": "The Hong Kong University of Science and Technology",
+      "id": 62,
+      "label": "The Hong Kong University of Science and Technology",
       "parent": "China",
       "type": "leaf"
     },
@@ -396,27 +459,32 @@
       "type": "cluster"
     },
     {
-      "id": "Nanyang Technological University",
+      "id": 63,
+      "label": "Nanyang Technological University",
       "parent": "Singapore",
       "type": "leaf"
     },
     {
-      "id": "Heidelberg University",
+      "id": 64,
+      "label": "Heidelberg University",
       "parent": "Germany",
       "type": "leaf"
     },
     {
-      "id": "University of St. Gallen",
+      "id": 65,
+      "label": "University of St. Gallen",
       "parent": "Switzerland",
       "type": "leaf"
     },
     {
-      "id": "NVIDIA",
+      "id": 66,
+      "label": "NVIDIA",
       "parent": "USA",
       "type": "leaf"
     },
     {
-      "id": "Brown University",
+      "id": 67,
+      "label": "Brown University",
       "parent": "USA",
       "type": "leaf"
     },
@@ -443,434 +511,434 @@
   ],
   "edges": [
     {
-      "source": "Northeastern University",
-      "target": "The Jackson Laboratory",
+      "source": 0,
+      "target": 10,
       "weight": 1,
       "label": "Gridded Visualization of Statistical Trees for High-Dimensional Multipartite Data in Systems Genetics"
     },
     {
-      "source": "Northeastern University",
-      "target": "The Roux Institute at Northeastern University",
+      "source": 0,
+      "target": 61,
       "weight": 1,
       "label": "Gridded Visualization of Statistical Trees for High-Dimensional Multipartite Data in Systems Genetics"
     },
     {
-      "source": "The Jackson Laboratory",
-      "target": "The Roux Institute at Northeastern University",
+      "source": 10,
+      "target": 61,
       "weight": 1,
       "label": "Gridded Visualization of Statistical Trees for High-Dimensional Multipartite Data in Systems Genetics"
     },
     {
-      "source": "Inria",
-      "target": "St. Pölten University of Applied Sciences",
+      "source": 8,
+      "target": 1,
       "weight": 1,
       "label": "Instructional Comics for Self-Paced Learning of Data Visualization Tools and Concepts"
     },
     {
-      "source": "Inria",
-      "target": "University of Edinburgh",
+      "source": 8,
+      "target": 2,
       "weight": 1,
       "label": "Instructional Comics for Self-Paced Learning of Data Visualization Tools and Concepts"
     },
     {
-      "source": "St. Pölten University of Applied Sciences",
-      "target": "University of Edinburgh",
+      "source": 1,
+      "target": 2,
       "weight": 1,
       "label": "Instructional Comics for Self-Paced Learning of Data Visualization Tools and Concepts"
     },
     {
-      "source": "St. Pölten University of Applied Sciences",
-      "target": "TU Wien",
+      "source": 1,
+      "target": 11,
       "weight": 2,
       "label": "Interactive Discovery and Exploration of Visual Bias in Generative Text-to-Image Models\nNODKANT: Exploring Constructive Network Physicalization"
     },
     {
-      "source": "King Abdullah University of Science & Technology (KAUST)",
-      "target": "University of Stuttgart",
+      "source": 3,
+      "target": 13,
       "weight": 1,
       "label": "Lactea: Web-Based Spectrum-Preserving Multi-Resolution Visualization of the GAIA Star Catalog"
     },
     {
-      "source": "Eindhoven University of Technology",
-      "target": "Sapienza University of Rome",
+      "source": 6,
+      "target": 5,
       "weight": 1,
       "label": "Coupling Guidance and Progressiveness in Visual Analytics"
     },
     {
-      "source": "Eindhoven University of Technology",
-      "target": "TU Wien",
+      "source": 6,
+      "target": 11,
       "weight": 1,
       "label": "Coupling Guidance and Progressiveness in Visual Analytics"
     },
     {
-      "source": "Eindhoven University of Technology",
-      "target": "University of Rostock",
+      "source": 6,
+      "target": 60,
       "weight": 1,
       "label": "Coupling Guidance and Progressiveness in Visual Analytics"
     },
     {
-      "source": "Sapienza University of Rome",
-      "target": "TU Wien",
+      "source": 5,
+      "target": 11,
       "weight": 1,
       "label": "Coupling Guidance and Progressiveness in Visual Analytics"
     },
     {
-      "source": "Sapienza University of Rome",
-      "target": "University of Rostock",
+      "source": 5,
+      "target": 60,
       "weight": 1,
       "label": "Coupling Guidance and Progressiveness in Visual Analytics"
     },
     {
-      "source": "TU Wien",
-      "target": "University of Rostock",
+      "source": 11,
+      "target": 60,
       "weight": 1,
       "label": "Coupling Guidance and Progressiveness in Visual Analytics"
     },
     {
-      "source": "Arizona State University",
-      "target": "Northeastern University",
+      "source": 18,
+      "target": 0,
       "weight": 1,
       "label": "Modeling and Measuring the Chart Communication Recall Process"
     },
     {
-      "source": "Oak Ridge National Laboratory",
-      "target": "University of Utah",
+      "source": 7,
+      "target": 27,
       "weight": 1,
       "label": "Fast HARDI Uncertainty Quantification and Visualization with Spherical Sampling"
     },
     {
-      "source": "TU Wien",
-      "target": "Technical University of Munich",
+      "source": 11,
+      "target": 44,
       "weight": 1,
       "label": "Optimizing Staircase Motifs in Biofabric Network Layouts"
     },
     {
-      "source": "NVIDIA",
-      "target": "University of California, Davis",
+      "source": 66,
+      "target": 12,
       "weight": 1,
       "label": "HyperFLINT: Hypernetwork-based Flow Estimation and Temporal Interpolation for Scientific Ensemble Visualization"
     },
     {
-      "source": "NVIDIA",
-      "target": "University of Groningen",
+      "source": 66,
+      "target": 32,
       "weight": 1,
       "label": "HyperFLINT: Hypernetwork-based Flow Estimation and Temporal Interpolation for Scientific Ensemble Visualization"
     },
     {
-      "source": "University of California, Davis",
-      "target": "University of Groningen",
+      "source": 12,
+      "target": 32,
       "weight": 1,
       "label": "HyperFLINT: Hypernetwork-based Flow Estimation and Temporal Interpolation for Scientific Ensemble Visualization"
     },
     {
-      "source": "University of Groningen",
-      "target": "University of Stuttgart",
+      "source": 32,
+      "target": 13,
       "weight": 1,
       "label": "Voronoi Cell Interface-Based Parameter Sensitivity Analysis for Labeled Samples"
     },
     {
-      "source": "Heidelberg University",
-      "target": "University of Osnabrück",
+      "source": 64,
+      "target": 19,
       "weight": 1,
       "label": "Beyond Entertainment: An Investigation of Externalization Design in Video Games"
     },
     {
-      "source": "Heidelberg University",
-      "target": "University of Stuttgart",
+      "source": 64,
+      "target": 13,
       "weight": 1,
       "label": "Beyond Entertainment: An Investigation of Externalization Design in Video Games"
     },
     {
-      "source": "University of Osnabrück",
-      "target": "University of Stuttgart",
+      "source": 19,
+      "target": 13,
       "weight": 1,
       "label": "Beyond Entertainment: An Investigation of Externalization Design in Video Games"
     },
     {
-      "source": "Monash University",
-      "target": "Technical University of Munich",
+      "source": 58,
+      "target": 44,
       "weight": 1,
       "label": "Euclidean, Hyperbolic, and Spherical Networks: An Empirical Study of Matching Network Structure to Best Visualizations"
     },
     {
-      "source": "Monash University",
-      "target": "University of Arizona",
+      "source": 58,
+      "target": 15,
       "weight": 1,
       "label": "Euclidean, Hyperbolic, and Spherical Networks: An Empirical Study of Matching Network Structure to Best Visualizations"
     },
     {
-      "source": "Technical University of Munich",
-      "target": "University of Arizona",
+      "source": 44,
+      "target": 15,
       "weight": 1,
       "label": "Euclidean, Hyperbolic, and Spherical Networks: An Empirical Study of Matching Network Structure to Best Visualizations"
     },
     {
-      "source": "University Medicine Greifswald",
-      "target": "University of Münster",
+      "source": 43,
+      "target": 16,
       "weight": 1,
       "label": "Mapping Mental Models of Uncertainty to Parallel Coordinates by Probabilistic Brushing"
     },
     {
-      "source": "Eindhoven University of Technology",
-      "target": "Linköping University",
+      "source": 6,
+      "target": 51,
       "weight": 2,
       "label": "A Process-Oriented Approach to Analyze Analysts’ Use of Visualizations: Revealing Insights into the What, When, and How\nMultipla: Multiscale Pangenomic Locus Analysis"
     },
     {
-      "source": "Eindhoven University of Technology",
-      "target": "Wageningen University & Research",
+      "source": 6,
+      "target": 59,
       "weight": 1,
       "label": "Multipla: Multiscale Pangenomic Locus Analysis"
     },
     {
-      "source": "Linköping University",
-      "target": "Wageningen University & Research",
+      "source": 51,
+      "target": 59,
       "weight": 1,
       "label": "Multipla: Multiscale Pangenomic Locus Analysis"
     },
     {
-      "source": "Georgia Institute of Technology",
-      "target": "Tableau Research",
+      "source": 33,
+      "target": 17,
       "weight": 1,
       "label": "DataWeaver: Authoring Data-Driven Narratives through the Integrated Composition of Visualization and Text"
     },
     {
-      "source": "Masaryk University",
-      "target": "University of Bergen",
+      "source": 34,
+      "target": 21,
       "weight": 1,
       "label": "Tasks and Visual Abstractions for 3D Chromatin Representation"
     },
     {
-      "source": "Max Planck Institute for Biogeochemistry",
-      "target": "University of Jena",
+      "source": 22,
+      "target": 47,
       "weight": 1,
       "label": "Either Or: Interactive Articles or Videos for Climate Science Communication"
     },
     {
-      "source": "Max Planck Institute for Biogeochemistry",
-      "target": "University of Magdeburg",
+      "source": 22,
+      "target": 53,
       "weight": 1,
       "label": "Either Or: Interactive Articles or Videos for Climate Science Communication"
     },
     {
-      "source": "University of Jena",
-      "target": "University of Magdeburg",
+      "source": 47,
+      "target": 53,
       "weight": 1,
       "label": "Either Or: Interactive Articles or Videos for Climate Science Communication"
     },
     {
-      "source": "Apple",
-      "target": "Harvard University",
+      "source": 23,
+      "target": 49,
       "weight": 1,
       "label": "Towards a Better Evaluation of 3D CVML Algorithms: Immersive Debugging of a Localization Model"
     },
     {
-      "source": "Princeton Plasma Physics Laboratory",
-      "target": "The Ohio State University",
+      "source": 24,
+      "target": 37,
       "weight": 1,
       "label": "Fast and Invertible Simplicial Approximation of Magnetic-Following Interpolation for Visualizing Fusion Plasma Simulation Data"
     },
     {
-      "source": "East China Normal University",
-      "target": "University of California, Davis",
+      "source": 42,
+      "target": 12,
       "weight": 1,
       "label": "SUPQA: LLM-based Geo-Visualization for Subjective Urban Performance Question Answering"
     },
     {
-      "source": "Bosch Research North America",
-      "target": "Robert Bosch GmbH",
+      "source": 38,
+      "target": 45,
       "weight": 2,
       "label": "InterChat: Enhancing Generative Visual Analytics using Multimodal Interactions\nVISLIX: An XAI Framework for Validating Vision Models with Slice Discovery and Analysis"
     },
     {
-      "source": "Bosch Research North America",
-      "target": "University of California, Davis",
+      "source": 38,
+      "target": 12,
       "weight": 2,
       "label": "InterChat: Enhancing Generative Visual Analytics using Multimodal Interactions\nVISLIX: An XAI Framework for Validating Vision Models with Slice Discovery and Analysis"
     },
     {
-      "source": "Robert Bosch GmbH",
-      "target": "University of California, Davis",
+      "source": 45,
+      "target": 12,
       "weight": 2,
       "label": "InterChat: Enhancing Generative Visual Analytics using Multimodal Interactions\nVISLIX: An XAI Framework for Validating Vision Models with Slice Discovery and Analysis"
     },
     {
-      "source": "Chinese Academy of Sciences",
-      "target": "King Abdullah University of Science & Technology (KAUST)",
+      "source": 48,
+      "target": 3,
       "weight": 1,
       "label": "In Situ Workload Estimation for Block Assignment and Duplication in Parallelization-Over-Data Particle Advection"
     },
     {
-      "source": "Chinese Academy of Sciences",
-      "target": "Luminary Cloud, Inc.",
+      "source": 48,
+      "target": 46,
       "weight": 1,
       "label": "In Situ Workload Estimation for Block Assignment and Duplication in Parallelization-Over-Data Particle Advection"
     },
     {
-      "source": "Chinese Academy of Sciences",
-      "target": "Oak Ridge National Laboratory",
+      "source": 48,
+      "target": 7,
       "weight": 1,
       "label": "In Situ Workload Estimation for Block Assignment and Duplication in Parallelization-Over-Data Particle Advection"
     },
     {
-      "source": "Chinese Academy of Sciences",
-      "target": "University of Oregon",
+      "source": 48,
+      "target": 25,
       "weight": 1,
       "label": "In Situ Workload Estimation for Block Assignment and Duplication in Parallelization-Over-Data Particle Advection"
     },
     {
-      "source": "King Abdullah University of Science & Technology (KAUST)",
-      "target": "Luminary Cloud, Inc.",
+      "source": 3,
+      "target": 46,
       "weight": 1,
       "label": "In Situ Workload Estimation for Block Assignment and Duplication in Parallelization-Over-Data Particle Advection"
     },
     {
-      "source": "King Abdullah University of Science & Technology (KAUST)",
-      "target": "Oak Ridge National Laboratory",
+      "source": 3,
+      "target": 7,
       "weight": 1,
       "label": "In Situ Workload Estimation for Block Assignment and Duplication in Parallelization-Over-Data Particle Advection"
     },
     {
-      "source": "King Abdullah University of Science & Technology (KAUST)",
-      "target": "University of Oregon",
+      "source": 3,
+      "target": 25,
       "weight": 1,
       "label": "In Situ Workload Estimation for Block Assignment and Duplication in Parallelization-Over-Data Particle Advection"
     },
     {
-      "source": "Luminary Cloud, Inc.",
-      "target": "Oak Ridge National Laboratory",
+      "source": 46,
+      "target": 7,
       "weight": 1,
       "label": "In Situ Workload Estimation for Block Assignment and Duplication in Parallelization-Over-Data Particle Advection"
     },
     {
-      "source": "Luminary Cloud, Inc.",
-      "target": "University of Oregon",
+      "source": 46,
+      "target": 25,
       "weight": 1,
       "label": "In Situ Workload Estimation for Block Assignment and Duplication in Parallelization-Over-Data Particle Advection"
     },
     {
-      "source": "Oak Ridge National Laboratory",
-      "target": "University of Oregon",
+      "source": 7,
+      "target": 25,
       "weight": 1,
       "label": "In Situ Workload Estimation for Block Assignment and Duplication in Parallelization-Over-Data Particle Advection"
     },
     {
-      "source": "The University of Queensland",
-      "target": "University of Victoria",
+      "source": 26,
+      "target": 56,
       "weight": 1,
       "label": "Embedded and Situated Visualisation in Mixed Reality to Support Interval Running"
     },
     {
-      "source": "University College London",
-      "target": "University of Utah",
+      "source": 40,
+      "target": 27,
       "weight": 1,
       "label": "Accessible Text Descriptions for UpSet Plots"
     },
     {
-      "source": "ETH Zürich",
-      "target": "University of Konstanz",
+      "source": 30,
+      "target": 29,
       "weight": 1,
       "label": "LayerFlow: Layer-wise Exploration of LLM Embeddings using Uncertainty-aware Interlinked Projections"
     },
     {
-      "source": "Bosch Research North America",
-      "target": "Splunk Technology",
+      "source": 38,
+      "target": 35,
       "weight": 1,
       "label": "VISLIX: An XAI Framework for Validating Vision Models with Slice Discovery and Analysis"
     },
     {
-      "source": "Bosch Research North America",
-      "target": "University of Utah",
+      "source": 38,
+      "target": 27,
       "weight": 1,
       "label": "VISLIX: An XAI Framework for Validating Vision Models with Slice Discovery and Analysis"
     },
     {
-      "source": "Robert Bosch GmbH",
-      "target": "Splunk Technology",
+      "source": 45,
+      "target": 35,
       "weight": 1,
       "label": "VISLIX: An XAI Framework for Validating Vision Models with Slice Discovery and Analysis"
     },
     {
-      "source": "Robert Bosch GmbH",
-      "target": "University of Utah",
+      "source": 45,
+      "target": 27,
       "weight": 1,
       "label": "VISLIX: An XAI Framework for Validating Vision Models with Slice Discovery and Analysis"
     },
     {
-      "source": "Splunk Technology",
-      "target": "University of California, Davis",
+      "source": 35,
+      "target": 12,
       "weight": 1,
       "label": "VISLIX: An XAI Framework for Validating Vision Models with Slice Discovery and Analysis"
     },
     {
-      "source": "Splunk Technology",
-      "target": "University of Utah",
+      "source": 35,
+      "target": 27,
       "weight": 1,
       "label": "VISLIX: An XAI Framework for Validating Vision Models with Slice Discovery and Analysis"
     },
     {
-      "source": "University of California, Davis",
-      "target": "University of Utah",
+      "source": 12,
+      "target": 27,
       "weight": 1,
       "label": "VISLIX: An XAI Framework for Validating Vision Models with Slice Discovery and Analysis"
     },
     {
-      "source": "Nanyang Technological University",
-      "target": "Sichuan University",
+      "source": 63,
+      "target": 36,
       "weight": 1,
       "label": "IntelliCircos: A Data-driven and AI-powered Authoring Tool for Circos Plots"
     },
     {
-      "source": "Friedrich-Alexander-Universität Erlangen-Nürnberg",
-      "target": "University of Jena",
+      "source": 39,
+      "target": 47,
       "weight": 1,
       "label": "PrismBreak: Exploration of Multi-Dimensional Mixture Models"
     },
     {
-      "source": "University of Colorado Boulder",
-      "target": "Worcester Polytechnic Institute",
+      "source": 55,
+      "target": 4,
       "weight": 1,
       "label": "SurpriseExplora: Tuning and Contextualizing Model-derived Maps with Interactive Visualizations"
     },
     {
-      "source": "Tableau Research",
-      "target": "University of Iowa",
+      "source": 17,
+      "target": 41,
       "weight": 1,
       "label": "DashGuide: Authoring Interactive Dashboard Tours for Guiding Dashboard Users"
     },
     {
-      "source": "Brown University",
-      "target": "Northwestern Polytechnical University",
+      "source": 67,
+      "target": 50,
       "weight": 1,
       "label": "VIZTA: Enhancing Comprehension of Distributional Visualization with Visual-Lexical Fused Conversational Interface"
     },
     {
-      "source": "Brown University",
-      "target": "The Hong Kong University of Science and Technology",
+      "source": 67,
+      "target": 62,
       "weight": 1,
       "label": "VIZTA: Enhancing Comprehension of Distributional Visualization with Visual-Lexical Fused Conversational Interface"
     },
     {
-      "source": "Northwestern Polytechnical University",
-      "target": "The Hong Kong University of Science and Technology",
+      "source": 50,
+      "target": 62,
       "weight": 1,
       "label": "VIZTA: Enhancing Comprehension of Distributional Visualization with Visual-Lexical Fused Conversational Interface"
     },
     {
-      "source": "University of Michigan",
-      "target": "University of Washington",
+      "source": 57,
+      "target": 52,
       "weight": 1,
       "label": "MatplotAlt: A Python Library for Adding Alt Text to Matplotlib Figures in Computational Notebooks"
     },
     {
-      "source": "Eindhoven University of Technology",
-      "target": "University of St. Gallen",
+      "source": 6,
+      "target": 65,
       "weight": 1,
       "label": "A Process-Oriented Approach to Analyze Analysts’ Use of Visualizations: Revealing Insights into the What, When, and How"
     },
     {
-      "source": "Linköping University",
-      "target": "University of St. Gallen",
+      "source": 51,
+      "target": 65,
       "weight": 1,
       "label": "A Process-Oriented Approach to Analyze Analysts’ Use of Visualizations: Revealing Insights into the What, When, and How"
     }
