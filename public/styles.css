@@ -113,11 +113,11 @@ h1 {
 
 .leaf-label {
   fill: var(--node-color);
-  font-family: var(--font-main) !important;
-  text-anchor: end !important;
-  dominant-baseline: hanging !important;
-  opacity: 0.9 !important;
-  pointer-events: none !important;
+  font-family: var(--font-main);
+  text-anchor: end;
+  dominant-baseline: hanging;
+  opacity: 0.9;
+  pointer-events: none;
 }
 
 /* Zoom Buttons */
