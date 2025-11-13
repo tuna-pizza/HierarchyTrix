@@ -489,7 +489,9 @@ export function mouseEntersAdjCell() {
           }
         }
 
-        edgeLabelsGroup
+        const lines = textToShow.split("\n");
+
+        const textElement = edgeLabelsGroup
           .append("text")
           .attr("class", "edge-label adj-hover-label")
           .attr("x", labelX)
@@ -501,11 +503,18 @@ export function mouseEntersAdjCell() {
           .attr("font-size", window.currentLabelSize || 15)
           .attr("fill", "var(--edge-color)")
           .attr("pointer-events", "none")
-          .style("opacity", 0)
-          .text(textToShow)
-          .transition()
-          .duration(120)
-          .style("opacity", 0.9);
+          .style("opacity", 1);
+
+        lines.forEach((line, i) => {
+          textElement
+            .append("tspan")
+            // Set x coordinate for alignment (required for tspan)
+            .attr("x", labelX)
+            // Use dy to offset the lines vertically
+            // Start the first line at 0em offset, and subsequent lines by 1.2em
+            .attr("dy", i === 0 ? "0em" : "-1.2em")
+            .text(line);
+        });
       } catch (err) {
         console.warn("mouseEntersAdjCell: label placement failed", err);
       }
@@ -558,11 +567,37 @@ export function mouseLeavesAdjCell() {
 export function mouseEntersEdge(
   event,
   data,
+  drawer,
   xCoordMap,
   yCoordMap,
   edgeLabelsGroup,
   cellSize
 ) {
+  const nodeOrder = drawer.nodeOrder;
+  if (!nodeOrder || nodeOrder.length === 0) return;
+
+  // 1. Get the string IDs of the source and target for safe comparison
+  const sourceNodeID = String(data.source.getID());
+  const targetNodeID = String(data.target.getID());
+
+  // 2. Find the index of the source and target nodes in the full nodeOrder array.
+  const sourceIndex = nodeOrder.findIndex(
+    (n) => String(n.getID()) === sourceNodeID
+  );
+  const targetIndex = nodeOrder.findIndex(
+    (n) => String(n.getID()) === targetNodeID
+  );
+
+  // 3. Apply opacity based on the element's index (i)
+  d3.selectAll(".leaf-label").style("opacity", function (d, i) {
+    // Use the D3 index (i) to check against the calculated indices
+    if (i === sourceIndex || i === targetIndex) {
+      return 1.0; // Keep visible (end-node label)
+    } else {
+      return 0.3; // Dim all others
+    }
+  });
+
   const sourceNode = data.getSource();
   const targetNode = data.getTarget();
 
@@ -668,7 +703,9 @@ export function mouseEntersEdge(
 
       edgeLabelsGroup.raise();
 
-      edgeLabelsGroup
+      const lines = labelText.split("\n");
+
+      const textElement = edgeLabelsGroup
         .append("text")
         .attr("class", "edge-label")
         .attr("x", midX)
@@ -681,8 +718,19 @@ export function mouseEntersEdge(
         .attr("fill", "var(--edge-color)") //data.edgeColor || "var(--edge-color)")
         .attr("pointer-events", "none")
         .style("user-select", "none")
-        .style("opacity", 1)
-        .text(labelText);
+        .style("opacity", 1);
+
+      // Append a <tspan> for each line
+      lines.forEach((line, i) => {
+        textElement
+          .append("tspan")
+          // Set x coordinate for alignment (required for tspan)
+          .attr("x", midX)
+          // Use dy to offset the lines vertically
+          // Start the first line at 0em offset, and subsequent lines by 1.2em
+          .attr("dy", i === 0 ? "0em" : "1.2em")
+          .text(line);
+      });
     }
   }
 }
@@ -725,4 +773,7 @@ export function mouseLeavesEdge(event, edgeLabelsGroup) {
   if (edgeLabelsGroup) {
     edgeLabelsGroup.selectAll(".edge-label").remove();
   }
+
+  // 7. Restore the opacity of ALL external node labels
+  d3.selectAll(".leaf-label").style("opacity", 1.0);
 }

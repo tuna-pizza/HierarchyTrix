@@ -107,8 +107,12 @@ export class HierarchicallyClusteredGraphDrawer {
     const saturation = 60;
 
     // Define the range: from 90% Lightness (very light blue) to 49% Lightness (the requested dark blue).
-    const lightColor = `hsl(${hue}, ${saturation}%, 90%)`; // Min value color
+    let lightColor = `hsl(${hue}, ${saturation}%, 90%)`; // Min value color
     const darkColor = `hsl(${hue}, ${saturation}%, 49%)`; // Max value color (matches edge-color)
+
+    if (max - min == 1) {
+      lightColor = `hsl(${hue}, ${saturation}%, 75%)`; // Min value color
+    }
 
     // The scale will go from min value (light blue) to max value (dark blue)
     return d3
@@ -1380,6 +1384,7 @@ export class HierarchicallyClusteredGraphDrawer {
         listeners.mouseEntersEdge(
           event,
           d,
+          this,
           xCoordMap,
           yCoordMap,
           edgeLabelsGroup,
