@@ -202,6 +202,9 @@ def get_graph(instance):
 
 @app.route("/api/order/<instance>")
 def get_order(instance):
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", instance):
+        return jsonify({"error": "Invalid instance name"}), 400
+
     # Retrieve the method from query parameters, defaulting to 'ilp' (if method is absent)
     method = request.args.get("method") or request.args.get("solver") or "input"
     method = method.lower()
@@ -273,37 +276,82 @@ def get_order(instance):
 @app.route("/api/upload", methods=["POST"])
 def upload_graph():
     if "file" not in request.files:
-        return jsonify({"success": False, "message": "No file part provided"}), 400
+        return jsonify({
+            "success": False,
+            "message": "No file part provided"
+        }), 400
 
     file = request.files["file"]
     if file.filename == "":
-        return jsonify({"success": False, "message": "No selected file"}), 400
+        return jsonify({
+            "success": False,
+            "message": "No selected file"
+        }), 400
 
     if not file.filename.lower().endswith(".json"):
-        return jsonify({"success": False, "message": "Only .json files are allowed"}), 400
+        return jsonify({
+            "success": False,
+            "message": "Only .json files are allowed"
+        }), 400
 
+    # JSON prüfen
     try:
-        # Read file content and decode it
         file_content = file.read().decode("utf-8")
-        # Parse the JSON data
         data = json.loads(file_content)
     except Exception as e:
-        return jsonify({"success": False, "message": "Invalid JSON format", "details": str(e)}), 400
+        return jsonify({
+            "success": False,
+            "message": "Invalid JSON format",
+            "details": str(e)
+        }), 400
 
-    # Validate the graph structure
+    # Struktur- & Konsistenzprüfung
     is_valid, msg = validate_graph_structure(data)
     if not is_valid:
-        return jsonify({"success": False, "message": "Invalid graph structure", "details": msg}), 400
+        return jsonify({
+            "success": False,
+            "message": "Invalid graph structure",
+            "details": msg
+        }), 400
 
-    # Return success without saving the file.
-    # We still provide a 'filename' key for client-side compatibility, 
-    # using the original uploaded filename or a placeholder.
-    original_filename = file.filename if file.filename else "uploaded_graph.json" 
+    # Zufälliger, 4-stelliger Dateiname (MOVED UP to be used for the order file)
+    old_filename = file.filename.removesuffix(".json")
+    unique_name = old_filename+"_"+uuid.uuid4().hex[:4]
+    filename = f"{unique_name}.json"
+    os.makedirs(GRAPH_DIR, exist_ok=True)
+    save_path = os.path.join(GRAPH_DIR, filename)
+
+    # Ensure unique name *before* proceeding (checks against GRAPH_DIR files)
+    while os.path.exists(save_path):
+        unique_name = old_filename+"_"+uuid.uuid4().hex[:4]
+        filename = f"{unique_name}.json"
+        save_path = os.path.join(GRAPH_DIR, filename)
+
     
+    # Stream neu setzen (zum Speichern)
+    file.stream = io.BytesIO(file_content.encode("utf-8"))
+
+    try:
+        file.save(save_path)
+    except Exception as e:
+        # Aufräumen, falls Teildatei entstanden ist
+        if os.path.exists(save_path):
+            try:
+                # IMPORTANT: Clean up the order file too if graph save fails!
+                os.remove(os.path.join(ORDER_DIR, f"{unique_name}.txt"))
+                os.remove(save_path)
+            except Exception as cleanup_err:
+                print(f"Cleanup failed: {cleanup_err}")
+        return jsonify({
+            "success": False,
+            "message": "Failed to save file",
+            "details": str(e)
+        }), 500
+
     return jsonify({
-        "success": True, 
-        "message": "File uploaded and validated successfully (not saved)", 
-        "filename": original_filename # Use original filename or a placeholder
+        "success": True,
+        "message": "File uploaded and validated successfully",
+        "filename": filename
     }), 201
 
 @app.route("/api/download/<filename>", methods=["GET"])
