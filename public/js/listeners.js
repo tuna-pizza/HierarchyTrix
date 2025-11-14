@@ -218,6 +218,68 @@ export function mouseEntersAdjCell() {
   // d) Gray out all nodes (cluster and leaf)
   allNodes.attr("opacity", 0.3).selectAll("use").attr("fill", "gray");
 
+  // e) Gray out the labels of nodes (except the end-nodes)
+  // Determine IDs to highlight (these are the adjacency endpoints; may be leaves at last-level)
+  const sourceNodeID = String(data.source.getID());
+  const targetNodeID = String(data.target.getID());
+
+  // Build ordered array of leaf IDs from DOM (robust even if DOM order differs)
+  const labelNodes = d3.selectAll(".leaf-label").nodes(); // text elements
+  const leafIdOrder = labelNodes.map((textNode) => {
+    const parent = textNode.parentNode; // label-container <g>
+    return parent && parent.getAttribute
+      ? String(parent.getAttribute("data-leaf-id"))
+      : null;
+  });
+
+  // Find the indices corresponding to the source/target IDs
+  const sourceIndex = leafIdOrder.findIndex((id) => id === sourceNodeID);
+  const targetIndex = leafIdOrder.findIndex((id) => id === targetNodeID);
+
+  // Fallback: if not found, you can optionally bail or attempt matching by text
+  if (sourceIndex < 0 || targetIndex < 0) {
+    // safe fallback — try match by text content (less reliable)
+    labelNodes.forEach((n, i) => {
+      const txt = n.textContent && n.textContent.trim();
+      if (txt === String(data.source.customLabel || data.source.getID()))
+        sourceIndex = i;
+      if (txt === String(data.target.customLabel || data.target.getID()))
+        targetIndex = i;
+    });
+  }
+
+  // Now dim / highlight exactly like you do for edges:
+
+  // 1) Text labels: show only the two endpoint labels
+  d3.selectAll(".leaf-label").style("opacity", function (d, i) {
+    if (i === sourceIndex || i === targetIndex) return 1.0;
+    return 0.2; // or 0.3 as you use elsewhere
+  });
+
+  // 2) Background rects: hide rects for dimmed labels
+  d3.selectAll(".label-background").style("opacity", function (d, i) {
+    if (i === sourceIndex || i === targetIndex) return 0.7;
+    return 0; // hide for others
+  });
+
+  // f) Gray out other cluster labels except the hovered cluster (bottommost matrices only) ---
+  const sourceNode = data.source;
+  const targetNode = data.target;
+
+  // detect bottommost matrix: both source and target are clusters with no children
+  const sourceIsLeafCluster =
+    !sourceNode.children || sourceNode.children.length === 0;
+  const targetIsLeafCluster =
+    !targetNode.children || targetNode.children.length === 0;
+
+  if (sourceIsLeafCluster && targetIsLeafCluster) {
+    const currentClusterId = String(parentCluster.getID());
+    d3.selectAll(".cluster-label").style("opacity", function () {
+      // compare trimmed label text to current cluster id
+      return d3.select(this).text().trim() === currentClusterId ? 1.0 : 0.2;
+    });
+  }
+
   // Step 2. HIGHLIGHTING (Restore opacity/color for relevant elements)
 
   // a) Highlight all cells belonging to the included (descendant) matrices
@@ -562,6 +624,13 @@ export function mouseLeavesAdjCell() {
     .selectAll("path.inclusion")
     .attr("opacity", 1)
     .attr("fill", inclusionColor);
+
+  // 5. restore labels and rects
+  d3.selectAll(".leaf-label").style("opacity", 1.0);
+  d3.selectAll(".label-background").style("opacity", 0.7);
+
+  // 6. restore cluster labels that may have been dimmed on adjacency hover
+  d3.selectAll(".cluster-label").style("opacity", 1.0);
 }
 
 export function mouseEntersEdge(
@@ -588,13 +657,21 @@ export function mouseEntersEdge(
     (n) => String(n.getID()) === targetNodeID
   );
 
-  // 3. Apply opacity based on the element's index (i)
+  // 3. Gray out all the nodes labels (except the end-nodes)
   d3.selectAll(".leaf-label").style("opacity", function (d, i) {
     // Use the D3 index (i) to check against the calculated indices
     if (i === sourceIndex || i === targetIndex) {
       return 1.0; // Keep visible (end-node label)
     } else {
-      return 0.3; // Dim all others
+      return 0.2; // Dim all others
+    }
+  });
+  d3.selectAll(".label-background").style("opacity", function (d, i) {
+    // Use the D3 index (i) to check against the calculated indices
+    if (i === sourceIndex || i === targetIndex) {
+      return 0.7; // Keep visible
+    } else {
+      return 0; // Dim all others
     }
   });
 
@@ -776,4 +853,5 @@ export function mouseLeavesEdge(event, edgeLabelsGroup) {
 
   // 7. Restore the opacity of ALL external node labels
   d3.selectAll(".leaf-label").style("opacity", 1.0);
+  d3.selectAll(".label-background").style("opacity", 0.7);
 }

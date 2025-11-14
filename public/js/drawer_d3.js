@@ -14,7 +14,8 @@ const textSize = "18";
 const smallTextSize = "12";
 const textOffset = 2;
 const vertexDistance = 60;
-const clusterDistanceScalar = 1;
+const extraDistanceBetweenLayers = 400;
+const clusterDistanceScalar = 2.5;
 
 export class HierarchicallyClusteredGraphDrawer {
   constructor(H) {
@@ -961,6 +962,28 @@ export class HierarchicallyClusteredGraphDrawer {
     return leaves.map((x) => x.leaf); // return only the leaf nodes
   }
 
+  generateCubicCurve(
+    topLeftX,
+    topRightX,
+    topY,
+    bottomLeftX,
+    bottomRightX,
+    bottomY,
+    distTopScalar,
+    distBottomScalar
+  ) {
+    let vDist = topY - bottomY;
+    let topOffset = vDist * distTopScalar;
+    let bottomOffset = vDist * distBottomScalar;
+    let leftPath = ` C ${topLeftX} ${topY - topOffset}, ${bottomLeftX} ${
+      bottomY + bottomOffset
+    }, ${bottomLeftX} ${bottomY} `;
+    let rightPath = ` C ${bottomRightX} ${
+      bottomY + bottomOffset
+    }, ${topRightX} ${topY - topOffset}, ${topRightX} ${topY} `;
+    return [leftPath, rightPath];
+  }
+
   drawClusterInclusions(
     svg,
     xCoordMap,
@@ -968,7 +991,8 @@ export class HierarchicallyClusteredGraphDrawer {
     widthMap,
     xCoordReferenceMap,
     yCoordReferenceMap,
-    clusterDistance
+    clusterDistances,
+    clusterLayers
   ) {
     // 1. Create an array to hold rich data objects, not just strings.
     //TODO: START COPYING HERE
@@ -998,80 +1022,137 @@ export class HierarchicallyClusteredGraphDrawer {
             referenceX - cellSize / 2 + 2.5 * parseInt(arrayBoundaryWidth, 10); //
           const upperMiddleRightX =
             referenceX + cellSize / 2 - 2.5 * parseInt(arrayBoundaryWidth, 10); //
-          let topOfArrayOffset = Math.min(1.25 * cellSize, width / 2);
-          let topOfArrayLeftX = x - topOfArrayOffset;
-          let topOfArrayRightX = x + topOfArrayOffset;
-          let lowerMiddleLeftX = topOfArrayLeftX; //
-          let lowerMiddleRightX = topOfArrayRightX; //
-          let belowTopY = topY + 0.4 * clusterDistance; //
-          let currentBottomY = topY + clusterDistance;
+          let topOfArrayOffset = Math.min(
+            1.25 * cellSize,
+            width / 2 + parseInt(arrayBoundaryWidth, 10)
+          );
+          //let belowTopY = topY + 0.4 * clusterDistance; //
+          //let currentBottomY = topY + clusterDistance;
           let currentTopY = topY;
-          let aboveBottomY = currentBottomY - 0.6 * clusterDistance; //
-          const verticalSpan = Math.abs(bottomY - topY) / clusterDistance;
-          let currentBottomLeftX = lowerMiddleLeftX;
-          let currentBottomRightX = lowerMiddleRightX;
+          //let aboveBottomY = currentBottomY - 0.6 * clusterDistance; //
+          //const verticalSpan = Math.abs(bottomY - topY) / clusterDistance;
           let leftPath = "";
           let rightPath = "";
-          if (verticalSpan === 1) {
-            currentBottomLeftX = bottomLeftX;
-            currentBottomRightX = bottomRightX;
-            lowerMiddleLeftX = topOfArrayLeftX;
-            lowerMiddleRightX = topOfArrayRightX;
-            let topOfArrayY = y - width / 2 - cellSize / 2;
-            let belowTopOfArrayY = topOfArrayY + (0.2 * width) / 2;
-            let aboveBottomOfArrayY = currentBottomY - (0.6 * width) / 2;
-            belowTopY = topY + 0.5 * (clusterDistance - width / 2);
-            aboveBottomY = topOfArrayY - 0.5 * (clusterDistance - width / 2);
-            belowTopY = belowTopY;
-            leftPath = `C ${upperMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${topOfArrayLeftX} ${topOfArrayY}
-			C ${topOfArrayLeftX} ${belowTopOfArrayY}, ${currentBottomLeftX} ${aboveBottomOfArrayY}, ${currentBottomLeftX} ${currentBottomY}`;
-            rightPath = `C ${currentBottomRightX} ${aboveBottomOfArrayY},${topOfArrayRightX} ${belowTopOfArrayY},${topOfArrayRightX} ${topOfArrayY}
-			C ${lowerMiddleRightX} ${aboveBottomY}, ${upperMiddleRightX} ${belowTopY}, ${topRightX} ${currentTopY}`;
-          } else {
-            leftPath = `C ${upperMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${currentBottomLeftX} ${currentBottomY}`;
-            rightPath = `C ${lowerMiddleRightX} ${aboveBottomY}, ${upperMiddleRightX} ${belowTopY}, ${topRightX} ${currentTopY}`;
+
+          console.log(clusterLayers);
+          console.log(clusterDistances);
+          // New Drawing
+          let clusterDistance = 0;
+          for (let i = 0; i < clusterLayers.length; i++) {
+            if (clusterLayers[i].includes(node.getParent())) {
+              clusterDistance = clusterDistances[i + 1];
+            }
           }
+          const middleLeftX =
+            x -
+            Math.min(
+              width / 2 + parseInt(arrayBoundaryWidth, 10),
+              (cellSize / 2 + 1.5 * topOfArrayOffset) / 2
+            );
+          const middleRightX =
+            x +
+            Math.min(
+              width / 2 + parseInt(arrayBoundaryWidth, 10),
+              (cellSize / 2 + 1.5 * topOfArrayOffset) / 2
+            );
+          const topOfArrayLeftX = x - topOfArrayOffset;
+          //Math.min(width/2+ parseInt(arrayBoundaryWidth, 10),(cellSize/2+1.5*topOfArrayOffset)/2);
+          const topOfArrayRightX = x + topOfArrayOffset;
+          //Math.min(width/2+ parseInt(arrayBoundaryWidth, 10),(cellSize/2+1.5*topOfArrayOffset)/2);
+          const middleY = topY + extraDistanceBetweenLayers * 0.85;
+          const topOfArrayY = bottomY - width / 2 - 1.5 * cellSize;
+          let [leftPath1, rightPath1] = this.generateCubicCurve(
+            topLeftX,
+            topRightX,
+            topY,
+            middleLeftX,
+            middleRightX,
+            middleY,
+            0.8,
+            0.3
+          );
+          let [leftPathM, rightPathM] = this.generateCubicCurve(
+            middleLeftX,
+            middleRightX,
+            middleY,
+            topOfArrayLeftX,
+            topOfArrayRightX,
+            topOfArrayY,
+            0.7,
+            0.6
+          );
+          let [leftPath2, rightPath2] = this.generateCubicCurve(
+            topOfArrayLeftX,
+            topOfArrayRightX,
+            topOfArrayY,
+            bottomLeftX,
+            bottomRightX,
+            bottomY,
+            0.45,
+            0.5
+          );
+          leftPath = leftPath1 + leftPathM + leftPath2;
+          rightPath = rightPath2 + rightPathM + rightPath1;
+
+          /* if (verticalSpan === 1) {
+            currentBottomLeftX = bottomLeftX;
+			currentBottomRightX = bottomRightX;
+			lowerMiddleLeftX = topOfArrayLeftX;
+			lowerMiddleRightX = topOfArrayRightX;
+			let topOfArrayY = y - width/2- cellSize/2;
+			let belowTopOfArrayY = topOfArrayY + 0.2 * width/2;
+			let aboveBottomOfArrayY = currentBottomY - 0.6 * width/2; 
+			belowTopY = topY + 0.5 * (clusterDistance-width/2);
+			aboveBottomY = topOfArrayY - 0.5 * (clusterDistance-width/2); 
+			belowTopY = belowTopY ;
+			leftPath = `C ${upperMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${topOfArrayLeftX} ${topOfArrayY}
+			C ${topOfArrayLeftX} ${belowTopOfArrayY}, ${currentBottomLeftX} ${aboveBottomOfArrayY}, ${currentBottomLeftX} ${currentBottomY}`;
+			rightPath = `C ${currentBottomRightX} ${aboveBottomOfArrayY},${topOfArrayRightX} ${belowTopOfArrayY},${topOfArrayRightX} ${topOfArrayY}
+			C ${lowerMiddleRightX} ${aboveBottomY}, ${upperMiddleRightX} ${belowTopY}, ${topRightX} ${currentTopY}`;
+          }
+		  else{
+			leftPath = `C ${upperMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${currentBottomLeftX} ${currentBottomY}`;
+			rightPath = `C ${lowerMiddleRightX} ${aboveBottomY}, ${upperMiddleRightX} ${belowTopY}, ${topRightX} ${currentTopY}`;
+		  }
           for (let i = 1; i < verticalSpan; i++) {
             currentBottomY = currentBottomY + clusterDistance;
             currentTopY = currentTopY + clusterDistance;
             let belowTopY = currentTopY + 0.4 * clusterDistance; //
             let aboveBottomY = currentBottomY - 0.6 * clusterDistance; //
-            if (verticalSpan === i + 1) {
+			if (verticalSpan === i + 1) {
               currentBottomLeftX = bottomLeftX;
-              currentBottomRightX = bottomRightX;
-              lowerMiddleLeftX = topOfArrayLeftX;
-              lowerMiddleRightX = topOfArrayRightX;
-              let topOfArrayY = y - width / 2 - cellSize / 2;
-              let belowTopOfArrayY = topOfArrayY + (0.2 * width) / 2;
-              let aboveBottomOfArrayY = currentBottomY - (0.6 * width) / 2;
-              belowTopY = currentTopY + 0.5 * (clusterDistance - width / 2);
-              aboveBottomY = topOfArrayY - 0.5 * (clusterDistance - width / 2);
-              belowTopY = belowTopY;
-              leftPath =
-                leftPath +
-                `C ${lowerMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${topOfArrayLeftX} ${topOfArrayY}
+			  currentBottomRightX = bottomRightX;
+			  lowerMiddleLeftX = topOfArrayLeftX;
+			  lowerMiddleRightX = topOfArrayRightX;
+			  let topOfArrayY = y - width/2- cellSize/2;
+			  let belowTopOfArrayY = topOfArrayY + 0.2 * width/2;
+			  let aboveBottomOfArrayY = currentBottomY - 0.6 * width/2; 
+			  belowTopY = currentTopY + 0.5 * (clusterDistance-width/2);
+			  aboveBottomY = topOfArrayY - 0.5 * (clusterDistance-width/2); 
+			  belowTopY = belowTopY ;
+			  leftPath = leftPath + `C ${lowerMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${topOfArrayLeftX} ${topOfArrayY}
 				C ${topOfArrayLeftX} ${belowTopOfArrayY}, ${currentBottomLeftX} ${aboveBottomOfArrayY}, ${currentBottomLeftX} ${currentBottomY}`;
-              rightPath =
-                `C ${currentBottomRightX} ${aboveBottomOfArrayY},${topOfArrayRightX} ${belowTopOfArrayY},${topOfArrayRightX} ${topOfArrayY}
-				C ${lowerMiddleRightX} ${aboveBottomY}, ${lowerMiddleRightX} ${belowTopY}, ${lowerMiddleRightX} ${currentTopY}` +
-                rightPath;
-            } else {
-              leftPath =
-                leftPath +
-                `\nC ${lowerMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${currentBottomLeftX} ${currentBottomY}`;
-              rightPath =
-                `C ${lowerMiddleRightX} ${aboveBottomY}, ${lowerMiddleRightX} ${belowTopY}, ${lowerMiddleRightX} ${currentTopY}\n` +
-                rightPath;
+			  rightPath = `C ${currentBottomRightX} ${aboveBottomOfArrayY},${topOfArrayRightX} ${belowTopOfArrayY},${topOfArrayRightX} ${topOfArrayY}
+				C ${lowerMiddleRightX} ${aboveBottomY}, ${lowerMiddleRightX} ${belowTopY}, ${lowerMiddleRightX} ${currentTopY}` + rightPath;
             }
-          } // FIX: Removed the trailing newline and indentation before the final Z
+			else
+			{	
+            leftPath =
+              leftPath +
+              `\nC ${lowerMiddleLeftX} ${belowTopY}, ${lowerMiddleLeftX} ${aboveBottomY}, ${currentBottomLeftX} ${currentBottomY}`;
+            rightPath =
+              `C ${lowerMiddleRightX} ${aboveBottomY}, ${lowerMiddleRightX} ${belowTopY}, ${lowerMiddleRightX} ${currentTopY}\n` +
+              rightPath;
+			}
+          } // FIX: Removed the trailing newline and indentation before the final Z*/
 
           const pathString =
-            `M ${topLeftX} ${topY}` +
+            `M ${topLeftX} ${topY} ` +
             leftPath +
-            `L ${bottomRightX} ${bottomY}` +
+            `L ${bottomRightX} ${bottomY} ` +
             rightPath +
             `L ${topLeftX} ${topY} Z`; // 2. Push an object containing the node and its path string.
-
+          console.log(pathString);
           pathData.push({
             node: node,
             path: pathString,
@@ -1113,6 +1194,18 @@ export class HierarchicallyClusteredGraphDrawer {
       }
     }
 
+    let clusterDistances = [];
+    for (let i = 0; i < clusterLayers.length; i++) {
+      let maxChildren = 0;
+      for (let cluster of clusterLayers[i]) {
+        if (cluster.getChildren().length > maxChildren) {
+          maxChildren = cluster.getChildren().length;
+        }
+      }
+      const clusterHeight = (maxChildren / 2) * cellSize + cellSize;
+      clusterDistances.push(clusterHeight + extraDistanceBetweenLayers);
+    }
+
     const depth = clusterLayers.length;
     const clusterHeight = this.H.getMaxChildren() * cellSize;
     const clusterDistance = clusterHeight * clusterDistanceScalar;
@@ -1124,7 +1217,14 @@ export class HierarchicallyClusteredGraphDrawer {
     // Linear layout dimensions
     const lastNodeCenterX = initialOffsetX + (numVertices - 1) * vertexDistance;
     const minRequiredWidth = lastNodeCenterX + cellSize / 2;
-    const linearLayoutY = initialOffsetY + (depth - 1) * clusterDistance;
+    let sumOfClusterDistances = [];
+    sumOfClusterDistances.push(0);
+    for (let i = 1; i < clusterDistances.length; i++) {
+      sumOfClusterDistances.push(
+        sumOfClusterDistances[i - 1] + clusterDistances[i]
+      );
+    }
+    const linearLayoutY = initialOffsetY + sumOfClusterDistances[depth - 1];
     const padding = 80;
     const viewBoxWidth = minRequiredWidth + padding;
 
@@ -1173,7 +1273,7 @@ export class HierarchicallyClusteredGraphDrawer {
         this.drawCluster(
           cluster,
           clusterX,
-          initialOffsetY + i * clusterDistance,
+          initialOffsetY + sumOfClusterDistances[i],
           clustersContainer,
           xCoordMap,
           yCoordMap,
@@ -1276,7 +1376,7 @@ export class HierarchicallyClusteredGraphDrawer {
         // maxDist calculation is fine, as it uses the absolute distance
         if (xDist > maxDist) maxDist = xDist;
 
-        const curveHeight = xDist / 4;
+        const curveHeight = xDist / 5;
 
         // Use original x1 and x2 coordinates for the path.
         if (!this.H.getIsDirected()) {
@@ -1444,7 +1544,8 @@ export class HierarchicallyClusteredGraphDrawer {
       widthMap,
       xCoordReferenceMap,
       yCoordReferenceMap,
-      clusterDistance
+      clusterDistance,
+      clusterLayers
     );
 
     // 6. DRAW LABELS (AFTER EVERYTHING ELSE TO APPEAR ON TOP)
@@ -1469,6 +1570,7 @@ export class HierarchicallyClusteredGraphDrawer {
       const labelContainer = labelGroup
         .append("g")
         .attr("class", "label-container")
+        .attr("data-leaf-id", String(leaf.getID()))
         .attr("transform", `translate(${groupX}, ${groupY})`);
 
       // Add text
@@ -1520,7 +1622,7 @@ export class HierarchicallyClusteredGraphDrawer {
       });
     });
 
-    const maxArcHeight = maxDist / 3.4;
+    const maxArcHeight = maxDist / 4;
     const minRequiredHeight =
       linearLayoutY +
       maxArcHeight +
