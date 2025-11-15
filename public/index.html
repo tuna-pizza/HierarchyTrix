@@ -21,14 +21,14 @@
       id="main-header-container"
       style="background-color: var(--color-background-medium)"
     >
-      <div style="display: flex; align-items: center; gap: 4px">       
+      <div style="display: flex; align-items: center; gap: 4px">
         <img
           src="clusterix_final.png"
           alt="Clusterix Icon"
           class="header-icon"
           style="height: 45px; width: 45px; vertical-align: left"
         />
-		<h1>Clusterix</h1>
+        <h1>Clusterix</h1>
       </div>
 
       <div style="display: flex; gap: 15px; align-items: center">
@@ -36,15 +36,9 @@
           <span style="font-size: 0.9rem; font-weight: normal; margin-left: 2px"
             >Zoom:</span
           >
-          <button id="zoom-out-button" class="zoom-button" title="Zoom Out">
-            -
-          </button>
-          <button id="zoom-reset-button" class="zoom-button" title="Reset Zoom">
-            Full view
-          </button>
-          <button id="zoom-in-button" class="zoom-button" title="Zoom In">
-            +
-          </button>
+          <button id="zoom-out-button" class="zoom-button">-</button>
+          <button id="zoom-reset-button" class="zoom-button">Full view</button>
+          <button id="zoom-in-button" class="zoom-button">+</button>
         </fieldset>
 
         <button id="uploadButton">Upload JSON</button>
@@ -54,6 +48,7 @@
           accept=".json"
           style="display: none"
         />
+
         <fieldset>
           <div
             id="instance-selector"
@@ -72,7 +67,7 @@
             />
 
             <div id="samples-popover-container" style="position: relative">
-              <button id="sample-button" title="Select a sample ID" style="">
+              <button id="sample-button" style="">
                 Instance <span style="font-size: 0.7em">&#x25BC;</span>
               </button>
 
@@ -158,7 +153,7 @@
             </div>
 
             <div id="solver-popover-container" style="position: relative">
-              <button id="solver-button" title="Select solver method" style="">
+              <button id="solver-button" style="">
                 Solver <span style="font-size: 0.7em">&#x25BC;</span>
               </button>
 
@@ -225,9 +220,7 @@
           </div>
         </fieldset>
 
-        <button id="stats-toggle-button" style="" title="Show Statistics">
-          Stats
-        </button>
+        <button id="stats-toggle-button" style="">Stats</button>
 
         <div
           id="loading-modal"
@@ -306,13 +299,7 @@
         </div>
 
         <div id="save-viz-container" style="position: relative">
-          <button
-            id="saveVizButton"
-            title="Save current visualization"
-            style=""
-          >
-            Save Visualization
-          </button>
+          <button id="saveVizButton" style="">Save Visualization</button>
 
           <div
             id="save-viz-dropdown"
@@ -366,84 +353,85 @@
       </div>
     </header>
 
-    <fieldset id="control-panel">
-      <legend>Drawing styles</legend>
-      <div id="label-size-control" style="margin-bottom: 12px">
-        <a>Label size:</a>
-        <div class="slider-container">
-          <input
-            type="range"
-            id="label-size-slider"
-            min="12"
-            max="30"
-            value="15"
-            step="1"
-            title="Adjust label font size"
-          />
-          <span id="label-size-value" style="font-weight: normal">15px</span>
-        </div>
-      </div>
+    <div>
+      <button id="control-panel-toggle-button">Show Drawing Styles</button>
 
-      <div
-        id="edges-styles"
-        style="
-          text-decoration: none;
-          display: block;
-          font-size: 0.9rem;
-          font-family: var(--font-main);
-          font-size: 0.9rem;
-          color: var(--color-secondary);
-        "
-      >
-        <div class="toggle-container" style="margin-bottom: 12px">
-          <a>Edge-cells value:</a>
-          <br />
-          <label
-            class="toggle-switch"
-            title="Toggle Edge Display Mode"
-            style="
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              width: 100%;
-            "
-          >
-            <span class="toggle-label-left" style="font-weight: normal"
-              >Ratio</span
-            >
-            <input type="checkbox" id="edge-display-toggle" />
-            <span class="slider"></span>
-            <span class="toggle-label-right" style="font-weight: normal"
-              >Absolute</span
-            >
-          </label>
+      <fieldset id="control-panel">
+        <legend>Drawing styles</legend>
+        <div id="label-size-control" style="margin-bottom: 12px">
+          <a>Label size:</a>
+          <div class="slider-container">
+            <input
+              type="range"
+              id="label-size-slider"
+              min="12"
+              max="30"
+              value="15"
+              step="1"
+            />
+            <span id="label-size-value" style="font-weight: normal">15px</span>
+          </div>
         </div>
+
         <div
-          id="edge-legend-container"
+          id="edges-styles"
           style="
-            margin-top: 0px;
-            margin-bottom: 12px;
+            text-decoration: none;
+            display: block;
+            font-size: 0.9rem;
             font-family: var(--font-main);
             font-size: 0.9rem;
+            color: var(--color-secondary);
           "
-        ></div>
-      </div>
-      <div id="edge-weight-filter" style="margin-bottom: 12px; display: none">
-        <a>Filter edges by weight:</a>
-        <div class="slider-container">
-          <input
-            type="range"
-            id="edge-weight-slider"
-            min="0"
-            max="1"
-            value="0"
-            step="0.1"
-            title="Filter linear edges by minimum weight"
-          />
-          <span id="edge-weight-value" style="font-weight: normal">0</span>
+        >
+          <div class="toggle-container" style="margin-bottom: 12px">
+            <a>Intra-cluster value:</a>
+            <br />
+            <label
+              class="toggle-switch"
+              style="
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100%;
+              "
+            >
+              <span class="toggle-label-left" style="font-weight: normal"
+                >Ratio</span
+              >
+              <input type="checkbox" id="edge-display-toggle" />
+              <span class="slider"></span>
+              <span class="toggle-label-right" style="font-weight: normal"
+                >Absolute</span
+              >
+            </label>
+          </div>
+          <div
+            id="edge-legend-container"
+            style="
+              margin-top: 0px;
+              margin-bottom: 12px;
+              font-family: var(--font-main);
+              font-size: 0.9rem;
+            "
+          ></div>
         </div>
-      </div>
-    </fieldset>
+        <div id="edge-weight-filter" style="margin-bottom: 12px; display: none">
+          <a>Filter edges by weight:</a>
+          <div class="slider-container">
+            <input
+              type="range"
+              id="edge-weight-slider"
+              min="0"
+              max="1"
+              value="0"
+              step="0.1"
+            />
+            <span id="edge-weight-value" style="font-weight: normal">0</span>
+          </div>
+        </div>
+      </fieldset>
+    </div>
 
     <div
       id="stats-panel"
@@ -522,7 +510,7 @@
       // Function to handle all visualization downloads
       // Function to handle all visualization downloads
       function saveVisualization(format) {
-        // FIX: Directly search for the SVG element on the page
+        // Directly search for the SVG element on the page
         const svgElement = document.querySelector("svg");
 
         if (!svgElement) {
@@ -1393,5 +1381,27 @@
         </div>
       </div>
     </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const toggleButton = document.getElementById(
+          "control-panel-toggle-button"
+        );
+        const controlPanel = document.getElementById("control-panel");
+
+        if (toggleButton && controlPanel) {
+          toggleButton.addEventListener("click", () => {
+            // Toggle the display property
+            const isVisible = controlPanel.style.display === "block";
+            controlPanel.style.display = isVisible ? "none" : "block";
+
+            // Optional: Update button text to reflect the current state
+            toggleButton.textContent = isVisible
+              ? "Show drawing styles"
+              : "Hide drawing styles";
+          });
+        }
+      });
+    </script>
   </body>
 </html>

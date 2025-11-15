@@ -406,10 +406,34 @@ legend {
   filter: brightness(80%);
 }
 
+/* --- Control Panel Toggle Button --- */
+#control-panel-toggle-button {
+  position: fixed;
+  top: 90px;
+  right: 20px;
+  z-index: 101;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  background-color: var(--color-secondary);
+  color: var(--color-text-button);
+  font-family: var(--font-main);
+  font-size: 0.9rem;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+/* Add a subtle hover effect like the other header buttons */
+#control-panel-toggle-button:hover {
+  /* Keep a slight darker shade for hover in default mode */
+  background: var(--color-secondary);
+  filter: brightness(80%);
+}
+
 /* --- CONTROL PANEL STYLING (Right of screen, on top of SVG) --- */
 #control-panel {
   position: fixed;
-  top: 80px; /* Position slightly below the header */
+  top: 130px; /* Position slightly below the header */
   right: 20px;
   /* White background with 80% opacity */
   background-color: rgba(255, 255, 255, 0.5);
@@ -420,6 +444,7 @@ legend {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   /* Use theme fonts/colors for consistency */
   font-family: var(--font-main);
+  display: none;
 }
 
 /* Style the button inside the control panel to maintain theme consistency */
@@ -456,7 +481,7 @@ legend {
   cursor: pointer;
   font-family: var(--font-main);
   font-size: 0.9rem;
-  color: var(--color-secondary);
+  color: var(--adj-color-high);
   user-select: none;
   margin-top: 5px;
   margin-bottom: 5px;
@@ -474,7 +499,7 @@ legend {
   position: relative;
   width: 36px;
   height: 18px;
-  background-color: var(--color-secondary);
+  background-color: var(--adj-color-high);
   border-radius: 18px;
   transition: background-color 0.3s;
 }
@@ -499,13 +524,13 @@ legend {
 
 /* Keep the same bright color for both states */
 .toggle-switch input:checked + .slider {
-  background-color: var(--color-secondary);
+  background-color: var(--adj-color-high);
 }
 
 /* Labels always fully visible */
 .toggle-label-left,
 .toggle-label-right {
-  color: var(--color-secondary);
+  color: var(--adj-color-high);
   opacity: 1;
 }
 
