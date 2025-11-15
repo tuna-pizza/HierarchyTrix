@@ -1,18 +1,21 @@
 {
   "nodes": [
     { "id": "A", "parent": null, "type": "cluster" },
+    { "id": "B", "parent": "A", "type": "cluster" },
     { "id": "C", "parent": "A", "type": "cluster" },
     { "id": "D", "parent": "A", "type": "cluster" },
     { "id": "E", "parent": "D", "type": "cluster" },
     { "id": "1", "parent": "C", "type": "leaf" },
     { "id": "2", "parent": "C", "type": "leaf" },
     { "id": "3", "parent": "C", "type": "leaf" },
-    { "id": "4", "parent": "D", "type": "leaf" },
-    { "id": "5", "parent": "D", "type": "leaf" },
+    { "id": "F", "parent": "D", "type": "cluster" },
+    { "id": "G", "parent": "D", "type": "cluster" },
+    { "id": "4", "parent": "F", "type": "leaf" },
+    { "id": "5", "parent": "G", "type": "leaf" },
     { "id": "6", "parent": "E", "type": "leaf" },
     { "id": "7", "parent": "E", "type": "leaf" },
     { "id": "8", "parent": "E", "type": "leaf" },
-    { "id": "9", "parent": "A", "type": "leaf" }
+    { "id": "9", "parent": "B", "type": "leaf" }
   ],
   "edges": [
     { "source": "1", "target": "2" },
