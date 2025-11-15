@@ -20,7 +20,7 @@ export function mouseEntersNodeCell() {
   const descendants = [data, ...data.getDescendants()];
   const allRelevantNodes = new Set(descendants);
 
-  // --- START MODIFICATION: IDENTIFY ANCESTORS ---
+  // --- IDENTIFY ANCESTORS ---
   // Create a set for all ancestors (parents, grandparents, etc.)
   const ancestorNodes = new Set();
   let currentParent = data.getParent();
@@ -31,7 +31,6 @@ export function mouseEntersNodeCell() {
 
   // Merge ancestor nodes into the set of nodes to be highlighted
   ancestorNodes.forEach((node) => allRelevantNodes.add(node));
-  // --- END MODIFICATION ---
 
   // Set of ALL leaf IDs connected to the cluster (internal + external)
   const connectedLeafIDs = new Set();
@@ -169,8 +168,21 @@ export function mouseLeavesNodeCell() {
     .attr("fill", inclusionColor);
 }
 
-export function mouseEntersAdjCell() {
-  const data = d3.select(this).datum();
+export function mouseEntersAdjCell(event, data) {
+  // const data = d3.select(this).datum();
+
+  const [x, y] = d3.pointer(event, this);
+
+  let part = "";
+
+  // 2. Geometric check for diagonal split (from top-left (0,0) to bottom-right (cellSize, cellSize))
+  if (y < x) {
+    // Upper-Left Triangle: Represents the connection (row node) -> (column node)
+    part = "left";
+  } else if (y >= x) {
+    // Lower-Right Triangle: Represents the connection (column node) -> (row node)
+    part = "right";
+  }
 
   // 1. Identify relevant clusters/nodes for all highlights
   const sourceLeaves = new Set(data.source.getLeaves().map((n) => n.getID()));
@@ -262,7 +274,7 @@ export function mouseEntersAdjCell() {
     return 0; // hide for others
   });
 
-  // f) Gray out other cluster labels except the hovered cluster (bottommost matrices only) ---
+  // f) Gray out other cluster labels based on the matrix level ---
   const sourceNode = data.source;
   const targetNode = data.target;
 
@@ -273,10 +285,50 @@ export function mouseEntersAdjCell() {
     !targetNode.children || targetNode.children.length === 0;
 
   if (sourceIsLeafCluster && targetIsLeafCluster) {
+    // Hovering a cell in a BOTTOMMOST matrix (only highlight the current matrix's label)
     const currentClusterId = String(parentCluster.getID());
     d3.selectAll(".cluster-label").style("opacity", function () {
       // compare trimmed label text to current cluster id
       return d3.select(this).text().trim() === currentClusterId ? 1.0 : 0.2;
+    });
+  } else {
+    // Highlight M, descendants of source, and descendants of target.
+    const M = parentCluster;
+    const A = data.source; // Row Cluster
+    const B = data.target; // Column Cluster
+
+    // 1. Collect all nodes to highlight
+    const relevantNodes = new Set();
+
+    // a) M itself (the matrix/parent cluster)
+    relevantNodes.add(M);
+
+    // b) A (source cluster) and all its descendants
+    const descendantsOfA = [A, ...A.getDescendants()];
+    descendantsOfA.forEach((node) => relevantNodes.add(node));
+
+    // c) B (target cluster) and all its descendants (only if B is different from A, to avoid duplication)
+    if (A !== B) {
+      const descendantsOfB = [B, ...B.getDescendants()];
+      descendantsOfB.forEach((node) => relevantNodes.add(node));
+    }
+
+    // 2. Create a set of IDs (string) for comparison with the label text
+    const relevantIDs = new Set(
+      Array.from(relevantNodes).map((n) => String(n.getID()))
+    );
+
+    // 3. Apply grey-out/highlight logic to cluster labels
+    d3.selectAll(".cluster-label").style("opacity", function () {
+      const labelText = d3.select(this).text().trim();
+
+      if (relevantIDs.has(labelText)) {
+        // Keep the label for M, A/B, or a descendant of A/B
+        return 1.0;
+      } else {
+        // Grey out all others
+        return 0.1; // Strong grey-out
+      }
     });
   }
 
@@ -375,27 +427,32 @@ export function mouseEntersAdjCell() {
       // 2. Determine the label text based on the user's rules:
 
       // Rule 1: Edge-label  first
-      let textToShow = data.edgeLabel;
+      let textToShow;
+
+      if (!data.isDirected) {
+        if (data.edgeLabels[0] != "") textToShow = data.edgeLabels[0];
+        else textToShow = data.edgeLabels[1];
+      } else if (part === "left") textToShow = data.edgeLabels[0];
+      else textToShow = data.edgeLabels[1];
 
       // Rule 2 & 3: If no label, fall back to end-node rules (label -> ID)
       if (!textToShow) {
         let trueSourceNode, trueTargetNode;
 
-        // A. Check for S -> T edge (S is left, T is right in matrix)
-        if (data.edge_s_to_t) {
-          trueSourceNode = data.source; // S is the true source
-          trueTargetNode = data.target; // T is the true target
-        }
-        // B. Check for T -> S edge (T is right, S is left in matrix)
-        else if (data.edge_t_to_s) {
-          trueSourceNode = data.target; // T is the true source
-          trueTargetNode = data.source; // S is the true target
-        }
-        // C. Non-directional (Undirected or higher-level cluster cell)
-        else {
-          // Fall back to matrix order for non-directional/higher-level cells
-          trueSourceNode = sourceNode;
-          trueTargetNode = targetNode;
+        // --- LOGIC USING MOUSE POSITION ---
+        if (data.isDirected) {
+          if (part === "left") {
+            // LEFT part (y < x): Display T -> S
+            trueSourceNode = targetNode; // T is the logical source for text
+            trueTargetNode = sourceNode; // S is the logical target for text
+          } else if (part === "right") {
+            // RIGHT part (y >= x): Display S -> T
+            trueSourceNode = sourceNode; // S is the logical source for text
+            trueTargetNode = targetNode; // T is the logical target for text
+          }
+        } else {
+          trueSourceNode = sourceNode; // S is the logical source for text
+          trueTargetNode = targetNode; // T is the logical target for text
         }
 
         // Determine the text for the actual Source node: label -> ID
@@ -700,15 +757,87 @@ export function mouseEntersEdge(
   let currentSource = sourceNode;
   let currentTarget = targetNode;
 
+  // // OPTION 1
   // Trace ancestors up the tree. This set includes the immediate parent clusters.
-  while (currentSource) {
-    ancestorNodes.add(currentSource);
+  let ancestorsSource = new Array();
+  let ancestorsTarget = new Array();
+  while (currentSource.getParent()) {
+    ancestorsSource.push(currentSource);
     currentSource = currentSource.getParent();
   }
-  while (currentTarget) {
-    ancestorNodes.add(currentTarget);
+  while (currentTarget.getParent()) {
+    ancestorsTarget.push(currentTarget);
     currentTarget = currentTarget.getParent();
   }
+  // a) Add nodes from Source path until a node in the Target's ancestors is found
+  let node = sourceNode.getParent();
+  ancestorNodes.add(node);
+  let sourceReachedLCA = false;
+  while (node && !sourceReachedLCA) {
+    if (ancestorsTarget.includes(node)) {
+      // Stop adding nodes once the LCA (or an ancestor of the LCA) is found
+      sourceReachedLCA = true;
+      currentSource = node;
+    } else ancestorNodes.add(node);
+    node = node.getParent();
+  }
+  // b) Add nodes from Target path until a node in the Source's ancestors is found
+  node = targetNode.getParent();
+  ancestorNodes.add(node);
+  let targetReachedLCA = false;
+  while (node && !targetReachedLCA) {
+    // The Set handles duplicates, so adding a common ancestor (like the LCA) twice is fine
+
+    if (ancestorsSource.includes(node)) {
+      // Stop adding nodes once the LCA (or an ancestor of the LCA) is found
+      targetReachedLCA = true;
+      currentTarget = node;
+    } else ancestorNodes.add(node);
+    node = node.getParent();
+  }
+  // // END OPTION 1
+
+  // OPTION 2
+  // while (currentSource != currentTarget) {
+  //   ancestorNodes.add(currentSource);
+  //   ancestorNodes.add(currentTarget);
+  //   if (currentSource.getParent()) currentSource = currentSource.getParent();
+  //   else break;
+  //   if (currentTarget.getParent()) currentTarget = currentTarget.getParent();
+  //   else break;
+  // }
+  // END OPTION 2
+
+  // Apply grey-out/highlight logic to cluster labels
+  const relevantIDs = new Set();
+
+  // Add the two lowest-level clusters (u and v) that contain the edge.
+  relevantIDs.add(data.source.getID());
+  relevantIDs.add(data.target.getID());
+
+  // Add all ancestor matrices collected during the traversal.
+  ancestorNodes.forEach((n) => relevantIDs.add(n.getID()));
+
+  if (currentSource) {
+    relevantIDs.add(currentSource.getID());
+  }
+  if (currentTarget) {
+    relevantIDs.add(currentTarget.getID());
+  }
+
+  // Apply grey-out/highlight logic to cluster labels
+  d3.selectAll(".cluster-label").style("opacity", function () {
+    // Get the unique cluster ID from the label text (which is assumed to be the ID)
+    const labelText = d3.select(this).text().trim();
+
+    // Check if the label's ID is in the set of relevant IDs
+    if (relevantIDs.has(labelText)) {
+      return 1.0;
+    } else {
+      // Grey-out all other labels
+      return 0.1;
+    }
+  });
 
   // 4. HIGHLIGHT RELEVANT ELEMENTS
 
@@ -734,6 +863,16 @@ export function mouseEntersEdge(
   // d) Highlight the ancestor matrices (adjacency cells)
   allAdjCells
     .filter((d) => ancestorNodes.has(d.source.getParent()))
+    .attr("opacity", 1)
+    .each(function (d) {
+      d3.select(this).select("use").attr("fill", d.color);
+    });
+  allAdjCells
+    .filter(
+      (d) =>
+        !ancestorNodes.has(d.source.getParent()) &&
+        (ancestorNodes.has(d.source) || ancestorNodes.has(d.target))
+    )
     .attr("opacity", 1)
     .each(function (d) {
       d3.select(this).select("use").attr("fill", d.color);
@@ -772,7 +911,7 @@ export function mouseEntersEdge(
     const midX = (x1 + x2) / 2;
     const xDist = Math.abs(x2 - x1);
 
-    const curveHeight = xDist / 4 + cellSize / 1.5;
+    const curveHeight = xDist / 5 + cellSize / 1.5;
     const midY = y + curveHeight;
 
     if (labelText) {
@@ -854,4 +993,7 @@ export function mouseLeavesEdge(event, edgeLabelsGroup) {
   // 7. Restore the opacity of ALL external node labels
   d3.selectAll(".leaf-label").style("opacity", 1.0);
   d3.selectAll(".label-background").style("opacity", 0.7);
+
+  // 6. restore cluster labels that may have been dimmed on adjacency hover
+  d3.selectAll(".cluster-label").style("opacity", 1.0);
 }

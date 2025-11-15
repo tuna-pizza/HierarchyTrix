@@ -593,26 +593,51 @@ export class HierarchicallyClusteredGraphDrawer {
           ) || null;
 
         // For non-directed/non-last-level cells, we still use a single 'matchingEdge' for label/color
-        const matchingEdge = edge_s_to_t || edge_t_to_s; // Use either one
+        const matchingEdge1 = edge_s_to_t ? edge_s_to_t : null;
+        const matchingEdge2 = edge_t_to_s ? edge_t_to_s : null; // Use either one
 
-        const edgeLabel =
-          matchingEdge && matchingEdge.getLabel ? matchingEdge.getLabel() : "";
-        const edgeColor =
-          matchingEdge &&
-          (matchingEdge.color ||
-            (matchingEdge.getColor && matchingEdge.getColor()))
-            ? matchingEdge.color ||
-              (matchingEdge.getColor && matchingEdge.getColor())
+        let matchingEdges = [matchingEdge1, matchingEdge2];
+
+        let edgeLabels = [];
+        edgeLabels.push(
+          matchingEdge1 && matchingEdge1.getLabel
+            ? matchingEdge1.getLabel()
+            : ""
+        );
+        edgeLabels.push(
+          matchingEdge2 && matchingEdge2.getLabel
+            ? matchingEdge2.getLabel()
+            : ""
+        );
+
+        let edgeColors = [];
+        const edgeColor1 =
+          matchingEdge1 &&
+          (matchingEdge1.color ||
+            (matchingEdge1.getColor && matchingEdge1.getColor()))
+            ? matchingEdge1.color ||
+              (matchingEdge1.getColor && matchingEdge1.getColor())
             : null;
+
+        const edgeColor2 =
+          matchingEdge2 &&
+          (matchingEdge2.color ||
+            (matchingEdge2.getColor && matchingEdge2.getColor()))
+            ? matchingEdge2.color ||
+              (matchingEdge2.getColor && matchingEdge2.getColor())
+            : null;
+
+        edgeColors.push(edgeColor1);
+        edgeColors.push(edgeColor2);
 
         adjacencyData.push({
           source: src,
           target: tgt,
           x1: startX + i * cellSize,
           x2: startX + j * cellSize,
-          matchingEdge: matchingEdge,
-          edgeLabel,
-          edgeColor,
+          matchingEdges,
+          edgeLabels,
+          edgeColors,
           // Store directional edges and flags for triangle drawing
           edge_s_to_t: edge_s_to_t,
           edge_t_to_s: edge_t_to_s,
@@ -680,13 +705,17 @@ export class HierarchicallyClusteredGraphDrawer {
       }
 
       d.isLastLevel = isLastLevel;
-      d.isWeightColored = isLastLevel && d.matchingEdge;
 
+      d.isWeightColored =
+        isLastLevel &&
+        (d.matchingEdges[0] !== null || d.matchingEdges[1] !== null);
       let cellColor;
 
       if (d.isWeightColored) {
         // Use the color pre-calculated from edge weight (HSL scale)
-        cellColor = d.matchingEdge.edgeColor;
+        if (d.matchingEdges[0] == null)
+          cellColor = d.matchingEdges[1].edgeColor;
+        else cellColor = d.matchingEdges[0].edgeColor;
       } else {
         // Existing ratio/absolute coloring logic for other layers
         cellColor =
@@ -695,7 +724,10 @@ export class HierarchicallyClusteredGraphDrawer {
 
       const isDirectedAndLastLevel = d.isLastLevel && d.isDirected;
       const isEdgePresent =
-        d.edge_s_to_t || d.edge_t_to_s || (d.matchingEdge && !d.isDirected);
+        d.edge_s_to_t ||
+        d.edge_t_to_s ||
+        (d.matchingEdges[0] && !d.isDirected) ||
+        (d.matchingEdges[1] && !d.isDirected);
 
       const halfCell = cellSize / 2;
       // Use an offset (1.5 is half the arrayBoundaryWidth, which is 3)
@@ -719,6 +751,23 @@ export class HierarchicallyClusteredGraphDrawer {
           .attr("stroke-width", arrayBoundaryWidth)
           .attr("fill", "rgb(255,255,255)"); // White background
 
+        if (d.isDirected) {
+          adjCell
+            .append("polygon")
+            .attr(
+              "points",
+              // Top point pulled down: (0, -halfCell + offset)
+              `0,${-halfCell + triangleOffset} ` +
+                // Right point pulled left: (halfCell - offset, 0)
+                `${halfCell - triangleOffset},0 ` +
+                // Bottom point pulled up: (0, halfCell - offset)
+                `0,${halfCell - triangleOffset}`
+            )
+            .attr("stroke", cellboundaryColor)
+            .attr("stroke-width", arrayBoundaryWidth - 2)
+            .attr("fill", "rgb(255,255,255)");
+        }
+
         if (isEdgePresent) {
           // Edge from s (left node) to t (right node)?
           if (d.edge_s_to_t) {
@@ -734,7 +783,8 @@ export class HierarchicallyClusteredGraphDrawer {
                   // Bottom point pulled up: (0, halfCell - offset)
                   `0,${halfCell - triangleOffset}`
               )
-              .attr("stroke-width", 0) // No extra stroke for the filled triangle
+              .attr("stroke", cellboundaryColor)
+              .attr("stroke-width", arrayBoundaryWidth - 2)
               .attr("fill", d.edge_s_to_t.edgeColor);
           }
 
@@ -752,7 +802,8 @@ export class HierarchicallyClusteredGraphDrawer {
                   // Bottom point pulled up: (0, halfCell - offset)
                   `0,${halfCell - triangleOffset}`
               )
-              .attr("stroke-width", 0) // No extra stroke for the filled triangle
+              .attr("stroke", cellboundaryColor)
+              .attr("stroke-width", arrayBoundaryWidth - 2)
               .attr("fill", d.edge_t_to_s.edgeColor);
           }
         }
@@ -831,6 +882,7 @@ export class HierarchicallyClusteredGraphDrawer {
 
       adjCells
         .on("mouseover", listeners.mouseEntersAdjCell)
+        .on("mousemove", listeners.mouseEntersAdjCell)
         .on("mouseleave", listeners.mouseLeavesAdjCell);
     });
   }
