@@ -63,11 +63,10 @@
               type="text"
               id="instance-id-input-header"
               placeholder="Instance ID"
-              style=""
             />
 
             <div id="samples-popover-container" style="position: relative">
-              <button id="sample-button" style="">
+              <button id="sample-button">
                 Instance <span style="font-size: 0.7em">&#x25BC;</span>
               </button>
 
@@ -153,7 +152,7 @@
             </div>
 
             <div id="solver-popover-container" style="position: relative">
-              <button id="solver-button" style="">
+              <button id="solver-button">
                 Solver <span style="font-size: 0.7em">&#x25BC;</span>
               </button>
 
@@ -216,11 +215,11 @@
               </div>
             </div>
 
-            <button id="go-to-instance-button" style="">Go</button>
+            <button id="go-to-instance-button">Go</button>
           </div>
         </fieldset>
 
-        <button id="stats-toggle-button" style="">Stats</button>
+        <button id="stats-toggle-button">Stats</button>
 
         <div
           id="loading-modal"
@@ -299,7 +298,7 @@
         </div>
 
         <div id="save-viz-container" style="position: relative">
-          <button id="saveVizButton" style="">Save Visualization</button>
+          <button id="saveVizButton">Save Visualization</button>
 
           <div
             id="save-viz-dropdown"
@@ -349,11 +348,11 @@
           </div>
         </div>
 
-        <button id="downloadButton" style="">Download JSON</button>
+        <button id="downloadButton">Download JSON</button>
       </div>
     </header>
 
-    <div>
+    <div id="control-panel-container">
       <button id="control-panel-toggle-button">Show Drawing Styles</button>
 
       <fieldset id="control-panel">
@@ -1391,9 +1390,23 @@
 
         if (toggleButton && controlPanel) {
           toggleButton.addEventListener("click", () => {
-            // Toggle the display property
+            // Determine if the panel is currently visible
             const isVisible = controlPanel.style.display === "block";
+
+            // 1. Toggle the display property
             controlPanel.style.display = isVisible ? "none" : "block";
+
+            // 2. VITAL: Redraw the legend only when the panel is being shown
+            if (!isVisible) {
+              // Check if the global drawer object exists and the method is callable
+              if (
+                window.HCGDrawer &&
+                typeof window.HCGDrawer.drawEdgeColorLegend === "function"
+              ) {
+                // This forces D3 to measure the now-visible container and redraw
+                window.HCGDrawer.drawEdgeColorLegend();
+              }
+            }
 
             // Optional: Update button text to reflect the current state
             toggleButton.textContent = isVisible
