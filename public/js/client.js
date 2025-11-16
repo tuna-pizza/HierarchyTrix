@@ -131,18 +131,25 @@ async function main() {
       const orderList = Array.isArray(orderString)
         ? orderString
         : orderString.trim().split(/\s+/);
-      console.log(`Applying ${solver} order:`, orderList);
+      // console.log(`Applying ${solver} order:`, orderList);
       applyNodeOrder(H, orderList); // <-- fixed
     } else {
       console.warn(`No ${solver} order received from server.`);
     }
   } else {
-    console.log("Using Input Order (default order from file).");
+    // console.log("Using Input Order (default order from file).");
   }
 
   // 3. Initialize Drawer
   let HD = new HierarchicallyClusteredGraphDrawer(H);
   HD.draw("#graph-container");
+
+  window.HCGDrawer = HD;
+
+  // Hide the loading modal once the visualization is drawn
+  if (isInitialLoad && typeof window.hideLoadingModal === "function") {
+    window.hideLoadingModal();
+  }
 
   // Hide the loading modal once the visualization is drawn
   if (isInitialLoad && typeof window.hideLoadingModal === "function") {

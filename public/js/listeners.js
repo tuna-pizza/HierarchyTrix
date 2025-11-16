@@ -134,6 +134,27 @@ export function mouseEntersNodeCell() {
       const cellColor = d && d.color ? d.color : "lightgray";
       d3.select(this).select("use").attr("fill", cellColor);
     });
+
+  // Step 8: Fade all cluster labels except the node's and its ancestors'
+  // 1. Identify all cluster node IDs that should remain visible (hovered node + ancestors)
+  const relevantClusterIDs = new Set(
+    Array.from(allRelevantNodes)
+      .filter((n) => n.getNodeType() !== 0) // Filter to only include cluster nodes
+      .map((n) => String(n.getID()))
+  );
+
+  // 2. Dim ALL cluster labels
+  d3.selectAll(".cluster-label").style("opacity", 0.1);
+
+  // 3. Highlight only the labels that match the relevant cluster IDs
+  d3.selectAll(".cluster-label").style("opacity", function () {
+    const labelText = d3.select(this).text().trim();
+    if (relevantClusterIDs.has(labelText)) {
+      return 1.0;
+    } else {
+      return 0.1;
+    }
+  });
 }
 
 export function mouseLeavesNodeCell() {
@@ -166,6 +187,9 @@ export function mouseLeavesNodeCell() {
     .selectAll("path.inclusion")
     .attr("opacity", 1)
     .attr("fill", inclusionColor);
+
+  // 5. Restore ALL cluster labels (NEW REQUIREMENT)
+  d3.selectAll(".cluster-label").style("opacity", 1.0);
 }
 
 export function mouseEntersAdjCell(event, data) {
@@ -245,8 +269,8 @@ export function mouseEntersAdjCell(event, data) {
   });
 
   // Find the indices corresponding to the source/target IDs
-  const sourceIndex = leafIdOrder.findIndex((id) => id === sourceNodeID);
-  const targetIndex = leafIdOrder.findIndex((id) => id === targetNodeID);
+  let sourceIndex = leafIdOrder.findIndex((id) => id === sourceNodeID);
+  let targetIndex = leafIdOrder.findIndex((id) => id === targetNodeID);
 
   // Fallback: if not found, you can optionally bail or attempt matching by text
   if (sourceIndex < 0 || targetIndex < 0) {

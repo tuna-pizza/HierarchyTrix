@@ -31,6 +31,12 @@ export class HierarchicallyClusteredGraph {
     return res;
   }
 
+  getEdge(source, target) {
+    return this.edges.filter((e) => {
+      e.getSource() == source && e.getTarget() == target ? e : null;
+    });
+  }
+
   getEdges() {
     return this.edges;
   }
@@ -114,7 +120,7 @@ export class HierarchicallyClusteredGraph {
         clusterLayers = newArray.concat(clusterLayers);
       }
     }
-    console.log(clusterLayers);
+    // console.log(clusterLayers);
     return clusterLayers;
   }
 
@@ -162,11 +168,11 @@ export class HierarchicallyClusteredGraph {
     }
 
     this.nodes = reorderedNodes;
-    console.log("Node order updated successfully.");
+    // console.log("Node order updated successfully.");
 
     // Auto redraw if drawer provided
     if (drawer && typeof drawer.draw === "function") {
-      console.log("Redrawing graph with new order...");
+      // console.log("Redrawing graph with new order...");
       drawer.draw("#graph-container");
     }
   }

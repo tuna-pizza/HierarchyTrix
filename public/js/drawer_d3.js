@@ -1,5 +1,5 @@
 import { NodeType, Node, Edge, HierarchicallyClusteredGraph } from "./graph.js";
-import { hsvToRgb } from "./utils.js";
+import * as utils from "./utils.js";
 import * as listeners from "./listeners.js";
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
@@ -28,6 +28,20 @@ export class HierarchicallyClusteredGraphDrawer {
     this.clusterStatsPopup = null;
     this.edgeLabelStats = null;
     this.edgeColors = null;
+    this.doubleEdgeMap = new Map();
+
+    this.H.edges.forEach((edge) => {
+      const forwardId = `${edge.source.getID()},${edge.target.getID()}`;
+      // Check if the reverse edge exists in the graph data structure (H)
+      const reverseEdgeExists =
+        this.H.getEdge(edge.target, edge.source) !== undefined;
+
+      if (reverseEdgeExists) {
+        this.doubleEdgeMap.set(forwardId, true);
+      } else {
+        this.doubleEdgeMap.set(forwardId, false);
+      }
+    });
 
     // --- Edge display mode toggle support ---
     this.edgeDisplayMode = "ratio";
@@ -365,7 +379,7 @@ export class HierarchicallyClusteredGraphDrawer {
     }
 
     // Also log to console for debugging
-    console.log("Graph Statistics:", stats);
+    // console.log("Graph Statistics:", stats);
   }
 
   showClusterStatsPopup(cluster, stats, x, y) {
@@ -548,7 +562,9 @@ export class HierarchicallyClusteredGraphDrawer {
       .join("g")
       .attr("class", "node-cell")
       .attr("data-id", (d) => d.getID())
-      .attr("transform", (d, i) => `translate(${startX + i * cellSize}, 0)`); // DIAMOND SHAPE FOR ALL NODES
+      .attr("transform", (d, i) => `translate(${startX + i * cellSize}, 0)`)
+      .on("mouseenter", listeners.mouseEntersNodeCell)
+      .on("mouseleave", listeners.mouseLeavesNodeCell);
 
     nodeCells
       .append("use")
@@ -672,7 +688,39 @@ export class HierarchicallyClusteredGraphDrawer {
 
     adjCells.each((d, i, nodes) => {
       const adjCell = d3.select(nodes[i]);
-      const actualEdges = this.countAllEdgesBetweenClusters(d.source, d.target);
+
+      // 1. Get the leaves that belong to the source and target clusters
+      const sourceLeaves = d.source.getLeaves();
+      const targetLeaves = d.target.getLeaves();
+      const leafIDsSource = new Set(sourceLeaves.map((n) => n.getID()));
+      const leafIDsTarget = new Set(targetLeaves.map((n) => n.getID()));
+
+      // 2. Filter ALL graph edges (this.H.edges) to find those spanning the two clusters.
+      const allEdgesBetweenClusters = this.H.edges.filter((edge) => {
+        const sID = edge.source.getID();
+        const tID = edge.target.getID();
+
+        // Check if one endpoint is in the source cluster AND the other is in the target cluster (in either direction).
+        const cond1 = leafIDsSource.has(sID) && leafIDsTarget.has(tID);
+        const cond2 = leafIDsSource.has(tID) && leafIDsTarget.has(sID);
+
+        return cond1 || cond2;
+      });
+
+      // 3. Deduplicate the filtered edges
+      const uniquePairs = new Set();
+      allEdgesBetweenClusters.forEach((edge) => {
+        const sourceId = edge.source.getID();
+        const targetId = edge.target.getID();
+
+        // Create a canonical ID (smaller ID first) to treat multiple edges/directions between the same pair as one.
+        const canonicalId =
+          Math.min(sourceId, targetId) + "," + Math.max(sourceId, targetId);
+        uniquePairs.add(canonicalId);
+      });
+
+      // actualEdges now holds the count of unique edge pairs (absolute count)
+      const actualEdges = uniquePairs.size;
       const potentialEdges =
         d.source.getLeaves().length * d.target.getLeaves().length;
 
@@ -822,6 +870,7 @@ export class HierarchicallyClusteredGraphDrawer {
       }
 
       // Label depending on mode
+      const textColor = utils.getTextColor(cellColor, nodeColor);
       adjCell
         .append("text")
         .attr("y", textOffset)
@@ -831,7 +880,7 @@ export class HierarchicallyClusteredGraphDrawer {
             return "transparent";
           }
           // Otherwise, use the node color (as previously requested)
-          return nodeColor;
+          return textColor;
         })
         .attr("font-size", smallTextSize)
         .attr("font-family", "var(--font-main)")
@@ -925,13 +974,15 @@ export class HierarchicallyClusteredGraphDrawer {
             : [0, 1]
         )
         .range([resolvedAdjColorLow, resolvedAdjColorHigh]);
+      const cellColor = value === 0 ? "rgb(255,255,255)" : colorScale(value);
 
-      adjCell
-        .select("polygon")
-        .attr("fill", value === 0 ? "rgb(255,255,255)" : colorScale(value));
+      adjCell.select("polygon").attr("fill", cellColor);
+
+      const textColor = utils.getTextColor(cellColor, nodeColor);
 
       adjCell
         .select("text")
+        .attr("fill", textColor)
         .text(
           colorByAbsolute
             ? `${actualEdges}`
@@ -1004,9 +1055,9 @@ export class HierarchicallyClusteredGraphDrawer {
         if (!child.getChildren || child.getChildren().length === 0) {
           // leaf check
           leaves.push({ leaf: child, cluster: cluster });
-          console.log(
-            `Leaf ID: ${child.getID()} in cluster ID: ${cluster.getID()}`
-          );
+          // console.log(
+          //   `Leaf ID: ${child.getID()} in cluster ID: ${cluster.getID()}`
+          // );
         }
       });
     });
@@ -1086,8 +1137,8 @@ export class HierarchicallyClusteredGraphDrawer {
           let leftPath = "";
           let rightPath = "";
 
-          console.log(clusterLayers);
-          console.log(clusterDistances);
+          // console.log(clusterLayers);
+          // console.log(clusterDistances);
           // New Drawing
           let clusterDistance = 0;
           for (let i = 0; i < clusterLayers.length; i++) {
@@ -1204,7 +1255,7 @@ export class HierarchicallyClusteredGraphDrawer {
             `L ${bottomRightX} ${bottomY} ` +
             rightPath +
             `L ${topLeftX} ${topY} Z`; // 2. Push an object containing the node and its path string.
-          console.log(pathString);
+          // console.log(pathString);
           pathData.push({
             node: node,
             path: pathString,
@@ -1430,6 +1481,10 @@ export class HierarchicallyClusteredGraphDrawer {
 
         const curveHeight = xDist / 5;
 
+        const edgeSeparationOffset = 5; // Adjust this value for desired separation
+        const reverseEdgeExists =
+          this.H.getEdge(d.getTarget(), d.getSource()) !== undefined;
+
         // Use original x1 and x2 coordinates for the path.
         if (!this.H.getIsDirected()) {
           let normalWidth = 1;
@@ -1461,52 +1516,73 @@ export class HierarchicallyClusteredGraphDrawer {
 			  L ${x1 - normalWidth} ${y + cellSize / 2 - normalWidth} Z`;
         } else {
           let taperedWidth = 4;
+          let y_offset = 0;
+          if (reverseEdgeExists) {
+            // Apply a small downward offset to one direction, and upward to the other.
+            // Since the initial swap ensures sourceLeft is true for one direction and false for the other,
+            // we can use it to consistently apply opposite offsets.
+            y_offset = sourceLeft
+              ? -edgeSeparationOffset
+              : edgeSeparationOffset;
+          }
           if (sourceLeft) {
-            return `M ${x1 - taperedWidth} ${y + cellSize / 2 - taperedWidth} 
-				C ${x1} ${y + cellSize / 2 + curveHeight / 1.5 + taperedWidth}, ${
+            return `M ${x1 - taperedWidth} ${
+              y + cellSize / 2 - taperedWidth + y_offset
+            } 
+				C ${x1} ${y + cellSize / 2 + curveHeight / 1.5 + taperedWidth + y_offset}, ${
               x1 + xDist / 4.0
-            } ${y + cellSize / 2 + curveHeight + taperedWidth / 1.5}, ${
-              x1 + xDist / 2.0
-            } ${y + cellSize / 2 + curveHeight + taperedWidth / 2} 
-			  C ${x2 - xDist / 4.0} ${
-              y + cellSize / 2 + curveHeight + taperedWidth / 3.5
-            }, ${x2} ${y + cellSize / 2 + curveHeight / 1.5}, ${x2} ${
-              y + cellSize / 2 - taperedWidth
-            }
-			  C  ${x2} ${y + cellSize / 2 + curveHeight / 1.5}, ${x2 - xDist / 4.0} ${
-              y + cellSize / 2 + curveHeight - taperedWidth / 3.5
-            },${x1 + xDist / 2.0} ${
-              y + cellSize / 2 + curveHeight - taperedWidth / 2
-            }
-				C  ${x1 + xDist / 4.0} ${
-              y + cellSize / 2 + curveHeight - taperedWidth / 1.5
-            } ${x1} ${y + cellSize / 2 + curveHeight / 1.5 - taperedWidth},${
-              x1 + taperedWidth
-            } ${y + cellSize / 2 - taperedWidth}
-		        L ${x1 - taperedWidth} ${y + cellSize / 2 - taperedWidth} Z
-			  `;
-          } else {
-            return `M ${x1} ${y + cellSize / 2 - taperedWidth} 
-				C ${x1} ${y + cellSize / 2 + curveHeight / 1.5}, ${x1 + xDist / 4.0} ${
-              y + cellSize / 2 + curveHeight + taperedWidth / 3.5
+            } ${
+              y + cellSize / 2 + curveHeight + taperedWidth / 1.5 + y_offset
             }, ${x1 + xDist / 2.0} ${
-              y + cellSize / 2 + curveHeight + taperedWidth / 2
+              y + cellSize / 2 + curveHeight + taperedWidth / 2 + y_offset
             } 
 			  C ${x2 - xDist / 4.0} ${
-              y + cellSize / 2 + curveHeight + taperedWidth / 1.5
-            }, ${x2} ${y + cellSize / 2 + curveHeight / 1.5 + taperedWidth}, ${
-              x2 + taperedWidth
-            } ${y + cellSize / 2 - taperedWidth}
-			  L ${x2 - taperedWidth} ${y + cellSize / 2 - taperedWidth}
-			  C  ${x2} ${y + cellSize / 2 + curveHeight / 1.5 - taperedWidth}, ${
+              y + cellSize / 2 + curveHeight + taperedWidth / 3.5 + y_offset
+            }, ${x2} ${
+              y + cellSize / 2 + curveHeight / 1.5 + y_offset
+            }, ${x2} ${y + cellSize / 2 - taperedWidth + y_offset}
+			  C  ${x2} ${y + cellSize / 2 + curveHeight / 1.5 + y_offset}, ${
               x2 - xDist / 4.0
-            } ${y + cellSize / 2 + curveHeight - taperedWidth / 1.5},${
-              x1 + xDist / 2.0
-            } ${y + cellSize / 2 + curveHeight - taperedWidth / 2}
+            } ${
+              y + cellSize / 2 + curveHeight - taperedWidth / 3.5 + y_offset
+            },${x1 + xDist / 2.0} ${
+              y + cellSize / 2 + curveHeight - taperedWidth / 2 + y_offset
+            }
 				C  ${x1 + xDist / 4.0} ${
-              y + cellSize / 2 + curveHeight - taperedWidth / 3.5
-            } ${x1} ${y + cellSize / 2 + curveHeight / 1.5},${x1} ${
-              y + cellSize / 2 - taperedWidth
+              y + cellSize / 2 + curveHeight - taperedWidth / 1.5 + y_offset
+            } ${x1} ${
+              y + cellSize / 2 + curveHeight / 1.5 - taperedWidth + y_offset
+            },${x1 + taperedWidth} ${y + cellSize / 2 - taperedWidth + y_offset}
+		        L ${x1 - taperedWidth} ${y + cellSize / 2 - taperedWidth + y_offset} Z
+			  `;
+          } else {
+            return `M ${x1} ${y + cellSize / 2 - taperedWidth + y_offset} 
+				C ${x1} ${y + cellSize / 2 + curveHeight / 1.5 + y_offset}, ${
+              x1 + xDist / 4.0
+            } ${
+              y + cellSize / 2 + curveHeight + taperedWidth / 3.5 + y_offset
+            }, ${x1 + xDist / 2.0} ${
+              y + cellSize / 2 + curveHeight + taperedWidth / 2 + y_offset
+            } 
+			  C ${x2 - xDist / 4.0} ${
+              y + cellSize / 2 + curveHeight + taperedWidth / 1.5 + y_offset
+            }, ${x2} ${
+              y + cellSize / 2 + curveHeight / 1.5 + taperedWidth + y_offset
+            }, ${x2 + taperedWidth} ${
+              y + cellSize / 2 - taperedWidth + y_offset
+            }
+			  L ${x2 - taperedWidth} ${y + cellSize / 2 - taperedWidth + y_offset}
+			  C  ${x2} ${y + cellSize / 2 + curveHeight / 1.5 - taperedWidth + y_offset}, ${
+              x2 - xDist / 4.0
+            } ${
+              y + cellSize / 2 + curveHeight - taperedWidth / 1.5 + y_offset
+            },${x1 + xDist / 2.0} ${
+              y + cellSize / 2 + curveHeight - taperedWidth / 2 + y_offset
+            }
+				C  ${x1 + xDist / 4.0} ${
+              y + cellSize / 2 + curveHeight - taperedWidth / 3.5 + y_offset
+            } ${x1} ${y + cellSize / 2 + curveHeight / 1.5 + y_offset},${x1} ${
+              y + cellSize / 2 - taperedWidth + y_offset
             }	         
 			  `;
           }
@@ -1728,7 +1804,7 @@ export class HierarchicallyClusteredGraphDrawer {
 
   zoomReset() {
     if (!this.svg || !this.d3zoom) return;
-    console.log("Resetting zoom to 100%"); // Reset to identity transform (scale=1, translate=0,0)
+    // console.log("Resetting zoom to 100%"); // Reset to identity transform (scale=1, translate=0,0)
     this.svg
       .transition()
       .duration(250)
@@ -1847,5 +1923,24 @@ export class HierarchicallyClusteredGraphDrawer {
 
       d3.select(nodes[i]).attr("display", visible ? null : "none");
     });
+  }
+
+  static countUniqueEdges(edges) {
+    const uniquePairs = new Set();
+
+    edges.forEach((edge) => {
+      // Get the IDs of the source and target nodes
+      const sourceId = edge.source.getID();
+      const targetId = edge.target.getID();
+
+      // Create a canonical ID by sorting the two IDs.
+      // This ensures that (A, B) and (B, A) result in the same unique ID.
+      const canonicalId =
+        Math.min(sourceId, targetId) + "," + Math.max(sourceId, targetId);
+
+      uniquePairs.add(canonicalId);
+    });
+
+    return uniquePairs.size;
   }
 }
