@@ -252,6 +252,8 @@
   "edges": [
     { "source": "1", "target": "2", "weight": 7.7 },
     { "source": "2", "target": "3", "weight": 8.8 },
+    { "source": "3", "target": "2", "weight": 8.8 },
+
     { "source": "4", "target": "5", "weight": 7.6 },
     { "source": "6", "target": "7", "weight": 7.0 },
     { "source": "8", "target": "9", "weight": 7.4 },
@@ -276,6 +278,8 @@
     { "source": "43", "target": "44", "weight": 5.6 },
     { "source": "45", "target": "46", "weight": 5.9 },
     { "source": "47", "target": "48", "weight": 5.4 },
+    { "source": "48", "target": "47", "weight": 4.3 },
+
     { "source": "49", "target": "50", "weight": 5.3 },
 
     { "source": "51", "target": "52", "weight": 4.8 },
@@ -284,6 +288,8 @@
     { "source": "57", "target": "58", "weight": 4.7 },
     { "source": "59", "target": "60", "weight": 6.5 },
     { "source": "61", "target": "62", "weight": 4.8 },
+    { "source": "62", "target": "61", "weight": 4.8 },
+
     { "source": "63", "target": "64", "weight": 4.1 },
     { "source": "65", "target": "66", "weight": 4.4 },
 
