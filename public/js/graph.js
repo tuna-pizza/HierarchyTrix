@@ -248,6 +248,17 @@ export class HierarchicallyClusteredGraph {
       console.error("Error fetching data:", err);
     }
   }
+
+  containsReverseEdge(edge) {
+    for (let other of this.edges) {
+      if (edge.getSource() === other.getTarget()) {
+        if (edge.getTarget() === other.getSource()) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
 }
 
 export class Node {

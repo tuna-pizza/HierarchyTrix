@@ -17,6 +17,17 @@ export function mouseEntersNodeCell() {
   // Identify all relevant parts
   const leaves = data.getLeaves();
   const leafIDs = new Set(leaves.map((n) => n.getID()));
+
+  d3.selectAll(".leaf-label").style("opacity", function () {
+    const id = this.parentNode.getAttribute("data-leaf-id");
+    return leafIDs.has(id) ? 1.0 : 0.2;
+  });
+
+  d3.selectAll(".label-background").style("opacity", function () {
+    const id = this.parentNode.getAttribute("data-leaf-id");
+    return leafIDs.has(id) ? 0.7 : 0;
+  });
+
   const descendants = [data, ...data.getDescendants()];
   const allRelevantNodes = new Set(descendants);
 
@@ -52,24 +63,24 @@ export function mouseEntersNodeCell() {
   allNodeCells
     .filter((d) => d.getNodeType() !== 0) // Target only cluster nodes
     .filter((d) => !allRelevantNodes.has(d)) // Exclude the hovered cluster, its descendants, AND its ancestors
-    .attr("opacity", 0.3)
+    .attr("opacity", 0.2)
     .selectAll("use")
     .attr("fill", "gray");
 
   // b) Fade all edges
   allEdges
-    .attr("opacity", 0.1)
+    .attr("opacity", 0.2)
     .attr("stroke", "lightgray")
     .attr("fill", "lightgray");
 
   // c) Fade all inclusion bands
-  allInclusions.attr("opacity", 0.1).attr("fill", "lightgray");
+  allInclusions.attr("opacity", 0.2).attr("fill", "lightgray");
 
   // d) Identify and fade ONLY adjacency cells NOT in a relevant cluster (hovered cluster or any ancestor)
   // We check against the parent of the adjacency cell's source node.
   allAdjCells
     .filter((d) => !allRelevantNodes.has(d.source.getParent()))
-    .attr("opacity", 0.1)
+    .attr("opacity", 0.2)
     .each(function (d) {
       d3.select(this).select("use").attr("fill", "lightgray");
     });
@@ -144,7 +155,7 @@ export function mouseEntersNodeCell() {
   );
 
   // 2. Dim ALL cluster labels
-  d3.selectAll(".cluster-label").style("opacity", 0.1);
+  d3.selectAll(".cluster-label").style("opacity", 0.2);
 
   // 3. Highlight only the labels that match the relevant cluster IDs
   d3.selectAll(".cluster-label").style("opacity", function () {
@@ -152,7 +163,7 @@ export function mouseEntersNodeCell() {
     if (relevantClusterIDs.has(labelText)) {
       return 1.0;
     } else {
-      return 0.1;
+      return 0.2;
     }
   });
 }
@@ -188,8 +199,12 @@ export function mouseLeavesNodeCell() {
     .attr("opacity", 1)
     .attr("fill", inclusionColor);
 
-  // 5. Restore ALL cluster labels (NEW REQUIREMENT)
+  // 5. Restore ALL cluster labels
   d3.selectAll(".cluster-label").style("opacity", 1.0);
+
+  // 5. Restore ALL cluster labels
+  d3.selectAll(".leaf-label").style("opacity", 1.0);
+  d3.selectAll(".label-background").style("opacity", 0.7);
 }
 
 export function mouseEntersAdjCell(event, data) {
@@ -249,10 +264,10 @@ export function mouseEntersAdjCell(event, data) {
     .attr("stroke", "lightgray")
     .attr("fill", "lightgray")
     .attr("stroke-width", "2")
-    .attr("opacity", 0.4);
+    .attr("opacity", 0.2);
 
   // d) Gray out all nodes (cluster and leaf)
-  allNodes.attr("opacity", 0.3).selectAll("use").attr("fill", "gray");
+  allNodes.attr("opacity", 0.2).selectAll("use").attr("fill", "gray");
 
   // e) Gray out the labels of nodes (except the end-nodes)
   // Determine IDs to highlight (these are the adjacency endpoints; may be leaves at last-level)
@@ -289,7 +304,7 @@ export function mouseEntersAdjCell(event, data) {
   // 1) Text labels: show only the two endpoint labels
   d3.selectAll(".leaf-label").style("opacity", function (d, i) {
     if (i === sourceIndex || i === targetIndex) return 1.0;
-    return 0.2; // or 0.3 as you use elsewhere
+    return 0.2;
   });
 
   // 2) Background rects: hide rects for dimmed labels
@@ -307,6 +322,11 @@ export function mouseEntersAdjCell(event, data) {
     !sourceNode.children || sourceNode.children.length === 0;
   const targetIsLeafCluster =
     !targetNode.children || targetNode.children.length === 0;
+
+  if (!(sourceIsLeafCluster && targetIsLeafCluster)) {
+    d3.selectAll(".leaf-label").style("opacity", 0.2);
+    d3.selectAll(".label-background").style("opacity", 0);
+  }
 
   if (sourceIsLeafCluster && targetIsLeafCluster) {
     // Hovering a cell in a BOTTOMMOST matrix (only highlight the current matrix's label)
@@ -351,7 +371,7 @@ export function mouseEntersAdjCell(event, data) {
         return 1.0;
       } else {
         // Grey out all others
-        return 0.1; // Strong grey-out
+        return 0.2; // Strong grey-out
       }
     });
   }
@@ -490,6 +510,34 @@ export function mouseEntersAdjCell(event, data) {
         // Convert number to string if we are using the weight
         textToShow = String(textToShow);
       }
+
+      if (data && data.isWeightColored) {
+        let edgeWeight = null;
+
+        // Safely retrieve weights from both directions using optional chaining
+        let weight_t_to_s = data.edge_t_to_s?.weight ?? null;
+        let weight_s_to_t = data.edge_s_to_t?.weight ?? null;
+
+        if (data.isDirected) {
+          // 1. DIRECTED LOGIC: Respect the triangle part based on your confirmed mapping
+          if (part === "left") {
+            edgeWeight = weight_s_to_t;
+          } else if (part === "right") {
+            edgeWeight = weight_t_to_s;
+          }
+        } else {
+          // 2. UNDIRECTED LOGIC: Use the single stored weight, regardless of part
+          // The weight is the same for both halves; use whichever is not null.
+          edgeWeight = weight_t_to_s !== null ? weight_t_to_s : weight_s_to_t;
+        }
+
+        // Only append the text if a valid weight value was found (0 is valid, null/undefined is not)
+        if (edgeWeight !== null && edgeWeight !== undefined) {
+          // Append the weight with a label
+          textToShow = `Weight: ${edgeWeight}\n` + textToShow;
+        }
+      }
+
       // 1) Ensure there's an .edge-labels group inside the zoom group (so labels scale/translate with zoom)
       let edgeLabelsGroup = d3.select(".edge-labels");
       if (edgeLabelsGroup.empty()) {
@@ -730,30 +778,17 @@ export function mouseEntersEdge(
   const sourceNodeID = String(data.source.getID());
   const targetNodeID = String(data.target.getID());
 
-  // 2. Find the index of the source and target nodes in the full nodeOrder array.
-  const sourceIndex = nodeOrder.findIndex(
-    (n) => String(n.getID()) === sourceNodeID
-  );
-  const targetIndex = nodeOrder.findIndex(
-    (n) => String(n.getID()) === targetNodeID
-  );
-
-  // 3. Gray out all the nodes labels (except the end-nodes)
-  d3.selectAll(".leaf-label").style("opacity", function (d, i) {
-    // Use the D3 index (i) to check against the calculated indices
-    if (i === sourceIndex || i === targetIndex) {
-      return 1.0; // Keep visible (end-node label)
-    } else {
-      return 0.2; // Dim all others
-    }
+  // 2. Gray out all the nodes labels (except the end-nodes)
+  d3.selectAll(".leaf-label").style("opacity", function () {
+    const id = this.parentNode.getAttribute("data-leaf-id");
+    if (id === sourceNodeID || id === targetNodeID) return 1.0;
+    return 0.2;
   });
-  d3.selectAll(".label-background").style("opacity", function (d, i) {
-    // Use the D3 index (i) to check against the calculated indices
-    if (i === sourceIndex || i === targetIndex) {
-      return 0.7; // Keep visible
-    } else {
-      return 0; // Dim all others
-    }
+
+  d3.selectAll(".label-background").style("opacity", function () {
+    const id = this.parentNode.getAttribute("data-leaf-id");
+    if (id === sourceNodeID || id === targetNodeID) return 0.7;
+    return 0;
   });
 
   const sourceNode = data.getSource();
@@ -771,10 +806,10 @@ export function mouseEntersEdge(
   allAdjCells.attr("opacity", 0.2);
   allInclusions.attr("opacity", 0.2).attr("fill", inclusionColor);
   allEdges
-    .attr("opacity", 0.1)
+    .attr("opacity", 0.2)
     .attr("stroke", "lightgray")
     .attr("stroke-width", "2");
-  allNodes.attr("opacity", 0.3).selectAll("use").attr("fill", "gray");
+  allNodes.attr("opacity", 0.2).selectAll("use").attr("fill", "gray");
 
   // 3. IDENTIFY ANCESTORS
   const ancestorNodes = new Set();
@@ -859,7 +894,7 @@ export function mouseEntersEdge(
       return 1.0;
     } else {
       // Grey-out all other labels
-      return 0.1;
+      return 0.2;
     }
   });
 
@@ -926,6 +961,10 @@ export function mouseEntersEdge(
     labelText = `${sourceText} — ${targetText}`;
   }
 
+  if (data.weight !== null && data.weight !== undefined) {
+    labelText = labelText + `\nWeight: ${data.weight}`;
+  }
+
   // Show edge label
   const x1 = xCoordMap.get(data.getSource());
   const x2 = xCoordMap.get(data.getTarget());
@@ -949,7 +988,7 @@ export function mouseEntersEdge(
         .append("text")
         .attr("class", "edge-label")
         .attr("x", midX)
-        .attr("y", midY + 5)
+        .attr("y", midY + 7)
         .attr("text-anchor", "middle")
         .attr("dominant-baseline", "hanging")
         .attr("font-family", "var(--font-main)")

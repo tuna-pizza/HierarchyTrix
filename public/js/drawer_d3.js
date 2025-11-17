@@ -27,6 +27,7 @@ export class HierarchicallyClusteredGraphDrawer {
     this.currentTransform = null;
     this.clusterStatsPopup = null;
     this.edgeLabelStats = null;
+    this.adjCellStats = null;
     this.edgeColors = null;
     this.doubleEdgeMap = new Map();
 
@@ -48,6 +49,7 @@ export class HierarchicallyClusteredGraphDrawer {
     window.addEventListener("edgeDisplayModeChange", (e) => {
       this.edgeDisplayMode = e.detail.mode;
       this.redrawAdjacencyCells();
+      this.drawAdjCellColorLegend();
     });
 
     window.addEventListener("labelSizeChange", (e) => {
@@ -228,6 +230,8 @@ export class HierarchicallyClusteredGraphDrawer {
         edge.edgeColor = color;
       }
     });
+
+    this.drawAdjCellColorLegend();
   }
 
   addOrderConstraints(orderString) {
@@ -921,11 +925,12 @@ export class HierarchicallyClusteredGraphDrawer {
             // Fallback to ratio/absolute for higher layers
             const actualEdges = d.actualEdges;
             const potentialEdges = d.potentialEdges;
+            const ratio = actualEdges / potentialEdges;
             const colorByAbsolute = this.edgeDisplayMode === "absolute";
 
             return colorByAbsolute
               ? `${actualEdges}`
-              : `${actualEdges}/${potentialEdges}`;
+              : `${parseFloat(ratio.toFixed(2))}`; //`${actualEdges}/${potentialEdges}`;
           }
         });
 
@@ -980,13 +985,12 @@ export class HierarchicallyClusteredGraphDrawer {
 
       const textColor = utils.getTextColor(cellColor, nodeColor);
 
+      const ratio = actualEdges / potentialEdges;
       adjCell
         .select("text")
         .attr("fill", textColor)
         .text(
-          colorByAbsolute
-            ? `${actualEdges}`
-            : `${actualEdges}/${potentialEdges}`
+          colorByAbsolute ? `${actualEdges}` : `${parseFloat(ratio.toFixed(2))}` //`${actualEdges}/${potentialEdges}`
         );
     });
   }
@@ -1481,10 +1485,6 @@ export class HierarchicallyClusteredGraphDrawer {
 
         const curveHeight = xDist / 5;
 
-        const edgeSeparationOffset = 5; // Adjust this value for desired separation
-        const reverseEdgeExists =
-          this.H.getEdge(d.getTarget(), d.getSource()) !== undefined;
-
         // Use original x1 and x2 coordinates for the path.
         if (!this.H.getIsDirected()) {
           let normalWidth = 1;
@@ -1516,74 +1516,146 @@ export class HierarchicallyClusteredGraphDrawer {
 			  L ${x1 - normalWidth} ${y + cellSize / 2 - normalWidth} Z`;
         } else {
           let taperedWidth = 4;
-          let y_offset = 0;
-          if (reverseEdgeExists) {
-            // Apply a small downward offset to one direction, and upward to the other.
-            // Since the initial swap ensures sourceLeft is true for one direction and false for the other,
-            // we can use it to consistently apply opposite offsets.
-            y_offset = sourceLeft
-              ? -edgeSeparationOffset
-              : edgeSeparationOffset;
+          let extraOffsetForDoubleEdges = 0;
+          if (this.H.containsReverseEdge(d)) {
+            extraOffsetForDoubleEdges = taperedWidth + edgeWidth;
           }
           if (sourceLeft) {
-            return `M ${x1 - taperedWidth} ${
-              y + cellSize / 2 - taperedWidth + y_offset
+            return `M ${x1 - taperedWidth - extraOffsetForDoubleEdges} ${
+              y + cellSize / 2 - taperedWidth - extraOffsetForDoubleEdges
             } 
-				C ${x1} ${y + cellSize / 2 + curveHeight / 1.5 + taperedWidth + y_offset}, ${
-              x1 + xDist / 4.0
-            } ${
-              y + cellSize / 2 + curveHeight + taperedWidth / 1.5 + y_offset
+				C ${x1 - extraOffsetForDoubleEdges} ${
+              y +
+              cellSize / 2 +
+              curveHeight / 1.5 +
+              taperedWidth +
+              extraOffsetForDoubleEdges
+            }, ${x1 + xDist / 4.0} ${
+              y +
+              cellSize / 2 +
+              curveHeight +
+              taperedWidth / 1.5 +
+              extraOffsetForDoubleEdges
             }, ${x1 + xDist / 2.0} ${
-              y + cellSize / 2 + curveHeight + taperedWidth / 2 + y_offset
+              y +
+              cellSize / 2 +
+              curveHeight +
+              taperedWidth / 2 +
+              extraOffsetForDoubleEdges
             } 
 			  C ${x2 - xDist / 4.0} ${
-              y + cellSize / 2 + curveHeight + taperedWidth / 3.5 + y_offset
-            }, ${x2} ${
-              y + cellSize / 2 + curveHeight / 1.5 + y_offset
-            }, ${x2} ${y + cellSize / 2 - taperedWidth + y_offset}
-			  C  ${x2} ${y + cellSize / 2 + curveHeight / 1.5 + y_offset}, ${
-              x2 - xDist / 4.0
-            } ${
-              y + cellSize / 2 + curveHeight - taperedWidth / 3.5 + y_offset
+              y +
+              cellSize / 2 +
+              curveHeight +
+              taperedWidth / 3.5 +
+              extraOffsetForDoubleEdges
+            }, ${x2 + extraOffsetForDoubleEdges} ${
+              y + cellSize / 2 + curveHeight / 1.5 + extraOffsetForDoubleEdges
+            }, ${x2 + extraOffsetForDoubleEdges} ${
+              y + cellSize / 2 - taperedWidth - extraOffsetForDoubleEdges
+            }
+			  C  ${x2 + extraOffsetForDoubleEdges} ${
+              y + cellSize / 2 + curveHeight / 1.5 + extraOffsetForDoubleEdges
+            }, ${x2 - xDist / 4.0} ${
+              y +
+              cellSize / 2 +
+              curveHeight -
+              taperedWidth / 3.5 +
+              extraOffsetForDoubleEdges
             },${x1 + xDist / 2.0} ${
-              y + cellSize / 2 + curveHeight - taperedWidth / 2 + y_offset
+              y +
+              cellSize / 2 +
+              curveHeight -
+              taperedWidth / 2 +
+              extraOffsetForDoubleEdges
             }
 				C  ${x1 + xDist / 4.0} ${
-              y + cellSize / 2 + curveHeight - taperedWidth / 1.5 + y_offset
-            } ${x1} ${
-              y + cellSize / 2 + curveHeight / 1.5 - taperedWidth + y_offset
-            },${x1 + taperedWidth} ${y + cellSize / 2 - taperedWidth + y_offset}
-		        L ${x1 - taperedWidth} ${y + cellSize / 2 - taperedWidth + y_offset} Z
+              y +
+              cellSize / 2 +
+              curveHeight -
+              taperedWidth / 1.5 +
+              extraOffsetForDoubleEdges
+            } ${x1 - extraOffsetForDoubleEdges} ${
+              y +
+              cellSize / 2 +
+              curveHeight / 1.5 -
+              taperedWidth +
+              extraOffsetForDoubleEdges
+            },${x1 + taperedWidth - extraOffsetForDoubleEdges} ${
+              y + cellSize / 2 - taperedWidth - extraOffsetForDoubleEdges
+            }
+		        L ${x1 - taperedWidth - extraOffsetForDoubleEdges} ${
+              y + cellSize / 2 - taperedWidth - extraOffsetForDoubleEdges
+            } Z
 			  `;
           } else {
-            return `M ${x1} ${y + cellSize / 2 - taperedWidth + y_offset} 
-				C ${x1} ${y + cellSize / 2 + curveHeight / 1.5 + y_offset}, ${
-              x1 + xDist / 4.0
-            } ${
-              y + cellSize / 2 + curveHeight + taperedWidth / 3.5 + y_offset
+            return `M ${x1 + extraOffsetForDoubleEdges} ${
+              y + cellSize / 2 - taperedWidth - extraOffsetForDoubleEdges
+            } 
+				C ${x1 + extraOffsetForDoubleEdges} ${
+              y + cellSize / 2 + curveHeight / 1.5 - extraOffsetForDoubleEdges
+            }, ${x1 + xDist / 4.0} ${
+              y +
+              cellSize / 2 +
+              curveHeight +
+              taperedWidth / 3.5 -
+              extraOffsetForDoubleEdges
             }, ${x1 + xDist / 2.0} ${
-              y + cellSize / 2 + curveHeight + taperedWidth / 2 + y_offset
+              y +
+              cellSize / 2 +
+              curveHeight +
+              taperedWidth / 2 -
+              extraOffsetForDoubleEdges
             } 
 			  C ${x2 - xDist / 4.0} ${
-              y + cellSize / 2 + curveHeight + taperedWidth / 1.5 + y_offset
-            }, ${x2} ${
-              y + cellSize / 2 + curveHeight / 1.5 + taperedWidth + y_offset
-            }, ${x2 + taperedWidth} ${
-              y + cellSize / 2 - taperedWidth + y_offset
+              y +
+              cellSize / 2 +
+              curveHeight +
+              taperedWidth / 1.5 -
+              extraOffsetForDoubleEdges
+            }, ${x2 - extraOffsetForDoubleEdges} ${
+              y +
+              cellSize / 2 +
+              curveHeight / 1.5 +
+              taperedWidth -
+              extraOffsetForDoubleEdges
+            }, ${x2 + taperedWidth - extraOffsetForDoubleEdges} ${
+              y + cellSize / 2 - taperedWidth - extraOffsetForDoubleEdges
             }
-			  L ${x2 - taperedWidth} ${y + cellSize / 2 - taperedWidth + y_offset}
-			  C  ${x2} ${y + cellSize / 2 + curveHeight / 1.5 - taperedWidth + y_offset}, ${
-              x2 - xDist / 4.0
-            } ${
-              y + cellSize / 2 + curveHeight - taperedWidth / 1.5 + y_offset
+			  L ${x2 - taperedWidth - extraOffsetForDoubleEdges} ${
+              y + cellSize / 2 - taperedWidth - extraOffsetForDoubleEdges
+            }
+			  C  ${x2 - extraOffsetForDoubleEdges} ${
+              y +
+              cellSize / 2 +
+              curveHeight / 1.5 -
+              taperedWidth -
+              extraOffsetForDoubleEdges
+            }, ${x2 - xDist / 4.0} ${
+              y +
+              cellSize / 2 +
+              curveHeight -
+              taperedWidth / 1.5 -
+              extraOffsetForDoubleEdges
             },${x1 + xDist / 2.0} ${
-              y + cellSize / 2 + curveHeight - taperedWidth / 2 + y_offset
+              y +
+              cellSize / 2 +
+              curveHeight -
+              taperedWidth / 2 -
+              extraOffsetForDoubleEdges
             }
 				C  ${x1 + xDist / 4.0} ${
-              y + cellSize / 2 + curveHeight - taperedWidth / 3.5 + y_offset
-            } ${x1} ${y + cellSize / 2 + curveHeight / 1.5 + y_offset},${x1} ${
-              y + cellSize / 2 - taperedWidth + y_offset
-            }	         
+              y +
+              cellSize / 2 +
+              curveHeight -
+              taperedWidth / 3.5 -
+              extraOffsetForDoubleEdges
+            } ${x1 + extraOffsetForDoubleEdges} ${
+              y + cellSize / 2 + curveHeight / 1.5 - extraOffsetForDoubleEdges
+            },${x1 + extraOffsetForDoubleEdges} ${
+              y + cellSize / 2 - taperedWidth - extraOffsetForDoubleEdges
+            }	    
+				Z
 			  `;
           }
         }
@@ -1650,6 +1722,10 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("fill", nodeColor);
 
     nodeCells
+      .on("mouseover", listeners.mouseEntersNodeCell)
+      .on("mouseleave", listeners.mouseLeavesNodeCell);
+
+    nodeCells
       .append("text")
       .attr("y", textOffset)
       .attr("fill", "white")
@@ -1659,10 +1735,6 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("alignment-baseline", "middle")
       .attr("pointer-events", "none")
       .text((d) => d.getID());
-
-    nodeCells
-      .on("mouseover", listeners.mouseEntersNodeCell)
-      .on("mouseleave", listeners.mouseLeavesNodeCell);
 
     // 5. Draw Cluster Inclusions
     this.drawClusterInclusions(
@@ -1714,7 +1786,7 @@ export class HierarchicallyClusteredGraphDrawer {
         .attr("font-weight", "bold")
         .attr("pointer-events", "none")
         .style("opacity", 0.9)
-        .text(leaf.customLabel);
+        .text((d) => leaf.customLabel || leaf.getID());
 
       (document.fonts?.ready ?? Promise.resolve()).then(() => {
         requestAnimationFrame(() => {
@@ -1771,6 +1843,8 @@ export class HierarchicallyClusteredGraphDrawer {
     this.setupZoomBehavior();
 
     this.drawEdgeColorLegend();
+    this.drawAdjCellColorLegend();
+    this.drawDirectedLegend();
   }
 
   // === ZOOM METHODS ===
@@ -1881,7 +1955,7 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("height", barHeight)
       .style("fill", `url(#${gradientId})`)
       .style("stroke", "var(--color-text-header)")
-      .style("stroke-width", 1);
+      .style("stroke-width", 0);
 
     // --- 3. Add Min/Max labels below the bar using HTML/D3 ---
 
@@ -1894,7 +1968,8 @@ export class HierarchicallyClusteredGraphDrawer {
       .style("font-size", "0.9rem")
       .style("font-weight", "normal")
       .style("color", "var(--color-secondary)")
-      .style("font-family", "var(--font-main)");
+      .style("font-family", "var(--font-main)")
+      .style("margin-top", "-3px");
 
     // Min Label (Left)
     valueContainer
@@ -1907,6 +1982,8 @@ export class HierarchicallyClusteredGraphDrawer {
       .append("span")
       .style("text-align", "right")
       .text(formatValue(max));
+
+    this.drawAdjCellColorLegend();
   }
 
   filterEdgesByWeight() {
@@ -1942,5 +2019,358 @@ export class HierarchicallyClusteredGraphDrawer {
     });
 
     return uniquePairs.size;
+  }
+
+  computeAdjacencyCellStats() {
+    // Initialize min/max values safely
+    let minRatio = Infinity;
+    let maxRatio = -Infinity;
+    let minAbsolute = Infinity;
+    let maxAbsolute = -Infinity;
+    let foundCells = false;
+
+    // Use D3 to select all currently drawn adjacency cells and extract their data
+    d3.selectAll(".adjacency g.adjacency-cell").each(function (d) {
+      // 'd' is the data object bound to the cell, which contains ratio and actualEdges
+
+      if (d && d.actualEdges !== undefined) {
+        foundCells = true;
+
+        // 1. Update Absolute Counts (actualEdges)
+        const absoluteValue = d.actualEdges;
+        minAbsolute = Math.min(minAbsolute, absoluteValue);
+        maxAbsolute = Math.max(maxAbsolute, absoluteValue);
+
+        // 2. Update Ratio Values (ratio)
+        // Ensure ratio is a valid number before comparing
+        if (d.ratio !== undefined && !isNaN(d.ratio)) {
+          const ratioValue = d.ratio;
+          minRatio = Math.min(minRatio, ratioValue);
+          maxRatio = Math.max(maxRatio, ratioValue);
+        }
+      }
+    });
+
+    // --- Final Assignment ---
+    if (foundCells) {
+      this.adjCellStats = {
+        // If no ratios were found, default to the standard [0, 1] range.
+        minRatio: minRatio === Infinity ? 0 : minRatio,
+        maxRatio: maxRatio === -Infinity ? 1 : maxRatio,
+
+        // If no absolute counts were found, default to 0
+        minAbsolute: minAbsolute === Infinity ? 0 : minAbsolute,
+        maxAbsolute: maxAbsolute === -Infinity ? 0 : maxAbsolute,
+      };
+    } else {
+      // If no cells were found (e.g., empty graph), return null
+      this.adjCellStats = null;
+    }
+  }
+
+  // In drawer_d3.js, inside the HierarchicallyClusteredGraphDrawer class
+
+  drawAdjCellColorLegend() {
+    // Ensure d3 is available
+    if (typeof d3 === "undefined") return;
+
+    this.computeAdjacencyCellStats(); // Compute min/max values
+
+    const container = d3.select("#adj-cell-legend-container");
+    container.html(""); // Clear existing content
+
+    if (!this.adjCellStats) {
+      container.style("display", "none");
+      return;
+    }
+
+    container.style("display", "block");
+
+    const { minRatio, maxRatio, minAbsolute, maxAbsolute } = this.adjCellStats;
+    const mode = this.edgeDisplayMode;
+
+    // Determine current min/max based on toggle state
+    const currentMin = mode === "ratio" ? minRatio : minAbsolute;
+    const currentMax = mode === "ratio" ? maxRatio : maxAbsolute;
+
+    if (currentMax - currentMin <= 0) {
+      container.style("display", "none");
+      return;
+    }
+
+    // Formatting function to ensure ratio has at most 2 digits, but no trailing .0 or .00
+    const formatValue = (value) => {
+      if (mode === "ratio") {
+        // Use the logic from the previous answer: parseFloat(value.toFixed(2))
+        return `${parseFloat(value.toFixed(2))}`;
+      }
+      // For absolute counts (integers)
+      return d3.format(".0f")(value);
+    };
+
+    // --- Legend Constants ---
+    const containerWidth = container.node().clientWidth || 200;
+    const barWidth = containerWidth;
+    const barHeight = 15;
+    const gradientId = "adj-cell-gradient"; // Unique ID
+
+    // --- 1. SVG for Gradient Bar ---
+    const svg = container
+      .append("svg")
+      .attr("width", barWidth)
+      .attr("height", barHeight)
+      .style("display", "block");
+
+    // Get colors from CSS variables
+    const bodyElement = d3.select("body").node();
+    const computedStyle = getComputedStyle(bodyElement);
+    // Assuming these variables are defined in styles.css or elsewhere
+    const resolvedAdjColorLow =
+      computedStyle.getPropertyValue("--adj-color-low")?.trim() ||
+      "hsl(210, 60%, 90%)";
+    const resolvedAdjColorHigh =
+      computedStyle.getPropertyValue("--adj-color-high")?.trim() ||
+      "hsl(210, 60%, 49%)";
+
+    // Define the gradient
+    const defs = svg.append("defs");
+    const linearGradient = defs
+      .append("linearGradient")
+      .attr("id", gradientId)
+      .attr("x1", "0%")
+      .attr("x2", "100%")
+      .attr("y1", "0%")
+      .attr("y2", "0%");
+
+    linearGradient
+      .append("stop")
+      .attr("offset", "0%")
+      .attr("stop-color", resolvedAdjColorLow);
+
+    linearGradient
+      .append("stop")
+      .attr("offset", "100%")
+      .attr("stop-color", resolvedAdjColorHigh);
+
+    // Draw the gradient bar
+    svg
+      .append("rect")
+      .attr("width", barWidth)
+      .attr("height", barHeight)
+      .style("fill", `url(#${gradientId})`);
+
+    // --- 2. Min/Max Labels ---
+    const valueContainer = container
+      .append("div")
+      .attr("class", "slider-container")
+      .attr("margin-bottom", "12px")
+      .style("justify-content", "space-between")
+      .style("color", resolvedAdjColorHigh)
+      .style("font-family", "var(--font-main)")
+      .style("font-weight", "normal");
+
+    // Min Label (Left)
+    valueContainer
+      .append("span")
+      .style("text-align", "left")
+      .text(formatValue(currentMin));
+
+    // Max Label (Right)
+    valueContainer
+      .append("span")
+      .style("text-align", "right")
+      .text(formatValue(currentMax));
+  }
+
+  drawDirectedLegend() {
+    const container = d3.select("#directed-legend-container");
+    const content = d3.select("#directed-legend-content");
+    content.html(""); // Clear content
+
+    // Check if graph is directed; if not, hide the whole container and exit.
+    if (!this.H.isDirected) {
+      container.style("display", "none");
+      return;
+    }
+
+    container.style("display", "block");
+
+    // These variables are used for the adjacency cell colors
+    const resolvedAdjColorLow = "hsl(210, 60%, 80%)";
+    const resolvedAdjColorHigh = "hsl(210, 60%, 49%)";
+
+    // --- 1. Linear Edge Legend (Tapered Line) ---
+    const lineGroup = content
+      .append("div")
+      .style("display", "flex")
+      .style("align-items", "center")
+      .style("gap", "8px");
+
+    // SVG for the tapered line
+    const lineSvg = lineGroup
+      .append("svg")
+      .attr("width", 200)
+      .attr("height", 20);
+
+    const centerY = 10;
+    const lineStartX = 50;
+    const lineEndX = 140;
+
+    // 1. "source" label (left of the tapered line)
+    lineSvg
+      .append("text")
+      .attr("x", lineStartX - 5) // Position to the left of the taper
+      .attr("y", centerY)
+      .attr("dy", "0.3em") // Vertical alignment
+      .style("font-size", "0.9rem")
+      .style("fill", "var(--node-color)")
+      .style("text-anchor", "end") // Anchor to the right of the starting point
+      .text("source");
+
+    // 2. Tapered path (from lineStartX to lineEndX)
+    // Path: Wide at source (left), narrow/pointy at target (right)
+    lineSvg
+      .append("path")
+      .attr(
+        "d",
+        `M ${lineStartX} ${
+          centerY - 4
+        } L ${lineEndX} ${centerY} L ${lineStartX} ${centerY + 4} Z`
+      )
+      .attr("fill", edgeColor)
+      .attr("stroke", edgeColor)
+      .attr("stroke-width", 1);
+
+    // 3. "target" label (right of the tapered line)
+    lineSvg
+      .append("text")
+      .attr("x", lineEndX + 5) // Position to the right of the taper
+      .attr("y", centerY)
+      .attr("dy", "0.3em")
+      .style("font-size", "0.9rem")
+      .style("fill", "var(--node-color)")
+      .style("text-anchor", "start") // Anchor to the left of the starting point
+      .text("target");
+
+    // --- 2. Adjacency Cell Legend (Split Cell) ---
+    const cellGroup = content
+      .append("div")
+      .style("display", "flex")
+      .style("align-items", "center")
+      .style("gap", "8px");
+
+    // SVG for the split cell (increased height/width to clearly show the labels and shape)
+    const cellSvg = cellGroup
+      .append("svg")
+      .attr("width", 200)
+      .attr("height", 55);
+
+    // Geometry constants (Diamond shape centered at 25, 12.5)
+    const cell_size = 40;
+    const halfSize = cell_size / 2;
+    const centerX = 100; // Center in the 200px wide SVG
+    const centerY_cell = 25; // Center in the 50px high SVG
+
+    // Vertices of the diamond
+    const T = [centerX, centerY_cell - halfSize]; // Top
+    const R = [centerX + halfSize, centerY_cell]; // Right
+    const B = [centerX, centerY_cell + halfSize]; // Bottom
+    const L = [centerX - halfSize, centerY_cell]; // Left
+
+    // 1. Triangle 1: Left Half (T -> L -> B -> Close) - Represents Target to Source (T→S)
+    const path1 = `M ${T[0]} ${T[1]} L ${L[0]} ${L[1]} L ${B[0]} ${B[1]} Z`;
+    cellSvg
+      .append("path")
+      .attr("d", path1)
+      .attr("fill", resolvedAdjColorLow) // Lighter blue
+      .attr("stroke", cellboundaryColor)
+      .attr("stroke-width", 2);
+
+    // 2. Triangle 2: Right Half (T -> R -> B -> Close) - Represents Source to Target (S→T)
+    const path2 = `M ${T[0]} ${T[1]} L ${R[0]} ${R[1]} L ${B[0]} ${B[1]} Z`;
+    cellSvg
+      .append("path")
+      .attr("d", path2)
+      .attr("fill", resolvedAdjColorHigh) // Darker blue
+      .attr("stroke", cellboundaryColor)
+      .attr("stroke-width", 2);
+
+    const labelText_TS = "t → s";
+    const curveStart_TS = [50, 15]; // Point where the curve starts (right of the label)
+    const curveControl_TS = [80, 5]; // Control point to pull the curve upwards
+    const curveEnd_TS = [centerX - 7, centerY_cell - 2]; // Point near the center of the left (t→s) triangle
+
+    // 3. Add the label "t -> s"
+    cellSvg
+      .append("text")
+      .attr("x", curveStart_TS[0] - 5)
+      .attr("y", curveStart_TS[1])
+      .attr("dy", "0.3em")
+      .style("font-size", "0.9rem")
+      .style("fill", "var(--node-color)")
+      .style("text-anchor", "end")
+      .text(labelText_TS);
+
+    // 4. Draw the curved arrow path
+    cellSvg
+      .append("path")
+      .attr(
+        "d",
+        `M ${curveStart_TS[0]} ${curveStart_TS[1]} Q ${curveControl_TS[0]} ${curveControl_TS[1]} ${curveEnd_TS[0]} ${curveEnd_TS[1]}`
+      )
+      .attr("fill", "none")
+      .attr("stroke", "var(--node-color)")
+      .attr("stroke-width", 1.5);
+
+    const labelText_ST = "s → t";
+    const curveStart_ST = [150, 15]; // Point where the curve starts (left of the label)
+    const curveControl_ST = [120, 5]; // Control point to pull the curve upwards
+    const curveEnd_ST = [centerX + 7, centerY_cell - 2]; // Point near the center of the left (t→s) triangle
+
+    // 3. Add the label "s -> t"
+    cellSvg
+      .append("text")
+      .attr("x", curveStart_ST[0] + 5)
+      .attr("y", curveStart_ST[1])
+      .attr("dy", "0.3em")
+      .style("font-size", "0.9rem")
+      .style("fill", "var(--node-color)")
+      .style("text-anchor", "start")
+      .text(labelText_ST);
+
+    // 4. Draw the curved arrow path
+    cellSvg
+      .append("path")
+      .attr(
+        "d",
+        `M ${curveStart_ST[0]} ${curveStart_ST[1]} Q ${curveControl_ST[0]} ${curveControl_ST[1]} ${curveEnd_ST[0]} ${curveEnd_ST[1]}`
+      )
+      .attr("fill", "none")
+      .attr("stroke", "var(--node-color)")
+      .attr("stroke-width", 1.5);
+
+    // 5. Add "source" label to the bottom-left corner of the cell
+    cellSvg
+      .append("text")
+      // Position at the L vertex (Left/Middle) and shift down/left slightly
+      .attr("x", L[0] + 3)
+      .attr("y", L[1] + 18) // Move 18px down from the center height
+      .attr("dy", "0.3em")
+      .style("font-size", "0.9rem")
+      .style("fill", "var(--node-color)")
+      .style("text-anchor", "end") // Anchor to the right of the starting point
+      .text("source");
+
+    // 6. Add "target" label to the bottom-right corner of the cell
+    cellSvg
+      .append("text")
+      // Position at the R vertex (Right/Middle) and shift down/right slightly
+      .attr("x", R[0] - 3)
+      .attr("y", R[1] + 18) // Move 18px down from the center height
+      .attr("dy", "0.3em")
+      .style("font-size", "0.9rem")
+      .style("fill", "var(--node-color)")
+      .style("text-anchor", "start") // Anchor to the left of the starting point
+      .text("target");
   }
 }
