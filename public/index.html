@@ -404,6 +404,15 @@
                 >Absolute</span
               >
             </label>
+            <div
+              id="adj-cell-legend-container"
+              style="
+                margin-top: 0px;
+                margin-bottom: 12px;
+                font-family: var(--font-main);
+                font-size: 0.9rem;
+              "
+            ></div>
           </div>
           <div
             id="edge-legend-container"
@@ -429,15 +438,42 @@
             <span id="edge-weight-value" style="font-weight: normal">0</span>
           </div>
         </div>
+
+        <div class="control-group">
+          <div
+            id="directed-legend-container"
+            style="
+              display: none;
+              max-width: 250px;
+              padding-top: 10px;
+              border-top: 1px solid var(--color-secondary);
+              margin-top: 10px;
+            "
+          >
+            <div
+              style="
+                font-size: 0.9rem;
+                margin-bottom: 8px;
+                font-weight: bold;
+                color: var(--color-secondary);
+              "
+            >
+              Directed edges legend:
+            </div>
+            <div
+              id="directed-legend-content"
+              style="display: flex; flex-direction: column; font-weight: normal"
+            ></div>
+          </div>
+        </div>
       </fieldset>
     </div>
 
     <div
       id="stats-panel"
       style="
-        position: fixed;
-        top: 80px;
         right: 20px;
+        margin-top: 10px;
         background-color: var(--color-background-medium);
         border: 1px solid var(--color-secondary);
         border-radius: 8px;
@@ -1396,7 +1432,7 @@
             // 1. Toggle the display property
             controlPanel.style.display = isVisible ? "none" : "block";
 
-            // 2. VITAL: Redraw the legend only when the panel is being shown
+            // 2. Redraw the legend only when the panel is being shown
             if (!isVisible) {
               // Check if the global drawer object exists and the method is callable
               if (
@@ -1405,6 +1441,14 @@
               ) {
                 // This forces D3 to measure the now-visible container and redraw
                 window.HCGDrawer.drawEdgeColorLegend();
+                if (
+                  typeof window.HCGDrawer.drawAdjCellColorLegend === "function"
+                ) {
+                  window.HCGDrawer.drawAdjCellColorLegend();
+                }
+                if (typeof window.HCGDrawer.drawDirectedLegend === "function") {
+                  window.HCGDrawer.drawDirectedLegend();
+                }
               }
             }
 

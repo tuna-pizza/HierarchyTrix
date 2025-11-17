@@ -74,6 +74,8 @@ h1 {
 
 /* Stats Panel Styling */
 #stats-panel {
+  position: absolute;
+  top: initial;
   backdrop-filter: blur(10px);
   background-color: var(--color-background-medium);
   color: var(--color-text-header);
@@ -346,8 +348,8 @@ body {
   font-weight: bold;
   /*fill: var(--edge-color);*/
   pointer-events: none;
-  text-shadow: 1px 1px 2px white, -1px -1px 2px white, 1px -1px 2px white,
-    -1px 1px 2px white;
+  text-shadow: 3px 3px 1px white, -3px -3px 1px white, 3px -3px 1px white,
+    -3px 3px 1px white;
   user-select: none;
 }
 
@@ -443,7 +445,7 @@ legend {
   right: initial;
   margin-top: 10px;
   /* White background with 80% opacity */
-  background-color: rgba(255, 255, 255, 0.5);
+  background-color: rgba(255, 255, 255, 0.8);
   padding: 10px;
   border-radius: 8px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
@@ -542,6 +544,7 @@ legend {
 .slider-container {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
 }
 
@@ -561,7 +564,7 @@ legend {
 }
 
 #label-size-slider {
-  width: 120px;
+  width: auto;
   accent-color: var(--color-secondary);
   cursor: pointer;
 }
@@ -579,19 +582,14 @@ legend {
   font-family: var(--font-main);
   font-size: 0.9rem;
   color: var(--color-secondary);
+  justify-content: center;
+  width: auto;
+  accent-color: var(--color-secondary);
+  cursor: pointer;
+  min-width: 40px;
+  align-items: center;
 }
 
 #edge-weight-filter a {
   margin-bottom: 4px;
-}
-
-#edge-weight-filter {
-  width: 120px;
-  accent-color: var(--color-secondary);
-  cursor: pointer;
-}
-
-#edge-weight-filter {
-  min-width: 40px;
-  color: var(--color-secondary);
 }
