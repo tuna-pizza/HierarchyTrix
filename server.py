@@ -66,7 +66,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, current_dir)
 
 try:
-    from nodetrix_clean import solve_layout_for_graph
+    from ILP_solver import solve_layout_for_graph
     print("✓ ILP Solver imported successfully")
 except ImportError as e:
     print(f"✗ ILP Solver import failed: {e}")
@@ -370,3 +370,4 @@ def download_json(filename):
 if __name__ == "__main__":
     print("Server running on http://localhost:3000")
     app.run(port=3000, debug=True)
+
