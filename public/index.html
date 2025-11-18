@@ -384,7 +384,7 @@
           "
         >
           <div class="toggle-container" style="margin-bottom: 12px">
-            <a>Intra-cluster value:</a>
+            <a>Cluster values:</a>
             <br />
             <label
               class="toggle-switch"
@@ -406,6 +406,15 @@
             </label>
             <div
               id="adj-cell-legend-container"
+              style="
+                margin-top: 0px;
+                margin-bottom: 3px;
+                font-family: var(--font-main);
+                font-size: 0.9rem;
+              "
+            ></div>
+            <div
+              id="node-cell-legend-container"
               style="
                 margin-top: 0px;
                 margin-bottom: 12px;
@@ -1445,6 +1454,11 @@
                   typeof window.HCGDrawer.drawAdjCellColorLegend === "function"
                 ) {
                   window.HCGDrawer.drawAdjCellColorLegend();
+                }
+                if (
+                  typeof window.HCGDrawer.drawNodeCellColorLegend === "function"
+                ) {
+                  window.HCGDrawer.drawNodeCellColorLegend();
                 }
                 if (typeof window.HCGDrawer.drawDirectedLegend === "function") {
                   window.HCGDrawer.drawDirectedLegend();
