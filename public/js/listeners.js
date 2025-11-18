@@ -23,7 +23,7 @@ export function mouseEntersNodeCell() {
     return leafIDs.has(id) ? 1.0 : 0.2;
   });
 
-  d3.selectAll(".label-background").style("opacity", function () {
+  d3.selectAll(".leaf-labels .label-background").style("opacity", function () {
     const id = this.parentNode.getAttribute("data-leaf-id");
     return leafIDs.has(id) ? 0.7 : 0;
   });
@@ -87,10 +87,21 @@ export function mouseEntersNodeCell() {
 
   // Step 2: Highlight the hovered node, its descendants, and its ancestors (headers and leaves)
   allNodeCells
-    .filter((d) => allRelevantNodes.has(d)) // Include the hovered node, its descendants, AND its ancestors
-    .attr("opacity", 1)
-    .selectAll("use")
-    .attr("fill", "var(--node-color)");
+    .filter((d) => allRelevantNodes.has(d))
+    .attr("opacity", 1) // Restore opacity to 1
+    .each(function (d) {
+      const nodeType = d.getNodeType();
+      const cell = d3.select(this).select("use");
+
+      if (nodeType === "Cluster" && window.HCGDrawer) {
+        // Recalculate and apply the cluster color
+        const finalColor = window.HCGDrawer.getClusterNodeCalculatedColor(d);
+        cell.attr("fill", finalColor);
+      } else if (nodeType === "Vertex") {
+        // Apply the default color for leaf nodes
+        cell.attr("fill", "var(--node-color)");
+      }
+    });
 
   // Step 3: Highlight the OTHER ENDPOINTS in the linear layout (EXTERNAL NODES)
   // These are the leaves connected by an edge but not part of the hovered cluster's leaves
@@ -166,16 +177,166 @@ export function mouseEntersNodeCell() {
       return 0.2;
     }
   });
+
+  // Step 9: Highlight relevant cluster node labels (tilted)
+  d3.selectAll(".cluster-node-label").style("opacity", function () {
+    const labelText = d3.select(this).text().trim();
+    return relevantClusterIDs.has(labelText) ? 1.0 : 0.2;
+  });
+
+  d3.selectAll(".cluster-node-labels .label-background").style(
+    "opacity",
+    function () {
+      const id = this.parentNode.getAttribute("data-cluster-id");
+      return relevantClusterIDs.has(id) ? 0.7 : 0;
+    }
+  );
+
+  // --- CLUSTER NODE HOVER LABEL LOGIC ---
+  const drawer = window.HCGDrawer;
+  // Ensure we use the correct group for labels
+  const edgeLabelsGroup = d3.select(".edge-labels");
+
+  if (edgeLabelsGroup && !edgeLabelsGroup.empty()) {
+    edgeLabelsGroup.selectAll(".adj-hover-label").remove();
+  }
+
+  // ONLY proceed if it's a Cluster Node (not a leaf)
+  if (data.getNodeType() === "Cluster" && drawer) {
+    const labelStats = drawer.getClusterNodeLabelStats(data);
+
+    if (labelStats) {
+      const textToShow = labelStats.labelText; // "Value: X.XX"
+      const labelColor = labelStats.textColor; // --cluster-node-color-high
+
+      const OFFSET_X = 0; // Final offset after all transforms
+      const OFFSET_Y = 0;
+
+      // 1. Compute cell center point in local coordinates (used for initial localPoint)
+      const cellNode = event.currentTarget;
+      let localPoint = { x: 0, y: 0 };
+      let screenPoint;
+
+      try {
+        const bbox = cellNode.getBBox();
+        const cx = bbox.x + bbox.width / 2;
+        const cy = bbox.y + bbox.height / 2;
+
+        const pt = cellNode.ownerSVGElement.createSVGPoint();
+        pt.x = cx;
+        pt.y = cy;
+
+        screenPoint = pt.matrixTransform(cellNode.getScreenCTM());
+
+        const groupNode = edgeLabelsGroup.node();
+        const groupCTM = groupNode.getScreenCTM();
+        const inv = groupCTM.inverse();
+        const svgPoint = cellNode.ownerSVGElement.createSVGPoint();
+        svgPoint.x = screenPoint.x;
+        svgPoint.y = screenPoint.y;
+        const transformed = svgPoint.matrixTransform(inv);
+        localPoint.x = transformed.x;
+        localPoint.y = transformed.y;
+      } catch (err) {
+        console.warn(
+          "Could not compute initial screen point for hovered cell:",
+          err
+        );
+        localPoint = { x: 20, y: 20 }; // Fallback to cell center
+      }
+
+      // 2. Compute final label position based on Cluster Ancestor BBox
+      // Fallback coords (initial cell center localPoint), will be replaced if cluster bbox is found
+      let labelX = localPoint.x + OFFSET_X;
+      let labelY = localPoint.y + OFFSET_Y;
+
+      // Walk up from the hovered element to find the nearest ancestor with class "cluster"
+      let domNode = event.currentTarget;
+      while (
+        domNode &&
+        domNode !== document &&
+        !(
+          domNode.classList &&
+          domNode.classList.contains &&
+          domNode.classList.contains("cluster")
+        )
+      ) {
+        domNode = domNode.parentNode;
+      }
+
+      if (domNode && domNode.nodeType === 1) {
+        try {
+          const clusterNode = domNode; // <g class="cluster"> element
+          const svg = clusterNode.ownerSVGElement;
+          if (svg && clusterNode.getBBox && clusterNode.getScreenCTM) {
+            const bbox = clusterNode.getBBox();
+
+            // Right-edge midpoint in cluster local coordinates (5px margin)
+            const margin = 5;
+            const localRightX = bbox.x + bbox.width + margin;
+            const localRightY = bbox.y + bbox.height / 2;
+
+            // Transform cluster local point to screen coordinates
+            const pt = svg.createSVGPoint();
+            pt.x = localRightX;
+            pt.y = localRightY;
+            const screenPt = pt.matrixTransform(clusterNode.getScreenCTM());
+
+            // Now transform screen coordinates into edgeLabelsGroup local coordinates
+            const groupNode = edgeLabelsGroup.node();
+            if (groupNode && groupNode.getScreenCTM) {
+              const inv = groupNode.getScreenCTM().inverse();
+              const svgPt = svg.createSVGPoint();
+              svgPt.x = screenPt.x;
+              svgPt.y = screenPt.y;
+              const localForGroup = svgPt.matrixTransform(inv);
+
+              // Anchor label to the computed right-edge position
+              labelX = localForGroup.x + OFFSET_X;
+              labelY = localForGroup.y + OFFSET_Y;
+            }
+          }
+        } catch (err) {
+          console.warn(
+            "Could not compute cluster right-edge position for node cell label, falling back to cell center:",
+            err
+          );
+        }
+      }
+
+      const lines = textToShow.split("\n");
+
+      const textElement = edgeLabelsGroup
+        .append("text")
+        .attr("class", "edge-label adj-hover-label")
+        .attr("x", labelX)
+        .attr("y", labelY)
+        .attr("text-anchor", "start")
+        .attr("dominant-baseline", "middle")
+        .attr("font-family", "var(--font-main)")
+        .attr("font-weight", "bold")
+        .attr("font-size", window.currentLabelSize || 15)
+        .attr("fill", labelColor)
+        .attr("pointer-events", "none")
+        .style("opacity", 1);
+
+      lines.forEach((line, i) => {
+        textElement
+          .append("tspan")
+          .attr("x", labelX)
+          // Use 'em' unit relative to the current font size
+          .attr("dy", i === 0 ? "0em" : "1.2em")
+          .text(line);
+      });
+    }
+  }
 }
 
 export function mouseLeavesNodeCell() {
   // This function must also be updated to restore the external node colors.
 
-  // 1. Restore all node cells
-  d3.selectAll("g.node-cell")
-    .attr("opacity", 1)
-    .selectAll("use")
-    .attr("fill", "var(--node-color)"); // Restore to default node color
+  // 1. Restore all node cells AND their correct colors
+  restoreNodeColoring();
 
   // 2. Restore all adjacency cells
   d3.selectAll(".adjacency g.adjacency-cell")
@@ -199,16 +360,26 @@ export function mouseLeavesNodeCell() {
     .attr("opacity", 1)
     .attr("fill", inclusionColor);
 
-  // 5. Restore ALL cluster labels
+  // 5. Restore Leaf Labels AND Cluster Node Labels
+  d3.selectAll(".leaf-label").style("opacity", 1.0);
+  d3.selectAll(".leaf-labels .label-background").style("opacity", 0.7);
+
+  d3.selectAll(".cluster-node-label").style("opacity", 1.0);
+  d3.selectAll(".cluster-node-labels .label-background").style("opacity", 0.7);
+
   d3.selectAll(".cluster-label").style("opacity", 1.0);
 
-  // 5. Restore ALL cluster labels
-  d3.selectAll(".leaf-label").style("opacity", 1.0);
-  d3.selectAll(".label-background").style("opacity", 0.7);
+  // 5. Hide edge label
+  const edgeLabelsGroup = d3.select(".edge-labels");
+  if (edgeLabelsGroup) {
+    edgeLabelsGroup.selectAll(".adj-hover-label").remove();
+  }
 }
 
 export function mouseEntersAdjCell(event, data) {
   // const data = d3.select(this).datum();
+
+  let adjCellExtraText = "";
 
   const [x, y] = d3.pointer(event, this);
 
@@ -308,10 +479,13 @@ export function mouseEntersAdjCell(event, data) {
   });
 
   // 2) Background rects: hide rects for dimmed labels
-  d3.selectAll(".label-background").style("opacity", function (d, i) {
-    if (i === sourceIndex || i === targetIndex) return 0.7;
-    return 0; // hide for others
-  });
+  d3.selectAll(".leaf-labels .label-background").style(
+    "opacity",
+    function (d, i) {
+      if (i === sourceIndex || i === targetIndex) return 0.7;
+      return 0; // hide for others
+    }
+  );
 
   // f) Gray out other cluster labels based on the matrix level ---
   const sourceNode = data.source;
@@ -323,58 +497,71 @@ export function mouseEntersAdjCell(event, data) {
   const targetIsLeafCluster =
     !targetNode.children || targetNode.children.length === 0;
 
-  if (!(sourceIsLeafCluster && targetIsLeafCluster)) {
-    d3.selectAll(".leaf-label").style("opacity", 0.2);
-    d3.selectAll(".label-background").style("opacity", 0);
+  const isBottommostLevel = sourceIsLeafCluster && targetIsLeafCluster;
+
+  // Set 1 (relevantIDs): For Tilted Node Labels. Includes A, B, and descendants, but EXCLUDES M.
+  // This causes M's tilted label to fade (as requested).
+  const relevantIDs = new Set();
+
+  // Set 2 (horizontalLabelHighlightIDs): For Horizontal Cluster Labels. Includes M, A, B, and descendants.
+  // This causes M's horizontal label to highlight (as requested).
+  const horizontalLabelHighlightIDs = new Set();
+
+  if (parentCluster) {
+    // M's ID is explicitly added to the horizontal set for HIGHLIGHTING the current matrix's name.
+    horizontalLabelHighlightIDs.add(String(parentCluster.getID()));
   }
 
-  if (sourceIsLeafCluster && targetIsLeafCluster) {
-    // Hovering a cell in a BOTTOMMOST matrix (only highlight the current matrix's label)
-    const currentClusterId = String(parentCluster.getID());
-    d3.selectAll(".cluster-label").style("opacity", function () {
-      // compare trimmed label text to current cluster id
-      return d3.select(this).text().trim() === currentClusterId ? 1.0 : 0.2;
-    });
-  } else {
-    // Highlight M, descendants of source, and descendants of target.
-    const M = parentCluster;
-    const A = data.source; // Row Cluster
-    const B = data.target; // Column Cluster
+  if (!isBottommostLevel) {
+    // If we are NOT at the bottom, fade out leaf labels
+    d3.selectAll(".leaf-label").style("opacity", 0.2);
+    d3.selectAll(".leaf-labels .label-background").style("opacity", 0);
+  }
 
-    // 1. Collect all nodes to highlight
-    const relevantNodes = new Set();
+  if (!isBottommostLevel) {
+    // Only run this logic for high-level matrices (Case 2: Cluster-Cluster)
+    const A = data.source;
+    const B = data.target;
 
-    // a) M itself (the matrix/parent cluster)
-    relevantNodes.add(M);
-
-    // b) A (source cluster) and all its descendants
+    // Add A and descendants to both sets
     const descendantsOfA = [A, ...A.getDescendants()];
-    descendantsOfA.forEach((node) => relevantNodes.add(node));
+    descendantsOfA.forEach((node) => {
+      const id = String(node.getID());
+      relevantIDs.add(id);
+      horizontalLabelHighlightIDs.add(id);
+    });
 
-    // c) B (target cluster) and all its descendants (only if B is different from A, to avoid duplication)
+    // Add B and descendants to both sets
     if (A !== B) {
       const descendantsOfB = [B, ...B.getDescendants()];
-      descendantsOfB.forEach((node) => relevantNodes.add(node));
+      descendantsOfB.forEach((node) => {
+        const id = String(node.getID());
+        relevantIDs.add(id);
+        horizontalLabelHighlightIDs.add(id);
+      });
     }
-
-    // 2. Create a set of IDs (string) for comparison with the label text
-    const relevantIDs = new Set(
-      Array.from(relevantNodes).map((n) => String(n.getID()))
-    );
-
-    // 3. Apply grey-out/highlight logic to cluster labels
-    d3.selectAll(".cluster-label").style("opacity", function () {
-      const labelText = d3.select(this).text().trim();
-
-      if (relevantIDs.has(labelText)) {
-        // Keep the label for M, A/B, or a descendant of A/B
-        return 1.0;
-      } else {
-        // Grey out all others
-        return 0.2; // Strong grey-out
-      }
-    });
   }
+
+  // 1. Apply to Standard Horizontal Cluster Labels (.cluster-label)
+  d3.selectAll(".cluster-label").style("opacity", function () {
+    const labelText = d3.select(this).text().trim();
+    return horizontalLabelHighlightIDs.has(labelText) ? 1.0 : 0.2;
+  });
+
+  // 2. Apply to New Tilted Cluster Node Labels (.cluster-node-label)
+  d3.selectAll(".cluster-node-label").style("opacity", function () {
+    const labelText = d3.select(this).text().trim();
+    return relevantIDs.has(labelText) ? 1.0 : 0.2;
+  });
+
+  // 3. Apply to New Tilted Cluster Node Backgrounds
+  d3.selectAll(".cluster-node-labels .label-background").style(
+    "opacity",
+    function () {
+      const id = this.parentNode.getAttribute("data-cluster-id");
+      return relevantIDs.has(id) ? 0.7 : 0;
+    }
+  );
 
   // Step 2. HIGHLIGHTING (Restore opacity/color for relevant elements)
 
@@ -411,26 +598,70 @@ export function mouseEntersAdjCell(event, data) {
   // d) Highlight the included clusters (Inclusion Bands)
   allInclusions.filter((d) => allRelevantNodes.has(d.node)).attr("opacity", 1);
 
-  // e) Highlight included vertices (Linear Layout Nodes - the leaves)
+  // e, f, g) Consolidate node highlighting: Leaf nodes get default color, Cluster nodes get calculated color
   allNodes
-    .filter((d) => sourceLeaves.has(d.getID()) || targetLeaves.has(d.getID()))
-    .attr("opacity", 1)
-    .selectAll("use")
-    .attr("fill", "var(--node-color)");
+    .filter((d) => allRelevantNodes.has(d)) // Highlight ALL relevant nodes
+    .attr("opacity", 1) // Restore full opacity
+    .each(function (d) {
+      const nodeType = d.getNodeType();
 
-  // f) Highlight the source and target nodes defining the hovered cell (hierarchy view)
-  allNodes
-    .filter((d) => d === data.source || d === data.target)
-    .attr("opacity", 1)
-    .selectAll("use")
-    .attr("fill", "var(--node-color)");
+      if (nodeType === "Cluster") {
+        // Check for Cluster
+        // Restore calculated color for Cluster Nodes (override 'gray' fade)
+        if (
+          window.HCGDrawer &&
+          typeof window.HCGDrawer.H.getIntraClusterStats === "function"
+        ) {
+          const computedStyle = getComputedStyle(document.body);
+          let colorLow =
+            computedStyle
+              .getPropertyValue("--cluster-node-color-low")
+              ?.trim() || "#ffffff";
+          let colorHigh =
+            computedStyle
+              .getPropertyValue("--cluster-node-color-high")
+              ?.trim() || "#1e90ff";
 
-  // g) Highlight all the relevant nodes
-  allNodes
-    .filter((d) => allRelevantNodes.has(d))
-    .attr("opacity", 1)
-    .selectAll("use")
-    .attr("fill", "var(--node-color)");
+          const scale = d3
+            .scaleLinear()
+            .range([colorLow, colorHigh])
+            .clamp(true);
+
+          const toggle = document.getElementById("edge-display-toggle");
+          const isAbsolute = toggle ? toggle.checked : false;
+
+          let maxEdges = 0;
+          if (isAbsolute) {
+            window.HCGDrawer.H.getNodes().forEach((n) => {
+              if (n.getNodeType() === "Cluster") {
+                const stats = window.HCGDrawer.H.getIntraClusterStats(n);
+                if (stats.actualEdges > maxEdges) maxEdges = stats.actualEdges;
+              }
+            });
+            scale.domain([0, Math.max(maxEdges, 1)]);
+          } else {
+            scale.domain([0, 1]);
+          }
+
+          const stats = window.HCGDrawer.H.getIntraClusterStats(d);
+          const value = isAbsolute ? stats.actualEdges : stats.ratio;
+          let finalColor = scale(value);
+
+          // Apply zero-value override
+          if (value === 0) {
+            finalColor = "rgb(255,255,255)";
+          }
+
+          d3.select(this).select("use").attr("fill", finalColor);
+        } else {
+          d3.select(this).select("use").attr("fill", "var(--node-color)");
+        }
+      } else {
+        // Assuming NodeType === 'Vertex'
+        // If it's a Leaf Node, ensure it's set to the default node color (overriding gray)
+        d3.select(this).select("use").attr("fill", "var(--node-color)");
+      }
+    });
 
   // h) Highlight only the relevant edges
   allEdges
@@ -449,19 +680,25 @@ export function mouseEntersAdjCell(event, data) {
 
   // === SHOW EDGE LABEL ON HOVER (only for bottommost clusters) ===
   try {
-    // Skip if either source or target cluster still has children
-    const src = data && data.source;
-    const tgt = data && data.target;
+    if (!isBottommostLevel) {
+      if (!isBottommostLevel) {
+        // This is a non-bottommost level matrix (Cluster-Cluster cell)
+        const actualEdges = data.actualEdges;
+        const potentialEdges = data.potentialEdges;
 
-    // The cluster object has a .children array if it’s not bottommost
-    const srcHasChildren =
-      src && Array.isArray(src.children) && src.children.length > 0;
-    const tgtHasChildren =
-      tgt && Array.isArray(tgt.children) && tgt.children.length > 0;
+        // Ensure we don't divide by zero
+        const ratio = potentialEdges > 0 ? actualEdges / potentialEdges : 0;
 
-    if (srcHasChildren || tgtHasChildren) {
-      // One of the clusters isn’t bottommost — don’t show label
-      return;
+        // Get the display mode (assuming it is available via 'this' or defaults to 'absolute')
+        const displayMode =
+          (window.HCGDrawer && window.HCGDrawer.edgeDisplayMode) || "absolute";
+        // Calculate the text and store it in the extra variable
+        if (displayMode === "absolute") {
+          adjCellExtraText = "Value: " + `${actualEdges}`;
+        } else {
+          adjCellExtraText = "Value: " + `${parseFloat(ratio.toFixed(2))}`;
+        }
+      }
     }
     try {
       // 1. Get the source and target nodes (they are already in the data object)
@@ -536,6 +773,11 @@ export function mouseEntersAdjCell(event, data) {
           // Append the weight with a label
           textToShow = `Weight: ${edgeWeight}\n` + textToShow;
         }
+      }
+
+      // ---Append the "Value: " line for non-bottommost cells ---
+      if (adjCellExtraText) {
+        textToShow = `${adjCellExtraText}\n${textToShow}`;
       }
 
       // 1) Ensure there's an .edge-labels group inside the zoom group (so labels scale/translate with zoom)
@@ -692,7 +934,10 @@ export function mouseEntersAdjCell(event, data) {
           .attr("font-family", "var(--font-main)")
           .attr("font-weight", "bold")
           .attr("font-size", window.currentLabelSize || 15)
-          .attr("fill", "var(--edge-color)")
+          .attr(
+            "fill",
+            isBottommostLevel ? "var(--edge-color)" : "var(--adj-color-high)"
+          )
           .attr("pointer-events", "none")
           .style("opacity", 1);
 
@@ -735,10 +980,17 @@ export function mouseLeavesAdjCell() {
     });
 
   // 2. Restore ALL nodes (cluster and leaf)
-  d3.selectAll("g.node-cell")
-    .attr("opacity", 1)
-    .selectAll("use")
-    .attr("fill", "var(--node-color)"); // Restore to default node color
+  d3.selectAll("g.node-cell").attr("opacity", 1);
+  // Re-apply the correct coloring logic
+  if (
+    window.HCGDrawer &&
+    typeof window.HCGDrawer.updateNodeColoring === "function"
+  ) {
+    window.HCGDrawer.updateNodeColoring();
+  } else {
+    // Fallback if drawer not ready
+    d3.selectAll("g.node-cell selectAll use").attr("fill", "var(--node-color)");
+  }
 
   // 3. Restore all linear edges
   d3.select(".linear-edges")
@@ -756,7 +1008,10 @@ export function mouseLeavesAdjCell() {
 
   // 5. restore labels and rects
   d3.selectAll(".leaf-label").style("opacity", 1.0);
-  d3.selectAll(".label-background").style("opacity", 0.7);
+  d3.selectAll(".leaf-labels .label-background").style("opacity", 0.7);
+
+  d3.selectAll(".cluster-node-label").style("opacity", 1.0);
+  d3.selectAll(".cluster-node-labels .label-background").style("opacity", 0.7);
 
   // 6. restore cluster labels that may have been dimmed on adjacency hover
   d3.selectAll(".cluster-label").style("opacity", 1.0);
@@ -785,7 +1040,7 @@ export function mouseEntersEdge(
     return 0.2;
   });
 
-  d3.selectAll(".label-background").style("opacity", function () {
+  d3.selectAll(".leaf-labels .label-background").style("opacity", function () {
     const id = this.parentNode.getAttribute("data-leaf-id");
     if (id === sourceNodeID || id === targetNodeID) return 0.7;
     return 0;
@@ -888,7 +1143,6 @@ export function mouseEntersEdge(
   d3.selectAll(".cluster-label").style("opacity", function () {
     // Get the unique cluster ID from the label text (which is assumed to be the ID)
     const labelText = d3.select(this).text().trim();
-
     // Check if the label's ID is in the set of relevant IDs
     if (relevantIDs.has(labelText)) {
       return 1.0;
@@ -897,6 +1151,24 @@ export function mouseEntersEdge(
       return 0.2;
     }
   });
+
+  // Apply grey-out/highlight logic to cluster node labels
+  // Next two lines are to not highlight too  much
+  relevantIDs.delete(currentSource.getID());
+  relevantIDs.delete(currentTarget.getID());
+
+  d3.selectAll(".cluster-node-label").style("opacity", function () {
+    const labelText = d3.select(this).text().trim();
+    return relevantIDs.has(labelText) ? 1.0 : 0.2;
+  });
+
+  d3.selectAll(".cluster-node-labels .label-background").style(
+    "opacity",
+    function () {
+      const id = this.parentNode.getAttribute("data-cluster-id");
+      return relevantIDs.has(id) ? 0.7 : 0;
+    }
+  );
 
   // 4. HIGHLIGHT RELEVANT ELEMENTS
 
@@ -941,8 +1213,51 @@ export function mouseEntersEdge(
   allNodes
     .filter((d) => d.getNodeType() !== 0 && ancestorNodes.has(d)) // Filter for non-leaf nodes that are in the ancestor set
     .attr("opacity", 1)
-    .selectAll("use")
-    .attr("fill", "var(--node-color)");
+    .each(function (d) {
+      // Inline logic to re-calculate and apply color, overriding the 'gray' fade
+      if (
+        window.HCGDrawer &&
+        typeof window.HCGDrawer.H.getIntraClusterStats === "function"
+      ) {
+        const computedStyle = getComputedStyle(document.body);
+        let colorLow =
+          computedStyle.getPropertyValue("--cluster-node-color-low")?.trim() ||
+          "#ffffff";
+        let colorHigh =
+          computedStyle.getPropertyValue("--cluster-node-color-high")?.trim() ||
+          "#1e90ff";
+
+        const toggle = document.getElementById("edge-display-toggle");
+        const isAbsolute = toggle ? toggle.checked : false;
+
+        // Use the correct scale (d3.scaleLinear)
+        const scale = d3.scaleLinear().range([colorLow, colorHigh]).clamp(true);
+
+        let maxEdges = 0;
+        if (isAbsolute) {
+          window.HCGDrawer.H.getNodes().forEach((n) => {
+            if (n.getNodeType() === "Cluster") {
+              const stats = window.HCGDrawer.H.getIntraClusterStats(n);
+              if (stats.actualEdges > maxEdges) maxEdges = stats.actualEdges;
+            }
+          });
+          scale.domain([0, Math.max(maxEdges, 1)]);
+        } else {
+          scale.domain([0, 1]);
+        }
+
+        const stats = window.HCGDrawer.H.getIntraClusterStats(d);
+        const value = isAbsolute ? stats.actualEdges : stats.ratio;
+        let finalColor = scale(value);
+
+        // Apply zero-value override
+        if (value === 0) {
+          finalColor = "rgb(255,255,255)";
+        }
+
+        d3.select(this).select("use").attr("fill", finalColor);
+      }
+    });
 
   // First, check for an existing edge label
   let labelText = data.getLabel();
@@ -1024,10 +1339,17 @@ export function mouseLeavesEdge(event, edgeLabelsGroup) {
     });
 
   // 2. Restore ALL nodes (cluster and leaf)
-  d3.selectAll("g.node-cell")
-    .attr("opacity", 1)
-    .selectAll("use")
-    .attr("fill", "var(--node-color)");
+  d3.selectAll("g.node-cell").attr("opacity", 1);
+  // Re-apply the correct coloring logic
+  if (
+    window.HCGDrawer &&
+    typeof window.HCGDrawer.updateNodeColoring === "function"
+  ) {
+    window.HCGDrawer.updateNodeColoring();
+  } else {
+    // Fallback if drawer not ready
+    d3.selectAll("g.node-cell selectAll use").attr("fill", "var(--node-color)");
+  }
 
   // 3. Restore all linear edges
   d3.select(".linear-edges")
@@ -1055,8 +1377,80 @@ export function mouseLeavesEdge(event, edgeLabelsGroup) {
 
   // 7. Restore the opacity of ALL external node labels
   d3.selectAll(".leaf-label").style("opacity", 1.0);
-  d3.selectAll(".label-background").style("opacity", 0.7);
+  d3.selectAll(".leaf-labels .label-background").style("opacity", 0.7);
 
-  // 6. restore cluster labels that may have been dimmed on adjacency hover
+  d3.selectAll(".cluster-node-label").style("opacity", 1.0);
+  d3.selectAll(".cluster-node-labels .label-background").style("opacity", 0.7);
+
+  // 8. restore cluster labels that may have been dimmed on adjacency hover
   d3.selectAll(".cluster-label").style("opacity", 1.0);
+}
+
+function restoreNodeColoring() {
+  // 1. Restore all node cells opacity
+  d3.selectAll("g.node-cell").attr("opacity", 1);
+
+  // 2. Apply correct color based on node type
+  if (
+    window.HCGDrawer &&
+    typeof window.HCGDrawer.getClusterNodeCalculatedColor === "function"
+  ) {
+    d3.selectAll("g.node-cell").each(function (d) {
+      const nodeType = d.getNodeType();
+      if (nodeType === "Cluster") {
+        // Use the refactored utility to get the correct cluster color
+        const finalColor = window.HCGDrawer.getClusterNodeCalculatedColor(d);
+        d3.select(this).select("use").attr("fill", finalColor);
+      } else if (nodeType === "Vertex") {
+        d3.select(this).select("use").attr("fill", "var(--node-color)");
+      }
+    });
+  } else if (
+    window.HCGDrawer &&
+    typeof window.HCGDrawer.updateNodeColoring === "function"
+  ) {
+    // Fallback to calling the full redraw function if the utility isn't ready
+    window.HCGDrawer.updateNodeColoring();
+  } else {
+    // Fallback if drawer not ready
+    d3.selectAll("g.node-cell")
+      .selectAll("use")
+      .attr("fill", "var(--node-color)");
+  }
+}
+
+export function setupEdgeDisplayToggleListener() {
+  const toggle = document.getElementById("edge-display-toggle");
+
+  if (toggle) {
+    toggle.addEventListener("change", () => {
+      // Ensure HCGDrawer object exists
+      if (window.HCGDrawer) {
+        // 1. Update coloring for cluster nodes (mandatory)
+        if (typeof window.HCGDrawer.updateNodeColoring === "function") {
+          window.HCGDrawer.updateNodeColoring();
+        }
+
+        // 2. Update coloring for adjacency cells (assuming this exists)
+        if (typeof window.HCGDrawer.updateAdjCellColoring === "function") {
+          window.HCGDrawer.updateAdjCellColoring();
+        }
+
+        // 3. Redraw ALL legends to reflect the new Max/Ratio values
+        if (typeof window.HCGDrawer.drawEdgeColorLegend === "function") {
+          window.HCGDrawer.drawEdgeColorLegend();
+        }
+        if (typeof window.HCGDrawer.drawAdjCellColorLegend === "function") {
+          window.HCGDrawer.drawAdjCellColorLegend();
+        }
+        // Redraw the new node cell legend (mandatory)
+        if (typeof window.HCGDrawer.drawNodeCellColorLegend === "function") {
+          window.HCGDrawer.drawNodeCellColorLegend();
+        }
+        if (typeof window.HCGDrawer.drawDirectedLegend === "function") {
+          window.HCGDrawer.drawDirectedLegend();
+        }
+      }
+    });
+  }
 }

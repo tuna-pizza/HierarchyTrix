@@ -259,6 +259,56 @@ export class HierarchicallyClusteredGraph {
     }
     return false;
   }
+
+  /**
+   * Calculates the intra-cluster edge statistics (Actual, Potential, Ratio)
+   * for a given cluster node based on its bottommost-level descendants.
+   * @param {Node} clusterNode
+   * @returns {{actualEdges: number, potentialEdges: number, ratio: number}}
+   */
+  getIntraClusterStats(clusterNode) {
+    // Only process clusters, not leaves
+    if (clusterNode.getNodeType() === NodeType.Vertex) {
+      return { actualEdges: 0, potentialEdges: 0, ratio: 0 };
+    }
+
+    const leaves = clusterNode.getLeaves();
+    const numLeaves = leaves.length;
+
+    if (numLeaves <= 1) {
+      return { actualEdges: 0, potentialEdges: 0, ratio: 0 };
+    }
+
+    const leafIDs = new Set(leaves.map((l) => l.getID()));
+    let actualEdges = 0;
+
+    // Use a set to store unique edge keys to prevent double counting
+    // (assuming undirected edges where (u,v) is same as (v,u))
+    const countedEdges = new Set();
+
+    for (const edge of this.edges) {
+      const u = edge.getSource().getID();
+      const v = edge.getTarget().getID();
+
+      // Check if both endpoints are in the cluster
+      if (leafIDs.has(u) && leafIDs.has(v)) {
+        if (u === v) continue; // Ignore self-loops
+
+        // Canonical key for undirected edge
+        const key = u < v ? `${u}-${v}` : `${v}-${u}`;
+        if (!countedEdges.has(key)) {
+          actualEdges++;
+          countedEdges.add(key);
+        }
+      }
+    }
+
+    // Potential edges in a simple undirected graph: n * (n-1) / 2
+    const potentialEdges = (numLeaves * (numLeaves - 1)) / 2;
+    const ratio = potentialEdges > 0 ? actualEdges / potentialEdges : 0;
+
+    return { actualEdges, potentialEdges, ratio };
+  }
 }
 
 export class Node {

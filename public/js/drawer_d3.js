@@ -19,6 +19,7 @@ const clusterDistanceScalar = 2.5;
 
 export class HierarchicallyClusteredGraphDrawer {
   constructor(H) {
+    window.HCGDrawer = this;
     this.H = H;
     this.nodeOrder = null;
     this.svg = null;
@@ -56,10 +57,9 @@ export class HierarchicallyClusteredGraphDrawer {
       const size = e.detail.size || 15;
 
       // Update all text labels in the visualization
-      d3.selectAll(".leaf-label, .edge-label, .cluster-label").attr(
-        "font-size",
-        size
-      );
+      d3.selectAll(
+        ".leaf-label, .edge-label, .cluster-label, .cluster-node-label"
+      ).attr("font-size", size);
     });
 
     this.edgeWeightThreshold = null;
@@ -68,6 +68,24 @@ export class HierarchicallyClusteredGraphDrawer {
       this.edgeWeightThreshold = e.detail.threshold;
       this.filterEdgesByWeight();
     });
+
+    // Define scales for coloring
+    this.nodeRatioScale = d3
+      .scaleLinear()
+      .domain([0, 1])
+      .range([
+        "var(--cluster-node-color-low)",
+        "var(--cluster-node-color-high)",
+      ])
+      .clamp(true);
+
+    this.nodeAbsScale = d3
+      .scaleLinear()
+      .range([
+        "var(--cluster-node-color-low)",
+        "var(--cluster-node-color-high)",
+      ])
+      .clamp(true);
   }
 
   hasNumericEdgeLabels() {
@@ -506,7 +524,7 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("font-family", "var(--font-main)")
       .attr("font-size", window.currentLabelSize || 15)
       .attr("font-weight", "bold")
-      .attr("fill", "var(--node-color)")
+      .attr("fill", "var(--adj-color-high)")
       .attr("pointer-events", "none")
       .text(cluster.getID());
 
@@ -537,7 +555,6 @@ export class HierarchicallyClusteredGraphDrawer {
         clusterLabel
           .transition()
           .duration(200)
-          .attr("fill", "var(--node-color)")
           .attr("font-size", window.currentLabelSize + 1 || 16);
       })
       .on("mouseout", () => {
@@ -546,7 +563,6 @@ export class HierarchicallyClusteredGraphDrawer {
         clusterLabel
           .transition()
           .duration(200)
-          .attr("fill", "var(--node-color)")
           .attr("font-size", window.currentLabelSize || 15);
       })
       .on("mousemove", (event) => {
@@ -578,7 +594,7 @@ export class HierarchicallyClusteredGraphDrawer {
     nodeCells
       .append("text")
       .attr("y", textOffset)
-      .attr("fill", "white")
+      .attr("fill", "transparent") // "white")
       .attr("font-size", textSize)
       .attr("font-family", "var(--font-main)")
       .attr("text-anchor", "middle")
@@ -878,14 +894,7 @@ export class HierarchicallyClusteredGraphDrawer {
       adjCell
         .append("text")
         .attr("y", textOffset)
-        .attr("fill", (d) => {
-          // If it's the bottommost layer, make the text transparent/invisible
-          if (d.isLastLevel) {
-            return "transparent";
-          }
-          // Otherwise, use the node color (as previously requested)
-          return textColor;
-        })
+        .attr("fill", "transparent")
         .attr("font-size", smallTextSize)
         .attr("font-family", "var(--font-main)")
         .attr("text-anchor", "middle")
@@ -988,7 +997,7 @@ export class HierarchicallyClusteredGraphDrawer {
       const ratio = actualEdges / potentialEdges;
       adjCell
         .select("text")
-        .attr("fill", textColor)
+        .attr("fill", "transparent") //textColor)
         .text(
           colorByAbsolute ? `${actualEdges}` : `${parseFloat(ratio.toFixed(2))}` //`${actualEdges}/${potentialEdges}`
         );
@@ -1728,7 +1737,7 @@ export class HierarchicallyClusteredGraphDrawer {
     nodeCells
       .append("text")
       .attr("y", textOffset)
-      .attr("fill", "white")
+      .attr("fill", "transparent") //"white")
       .attr("font-size", textSize)
       .attr("font-family", "var(--font-main)")
       .attr("text-anchor", "middle")
@@ -1755,8 +1764,6 @@ export class HierarchicallyClusteredGraphDrawer {
     const lastLevelLeaves = this.getLeavesInLastLevelClusters();
 
     lastLevelLeaves.forEach((leaf) => {
-      if (!leaf.customLabel) return;
-
       const refX = xCoordReferenceMap.get(leaf);
       const refY = yCoordReferenceMap.get(leaf);
       if (refX === undefined || refY === undefined) return;
@@ -1822,6 +1829,86 @@ export class HierarchicallyClusteredGraphDrawer {
       });
     });
 
+    // --- DRAW CLUSTER NODE LABELS (TILTED) ---
+    this.zoomGroup.select("g.cluster-node-labels").remove();
+    const clusterLabelGroup = this.zoomGroup
+      .append("g")
+      .attr("class", "cluster-node-labels");
+
+    // Filter for Cluster nodes (intermediate nodes in the hierarchy)
+    const allClusters = this.H.getNodes().filter(
+      (n) => n.getNodeType() === NodeType.Cluster
+    );
+
+    allClusters.forEach((cluster) => {
+      // We need the position where this cluster is drawn as a node (header) in a higher hierarchy
+      const refX = xCoordReferenceMap.get(cluster);
+      const refY = yCoordReferenceMap.get(cluster);
+
+      // If coordinates are undefined (e.g., absolute root), skip
+      if (refX === undefined || refY === undefined) return;
+
+      const groupX = refX;
+      const groupY = refY + cellSize / 2 + 4;
+      const padding = 1;
+      const rotation = -45;
+
+      // Create container
+      const labelContainer = clusterLabelGroup
+        .append("g")
+        .attr("class", "label-container")
+        .attr("data-cluster-id", String(cluster.getID()))
+        .attr("transform", `translate(${groupX}, ${groupY})`);
+
+      // Add text
+      const textEl = labelContainer
+        .append("text")
+        .attr("class", "cluster-node-label")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("text-anchor", "end")
+        .attr("dominant-baseline", "middle")
+        .attr("font-size", window.currentLabelSize || 15)
+        .attr("font-family", "var(--font-main)")
+        .attr("font-weight", "bold")
+        .attr("fill", "var(--adj-color-high)")
+        .attr("pointer-events", "none")
+        .style("opacity", 0.9)
+        .text(cluster.getID());
+
+      // Measure and rotate (same logic as leaf labels for background rects)
+      (document.fonts?.ready ?? Promise.resolve()).then(() => {
+        requestAnimationFrame(() => {
+          const node = textEl.node();
+          if (!node) return;
+          const bbox = node.getBBox();
+
+          const rectX = bbox.x - padding;
+          const rectY = bbox.y - padding;
+          const rectWidth = bbox.width + padding * 2;
+          const rectHeight = bbox.height + padding;
+
+          labelContainer
+            .insert("rect", "text")
+            .attr("class", "label-background")
+            .attr("x", rectX)
+            .attr("y", rectY + padding)
+            .attr("width", rectWidth)
+            .attr("height", rectHeight)
+            .attr("rx", 2)
+            .attr("ry", 2)
+            .attr("fill", "white")
+            .attr("opacity", 0.7)
+            .attr("pointer-events", "none");
+
+          labelContainer.attr(
+            "transform",
+            `translate(${groupX}, ${groupY}) rotate(${rotation})`
+          );
+        });
+      });
+    });
+
     const maxArcHeight = maxDist / 4;
     const minRequiredHeight =
       linearLayoutY +
@@ -1845,6 +1932,8 @@ export class HierarchicallyClusteredGraphDrawer {
     this.drawEdgeColorLegend();
     this.drawAdjCellColorLegend();
     this.drawDirectedLegend();
+
+    this.updateNodeColoring();
   }
 
   // === ZOOM METHODS ===
@@ -2068,8 +2157,6 @@ export class HierarchicallyClusteredGraphDrawer {
     }
   }
 
-  // In drawer_d3.js, inside the HierarchicallyClusteredGraphDrawer class
-
   drawAdjCellColorLegend() {
     // Ensure d3 is available
     if (typeof d3 === "undefined") return;
@@ -2097,16 +2184,6 @@ export class HierarchicallyClusteredGraphDrawer {
       container.style("display", "none");
       return;
     }
-
-    // Formatting function to ensure ratio has at most 2 digits, but no trailing .0 or .00
-    const formatValue = (value) => {
-      if (mode === "ratio") {
-        // Use the logic from the previous answer: parseFloat(value.toFixed(2))
-        return `${parseFloat(value.toFixed(2))}`;
-      }
-      // For absolute counts (integers)
-      return d3.format(".0f")(value);
-    };
 
     // --- Legend Constants ---
     const containerWidth = container.node().clientWidth || 200;
@@ -2163,7 +2240,7 @@ export class HierarchicallyClusteredGraphDrawer {
     const valueContainer = container
       .append("div")
       .attr("class", "slider-container")
-      .attr("margin-bottom", "12px")
+      .style("margin-bottom", "3px")
       .style("justify-content", "space-between")
       .style("color", resolvedAdjColorHigh)
       .style("font-family", "var(--font-main)")
@@ -2373,4 +2450,231 @@ export class HierarchicallyClusteredGraphDrawer {
       .style("text-anchor", "start") // Anchor to the left of the starting point
       .text("target");
   }
+
+  updateNodeColoring() {
+    // Capture the drawer instance here, so it can be accessed inside the D3 loop
+    const drawer = this;
+
+    d3.selectAll("g.node-cell").each(function (d) {
+      // D3 ensures 'this' inside an unbound .each() function is the raw DOM element.
+      const cellGroup = d3.select(this);
+      const nodeType = d.getNodeType();
+
+      // 1. Color Leaf Nodes with default color
+      if (nodeType === "Vertex") {
+        cellGroup.select("use").attr("fill", "var(--node-color)");
+      }
+      // 2. Color Cluster Nodes with calculated color
+      else if (nodeType === "Cluster") {
+        // Use the captured 'drawer' reference instead of 'this'
+        const finalColor = drawer.getClusterNodeCalculatedColor(d);
+        cellGroup.select("use").attr("fill", finalColor);
+      }
+
+      // 3. Remove the old static text label creation
+      cellGroup.selectAll(".cluster-stat-label").remove();
+    });
+  }
+
+  drawNodeCellColorLegend() {
+    const containerId = "node-cell-legend-container";
+    const container = d3.select(`#${containerId}`);
+    if (container.empty()) return;
+
+    // Clear previous content
+    container.html("");
+
+    const barWidth = container.node().clientWidth;
+    const barHeight = 15;
+    const gradientId = "node-cell-legend-gradient";
+
+    // --- A. Get Colors, Mode, and Values ---
+    const computedStyle = getComputedStyle(d3.select("body").node());
+
+    // Use CLUSTER NODE specific variables
+    const resolvedColorLow =
+      computedStyle.getPropertyValue("--cluster-node-color-low")?.trim() ||
+      "#ffffff";
+    const resolvedColorHigh =
+      computedStyle.getPropertyValue("--cluster-node-color-high")?.trim() ||
+      "#1e90ff";
+
+    const toggle = document.getElementById("edge-display-toggle");
+    const colorByAbsolute = toggle ? toggle.checked : false;
+
+    // Calculate Domain (Max Edges) to set currentMax
+    let maxEdges = 0;
+    if (colorByAbsolute) {
+      this.H.getNodes().forEach((n) => {
+        if (n.getNodeType() === NodeType.Cluster) {
+          const stats = this.H.getIntraClusterStats(n);
+          if (stats.actualEdges > maxEdges) maxEdges = stats.actualEdges;
+        }
+      });
+    }
+    const currentMin = 0;
+    const currentMax = colorByAbsolute ? Math.max(maxEdges, 1) : 1;
+
+    // // --- 1. Title ---
+    // const titleText = `Cluster Node Intra-Edges`;
+    // container.append("div").text(titleText).style("font-weight", "bold");
+
+    // --- 2. SVG for Gradient Bar ---
+    const svg = container
+      .append("svg")
+      .attr("width", barWidth)
+      .attr("height", barHeight)
+      .style("display", "block"); // Use "block" as per the adjacency style
+
+    // Define the gradient
+    const defs = svg.append("defs");
+    const linearGradient = defs
+      .append("linearGradient")
+      .attr("id", gradientId)
+      .attr("x1", "0%")
+      .attr("x2", "100%")
+      .attr("y1", "0%") // Added y1/y2 for completeness
+      .attr("y2", "0%");
+
+    linearGradient
+      .append("stop")
+      .attr("offset", "0%")
+      .attr("stop-color", resolvedColorLow);
+
+    linearGradient
+      .append("stop")
+      .attr("offset", "100%")
+      .attr("stop-color", resolvedColorHigh);
+
+    // Draw the gradient bar
+    svg
+      .append("rect")
+      .attr("width", barWidth)
+      .attr("height", barHeight)
+      .style("fill", `url(#${gradientId})`)
+      .attr("class", "legend-gradient-bar"); // Class for inherited styling
+
+    // --- 3. Min/Max Labels (Matching Adjacency Style) ---
+    const valueContainer = container
+      .append("div")
+      .attr("class", "slider-container")
+      .style("justify-content", "space-between")
+      // Use the high color for the labels, as in the adjacency snippet
+      .style("color", resolvedColorHigh)
+      .style("font-family", "var(--font-main)")
+      .style("font-weight", "normal")
+      .style("margin-bottom", "12px");
+
+    // Min Label (Left)
+    valueContainer
+      .append("span")
+      .style("text-align", "left")
+      .text(formatValue(currentMin));
+
+    // Max Label (Right)
+    valueContainer
+      .append("span")
+      .style("text-align", "right")
+      .text(formatValue(currentMax));
+  }
+
+  getClusterNodeColorScale(isAbsolute) {
+    const computedStyle = getComputedStyle(document.body);
+    let colorLow =
+      computedStyle.getPropertyValue("--cluster-node-color-low")?.trim() ||
+      "#ffffff";
+    let colorHigh =
+      computedStyle.getPropertyValue("--cluster-node-color-high")?.trim() ||
+      "#1e90ff";
+
+    const scale = d3.scaleLinear().range([colorLow, colorHigh]).clamp(true);
+
+    if (isAbsolute) {
+      let maxEdges = 0;
+      // Check if stats are available
+      if (
+        this.H &&
+        typeof this.H.getNodes === "function" &&
+        typeof this.H.getIntraClusterStats === "function"
+      ) {
+        this.H.getNodes().forEach((n) => {
+          if (n.getNodeType() === "Cluster") {
+            const stats = this.H.getIntraClusterStats(n);
+            if (stats.actualEdges > maxEdges) maxEdges = stats.actualEdges;
+          }
+        });
+      }
+      scale.domain([0, Math.max(maxEdges, 1)]);
+    } else {
+      scale.domain([0, 1]); // Ratio mode uses a 0 to 1 domain
+    }
+    return scale;
+  }
+
+  getClusterNodeCalculatedColor(nodeData) {
+    // Use string literal 'Cluster' as per graph.js snippet
+    if (nodeData.getNodeType() !== "Cluster") return "var(--node-color)";
+    if (!this.H || typeof this.H.getIntraClusterStats !== "function")
+      return "var(--node-color)";
+
+    const toggle = document.getElementById("edge-display-toggle");
+    const isAbsolute = toggle ? toggle.checked : false;
+
+    // Use the utility to get the scale
+    const scale = this.getClusterNodeColorScale(isAbsolute);
+    const stats = this.H.getIntraClusterStats(nodeData);
+    const value = isAbsolute ? stats.actualEdges : stats.ratio;
+    let finalColor = scale(value);
+
+    // Apply zero-value override
+    if (value === 0) {
+      finalColor = "rgb(255,255,255)"; // White
+    }
+
+    return finalColor;
+  }
+
+  getClusterNodeLabelStats(nodeData) {
+    if (nodeData.getNodeType() !== "Cluster") return null;
+    if (!this.H || typeof this.H.getIntraClusterStats !== "function")
+      return null;
+
+    const toggle = document.getElementById("edge-display-toggle");
+    const isAbsolute = toggle ? toggle.checked : false;
+
+    const stats = this.H.getIntraClusterStats(nodeData);
+    const value = isAbsolute ? stats.actualEdges : stats.ratio;
+
+    // Format the value: integer for absolute, 2 decimals for ratio
+    const formattedValue = isAbsolute
+      ? `${value}`
+      : `${parseFloat(value.toFixed(2))}`;
+
+    // Get the high color for the label text color
+    const computedStyle = getComputedStyle(document.body);
+    const labelColor =
+      computedStyle.getPropertyValue("--cluster-node-color-high")?.trim() ||
+      "#1e90ff";
+
+    return {
+      // REQUIRED format: "Value: " + value
+      labelText: `Value: ${formattedValue}`,
+      textColor: labelColor,
+      isAbsolute: isAbsolute,
+      value: value,
+    };
+  }
+}
+
+function formatValue(value) {
+  if (value === 0) return "0";
+  if (value > 10) return d3.format(",.0f")(value); // Absolute count formatting (Integer)
+  return d3.format(".2f")(value); // Ratio formatting (Two decimal places)
+}
+
+function getContrastColor(color) {
+  const c = d3.color(color);
+  if (!c) return "black";
+  const yiq = (c.r * 299 + c.g * 587 + c.b * 114) / 1000;
+  return yiq >= 128 ? "black" : "white";
 }

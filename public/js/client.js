@@ -1,5 +1,6 @@
 import { HierarchicallyClusteredGraph } from "./graph.js";
 import { HierarchicallyClusteredGraphDrawer } from "./drawer_d3.js";
+import { setupEdgeDisplayToggleListener } from "./listeners.js";
 
 // --- Get URL parameters ---
 const urlParams = new URLSearchParams(window.location.search);
@@ -30,6 +31,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // 'solver' variable is correctly set by URL or to 'input' by default
     solverSelect.value = solver;
   }
+
+  setupEdgeDisplayToggleListener();
 });
 
 // --- Fetch order from server ---
@@ -200,6 +203,7 @@ async function main() {
     );
 
   setupGoButtonListener();
+  setupToggleListener();
 }
 
 // --- Go Button Handler ---
@@ -236,6 +240,21 @@ function setupGoButtonListener() {
     });
   } else {
     console.error("Missing elements for Go Button setup.");
+  }
+}
+
+function setupToggleListener() {
+  const toggle = document.getElementById("edge-display-toggle");
+  if (toggle) {
+    toggle.addEventListener("change", () => {
+      // Update the node coloring whenever the toggle changes
+      if (
+        window.HCGDrawer &&
+        typeof window.HCGDrawer.updateNodeColoring === "function"
+      ) {
+        window.HCGDrawer.updateNodeColoring();
+      }
+    });
   }
 }
 
