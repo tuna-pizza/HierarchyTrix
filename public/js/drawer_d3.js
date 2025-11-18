@@ -1988,7 +1988,6 @@ export class HierarchicallyClusteredGraphDrawer {
     const containerWidth = container.node().clientWidth;
     const barWidth = containerWidth;
     const barHeight = 15;
-    const formatValue = d3.format(".1f");
     // HSL components (matching your requested colorscale)
     const hue = 210;
     const saturation = 60;
@@ -2061,16 +2060,10 @@ export class HierarchicallyClusteredGraphDrawer {
       .style("margin-top", "-3px");
 
     // Min Label (Left)
-    valueContainer
-      .append("span")
-      .style("text-align", "left")
-      .text(formatValue(min));
+    valueContainer.append("span").style("text-align", "left").text(min);
 
     // Max Label (Right)
-    valueContainer
-      .append("span")
-      .style("text-align", "right")
-      .text(formatValue(max));
+    valueContainer.append("span").style("text-align", "right").text(max);
 
     this.drawAdjCellColorLegend();
   }
@@ -2247,16 +2240,10 @@ export class HierarchicallyClusteredGraphDrawer {
       .style("font-weight", "normal");
 
     // Min Label (Left)
-    valueContainer
-      .append("span")
-      .style("text-align", "left")
-      .text(formatValue(currentMin));
+    valueContainer.append("span").style("text-align", "left").text(currentMin);
 
     // Max Label (Right)
-    valueContainer
-      .append("span")
-      .style("text-align", "right")
-      .text(formatValue(currentMax));
+    valueContainer.append("span").style("text-align", "right").text(currentMax);
   }
 
   drawDirectedLegend() {
@@ -2566,16 +2553,10 @@ export class HierarchicallyClusteredGraphDrawer {
       .style("margin-bottom", "12px");
 
     // Min Label (Left)
-    valueContainer
-      .append("span")
-      .style("text-align", "left")
-      .text(formatValue(currentMin));
+    valueContainer.append("span").style("text-align", "left").text(currentMin);
 
     // Max Label (Right)
-    valueContainer
-      .append("span")
-      .style("text-align", "right")
-      .text(formatValue(currentMax));
+    valueContainer.append("span").style("text-align", "right").text(currentMax);
   }
 
   getClusterNodeColorScale(isAbsolute) {
@@ -2657,24 +2638,10 @@ export class HierarchicallyClusteredGraphDrawer {
       "#1e90ff";
 
     return {
-      // REQUIRED format: "Value: " + value
       labelText: `Value: ${formattedValue}`,
       textColor: labelColor,
       isAbsolute: isAbsolute,
       value: value,
     };
   }
-}
-
-function formatValue(value) {
-  if (value === 0) return "0";
-  if (value > 10) return d3.format(",.0f")(value); // Absolute count formatting (Integer)
-  return d3.format(".2f")(value); // Ratio formatting (Two decimal places)
-}
-
-function getContrastColor(color) {
-  const c = d3.color(color);
-  if (!c) return "black";
-  const yiq = (c.r * 299 + c.g * 587 + c.b * 114) / 1000;
-  return yiq >= 128 ? "black" : "white";
 }

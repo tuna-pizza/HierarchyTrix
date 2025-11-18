@@ -272,40 +272,69 @@ export class HierarchicallyClusteredGraph {
       return { actualEdges: 0, potentialEdges: 0, ratio: 0 };
     }
 
-    const leaves = clusterNode.getLeaves();
-    const numLeaves = leaves.length;
+    // ------------------------------------------------------------
+    // 1. Find all bottommost descendant clusters (matrices)
+    // ------------------------------------------------------------
+    const bottomClusters = [];
+    const stack = [clusterNode];
 
-    if (numLeaves <= 1) {
-      return { actualEdges: 0, potentialEdges: 0, ratio: 0 };
-    }
+    while (stack.length) {
+      const curr = stack.pop();
+      const children = curr.getChildren();
 
-    const leafIDs = new Set(leaves.map((l) => l.getID()));
-    let actualEdges = 0;
+      const allVertices = children.every(
+        (c) => c.getNodeType() === NodeType.Vertex
+      );
 
-    // Use a set to store unique edge keys to prevent double counting
-    // (assuming undirected edges where (u,v) is same as (v,u))
-    const countedEdges = new Set();
-
-    for (const edge of this.edges) {
-      const u = edge.getSource().getID();
-      const v = edge.getTarget().getID();
-
-      // Check if both endpoints are in the cluster
-      if (leafIDs.has(u) && leafIDs.has(v)) {
-        if (u === v) continue; // Ignore self-loops
-
-        // Canonical key for undirected edge
-        const key = u < v ? `${u}-${v}` : `${v}-${u}`;
-        if (!countedEdges.has(key)) {
-          actualEdges++;
-          countedEdges.add(key);
+      if (allVertices) {
+        // This is a bottommost cluster
+        bottomClusters.push(curr);
+      } else {
+        // Keep traversing down
+        for (const ch of children) {
+          if (ch.getNodeType() !== NodeType.Vertex) {
+            stack.push(ch);
+          }
         }
       }
     }
 
-    // Potential edges in a simple undirected graph: n * (n-1) / 2
-    const potentialEdges = (numLeaves * (numLeaves - 1)) / 2;
-    const ratio = potentialEdges > 0 ? actualEdges / potentialEdges : 0;
+    // ------------------------------------------------------------
+    // 2. For each bottom cluster: compute edges inside it
+    // ------------------------------------------------------------
+    let actualEdges = 0;
+    let potentialEdges = 0;
+
+    for (const bc of bottomClusters) {
+      const leaves = bc.getLeaves(); // all vertices in this matrix
+      const leafIDs = new Set(leaves.map((l) => l.getID()));
+      const n = leaves.length;
+
+      if (n <= 1) continue;
+
+      const counted = new Set();
+
+      // Count edges inside this bottom cluster
+      for (const edge of this.edges) {
+        const u = edge.getSource().getID();
+        const v = edge.getTarget().getID();
+
+        if (u === v) continue;
+
+        if (leafIDs.has(u) && leafIDs.has(v)) {
+          const key = u < v ? `${u}-${v}` : `${v}-${u}`;
+          if (!counted.has(key)) {
+            counted.add(key);
+            actualEdges++;
+          }
+        }
+      }
+
+      // Compute potential edges for THIS cluster and accumulate
+      potentialEdges += (n * (n - 1)) / 2;
+    }
+
+    const ratio = potentialEdges ? actualEdges / potentialEdges : 0;
 
     return { actualEdges, potentialEdges, ratio };
   }
