@@ -193,10 +193,32 @@ export class HierarchicallyClusteredGraphDrawer {
     }
 
     if (this.edgeLabelStats && this.edgeLabelStats.isNumeric) {
-      const { min, max } = this.edgeLabelStats;
       const filterContainer = document.getElementById("edge-weight-filter");
       const sliderEl = document.getElementById("edge-weight-slider");
       const valueLabel = document.getElementById("edge-weight-value");
+
+      let minWeight = Infinity;
+      let maxWeight = 0;
+
+      if (this.H && this.H.edges && this.H.edges.length > 0) {
+        this.H.edges.forEach((edge) => {
+          // Assume edge weight is accessible via getWeight()
+          if (edge.source.getParent() != edge.target.getParent()) {
+            const weight = edge.getWeight();
+            if (weight > maxWeight) {
+              maxWeight = weight;
+            }
+            if (weight < minWeight) {
+              minWeight = weight;
+            }
+          }
+        });
+      }
+
+      // Use the calculated min, defaulting to 0 if no edges exist
+      const min = minWeight === Infinity ? 0 : minWeight;
+      // Use the calculated max, adding a buffer of +1 to ensure the max weight is reachable on the slider
+      const max = maxWeight > 0 ? maxWeight : 1;
 
       if (filterContainer && sliderEl && valueLabel) {
         // Show the filter controls
@@ -271,7 +293,7 @@ export class HierarchicallyClusteredGraphDrawer {
         }`
       )
       .attr("stroke", cellboundaryColor)
-      .attr("stroke-width", arrayBoundaryWidth);
+      .attr("stroke-width", `${parseInt(arrayBoundaryWidth) + 1}`);
   }
 
   isLeaf(node) {
@@ -524,7 +546,7 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("font-family", "var(--font-main)")
       .attr("font-size", window.currentLabelSize || 15)
       .attr("font-weight", "bold")
-      .attr("fill", "var(--adj-color-high)")
+      .attr("fill", "var(--cluster-node-color-high)")
       .attr("pointer-events", "none")
       .text(cluster.getID());
 
@@ -572,40 +594,6 @@ export class HierarchicallyClusteredGraphDrawer {
             .style("left", x + 15 + "px")
             .style("top", y - 10 + "px");
         }
-      });
-
-    const nodeCells = clusterContainer
-      .append("g")
-      .attr("class", "nodes")
-      .selectAll("g.node-cell")
-      .data(children, (d) => d.getID())
-      .join("g")
-      .attr("class", "node-cell")
-      .attr("data-id", (d) => d.getID())
-      .attr("transform", (d, i) => `translate(${startX + i * cellSize}, 0)`)
-      .on("mouseenter", listeners.mouseEntersNodeCell)
-      .on("mouseleave", listeners.mouseLeavesNodeCell);
-
-    nodeCells
-      .append("use")
-      .attr("href", "#diamondShape")
-      .attr("fill", nodeColor);
-
-    nodeCells
-      .append("text")
-      .attr("y", textOffset)
-      .attr("fill", "transparent") // "white")
-      .attr("font-size", textSize)
-      .attr("font-family", "var(--font-main)")
-      .attr("text-anchor", "middle")
-      .attr("alignment-baseline", "middle")
-      .attr("pointer-events", "none")
-      .text((d) => {
-        const id = d.getID();
-        if (isNaN(id)) {
-          return id.charAt(0);
-        }
-        return id;
       });
 
     // Build adjacencyData and attach the underlying Edge's label/color if any
@@ -948,6 +936,41 @@ export class HierarchicallyClusteredGraphDrawer {
         .on("mousemove", listeners.mouseEntersAdjCell)
         .on("mouseleave", listeners.mouseLeavesAdjCell);
     });
+
+    const nodeCells = clusterContainer
+      .append("g")
+      .attr("class", "nodes")
+      .selectAll("g.node-cell")
+      .data(children, (d) => d.getID())
+      .join("g")
+      .attr("class", "node-cell")
+      .attr("data-id", (d) => d.getID())
+      .attr("transform", (d, i) => `translate(${startX + i * cellSize}, 0)`)
+      .on("mouseenter", listeners.mouseEntersNodeCell)
+      .on("mouseleave", listeners.mouseLeavesNodeCell)
+      .on("click", listeners.nodeClicked);
+
+    nodeCells
+      .append("use")
+      .attr("href", "#diamondShape")
+      .attr("fill", nodeColor);
+
+    nodeCells
+      .append("text")
+      .attr("y", textOffset)
+      .attr("fill", "transparent") // "white")
+      .attr("font-size", textSize)
+      .attr("font-family", "var(--font-main)")
+      .attr("text-anchor", "middle")
+      .attr("alignment-baseline", "middle")
+      .attr("pointer-events", "none")
+      .text((d) => {
+        const id = d.getID();
+        if (isNaN(id)) {
+          return id.charAt(0);
+        }
+        return id;
+      });
   }
 
   redrawAdjacencyCells() {
@@ -1111,7 +1134,6 @@ export class HierarchicallyClusteredGraphDrawer {
     clusterLayers
   ) {
     // 1. Create an array to hold rich data objects, not just strings.
-    //TODO: START COPYING HERE
     const pathData = [];
     const leavesToSkip = new Set(this.getLeavesInLastLevelClusters());
     for (const node of this.H.getNodes()) {
@@ -1260,7 +1282,7 @@ export class HierarchicallyClusteredGraphDrawer {
               `C ${lowerMiddleRightX} ${aboveBottomY}, ${lowerMiddleRightX} ${belowTopY}, ${lowerMiddleRightX} ${currentTopY}\n` +
               rightPath;
 			}
-          } // FIX: Removed the trailing newline and indentation before the final Z*/
+          } */
 
           const pathString =
             `M ${topLeftX} ${topY} ` +
@@ -1276,7 +1298,7 @@ export class HierarchicallyClusteredGraphDrawer {
         }
       }
     }
-    //TODO: END COPYING HERE
+
     // 3. Bind the array of objects. The second argument to .attr("d", ...) is now an accessor function.
 
     svg
@@ -1346,9 +1368,11 @@ export class HierarchicallyClusteredGraphDrawer {
 
     const svg = d3
       .create("svg:svg")
+      .attr("id", "main-svg")
       .style("width", "100%")
       .style("max-height", "100vh")
-      .style("display", "block");
+      .style("display", "block")
+      .on("click", listeners.backgroundClicked);
 
     // Create zoom group
     this.zoomGroup = svg.append("g").attr("class", "zoom-group");
@@ -1732,7 +1756,8 @@ export class HierarchicallyClusteredGraphDrawer {
 
     nodeCells
       .on("mouseover", listeners.mouseEntersNodeCell)
-      .on("mouseleave", listeners.mouseLeavesNodeCell);
+      .on("mouseleave", listeners.mouseLeavesNodeCell)
+      .on("click", listeners.nodeClicked);
 
     nodeCells
       .append("text")
@@ -1871,7 +1896,7 @@ export class HierarchicallyClusteredGraphDrawer {
         .attr("font-size", window.currentLabelSize || 15)
         .attr("font-family", "var(--font-main)")
         .attr("font-weight", "bold")
-        .attr("fill", "var(--adj-color-high)")
+        .attr("fill", "var(--cluster-node-color-high)")
         .attr("pointer-events", "none")
         .style("opacity", 0.9)
         .text(cluster.getID());
@@ -2041,7 +2066,7 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("y", 0)
       .attr("width", barWidth)
       .attr("height", barHeight)
-      .style("fill", `url(#${gradientId})`)
+      .attr("fill", `url(#${gradientId})`)
       .style("stroke", "var(--color-text-header)")
       .style("stroke-width", 0);
 
@@ -2173,7 +2198,7 @@ export class HierarchicallyClusteredGraphDrawer {
     const currentMin = mode === "ratio" ? minRatio : minAbsolute;
     const currentMax = mode === "ratio" ? maxRatio : maxAbsolute;
 
-    if (currentMax - currentMin <= 0) {
+    if (currentMax - currentMin < 0) {
       container.style("display", "none");
       return;
     }
@@ -2227,20 +2252,24 @@ export class HierarchicallyClusteredGraphDrawer {
       .append("rect")
       .attr("width", barWidth)
       .attr("height", barHeight)
-      .style("fill", `url(#${gradientId})`);
+      .attr("fill", `url(#${gradientId})`);
 
     // --- 2. Min/Max Labels ---
     const valueContainer = container
       .append("div")
       .attr("class", "slider-container")
-      .style("margin-bottom", "3px")
+      .style("margin-bottom", "12px")
+      .style("margin-top", "0px")
       .style("justify-content", "space-between")
       .style("color", resolvedAdjColorHigh)
       .style("font-family", "var(--font-main)")
       .style("font-weight", "normal");
 
     // Min Label (Left)
-    valueContainer.append("span").style("text-align", "left").text(currentMin);
+    valueContainer
+      .append("span")
+      .style("text-align", "left")
+      .text(currentMin == currentMax ? 0 : currentMin);
 
     // Max Label (Right)
     valueContainer.append("span").style("text-align", "right").text(currentMax);
@@ -2287,7 +2316,7 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("y", centerY)
       .attr("dy", "0.3em") // Vertical alignment
       .style("font-size", "0.9rem")
-      .style("fill", "var(--node-color)")
+      .attr("fill", "var(--node-color)")
       .style("text-anchor", "end") // Anchor to the right of the starting point
       .text("source");
 
@@ -2312,7 +2341,7 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("y", centerY)
       .attr("dy", "0.3em")
       .style("font-size", "0.9rem")
-      .style("fill", "var(--node-color)")
+      .attr("fill", "var(--node-color)")
       .style("text-anchor", "start") // Anchor to the left of the starting point
       .text("target");
 
@@ -2371,7 +2400,7 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("y", curveStart_TS[1])
       .attr("dy", "0.3em")
       .style("font-size", "0.9rem")
-      .style("fill", "var(--node-color)")
+      .attr("fill", "var(--node-color)")
       .style("text-anchor", "end")
       .text(labelText_TS);
 
@@ -2398,7 +2427,7 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("y", curveStart_ST[1])
       .attr("dy", "0.3em")
       .style("font-size", "0.9rem")
-      .style("fill", "var(--node-color)")
+      .attr("fill", "var(--node-color)")
       .style("text-anchor", "start")
       .text(labelText_ST);
 
@@ -2421,7 +2450,7 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("y", L[1] + 18) // Move 18px down from the center height
       .attr("dy", "0.3em")
       .style("font-size", "0.9rem")
-      .style("fill", "var(--node-color)")
+      .attr("fill", "var(--node-color)")
       .style("text-anchor", "end") // Anchor to the right of the starting point
       .text("source");
 
@@ -2433,7 +2462,7 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("y", R[1] + 18) // Move 18px down from the center height
       .attr("dy", "0.3em")
       .style("font-size", "0.9rem")
-      .style("fill", "var(--node-color)")
+      .attr("fill", "var(--node-color)")
       .style("text-anchor", "start") // Anchor to the left of the starting point
       .text("target");
   }
@@ -2493,7 +2522,7 @@ export class HierarchicallyClusteredGraphDrawer {
     let maxEdges = 0;
     if (colorByAbsolute) {
       this.H.getNodes().forEach((n) => {
-        if (n.getNodeType() === NodeType.Cluster) {
+        if (n.getNodeType() === NodeType.Cluster && n.getParent()) {
           const stats = this.H.getIntraClusterStats(n);
           if (stats.actualEdges > maxEdges) maxEdges = stats.actualEdges;
         }
@@ -2538,7 +2567,7 @@ export class HierarchicallyClusteredGraphDrawer {
       .append("rect")
       .attr("width", barWidth)
       .attr("height", barHeight)
-      .style("fill", `url(#${gradientId})`)
+      .attr("fill", `url(#${gradientId})`)
       .attr("class", "legend-gradient-bar"); // Class for inherited styling
 
     // --- 3. Min/Max Labels (Matching Adjacency Style) ---
@@ -2550,7 +2579,7 @@ export class HierarchicallyClusteredGraphDrawer {
       .style("color", resolvedColorHigh)
       .style("font-family", "var(--font-main)")
       .style("font-weight", "normal")
-      .style("margin-bottom", "12px");
+      .style("margin-bottom", "0px");
 
     // Min Label (Left)
     valueContainer.append("span").style("text-align", "left").text(currentMin);

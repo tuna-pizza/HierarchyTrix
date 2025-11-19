@@ -6,12 +6,12 @@ import { setupEdgeDisplayToggleListener } from "./listeners.js";
 const urlParams = new URLSearchParams(window.location.search);
 const instanceParam = urlParams.get("instance");
 const instance =
-  instanceParam && instanceParam.trim() !== "" ? instanceParam : "animals";
+  instanceParam && instanceParam.trim() !== "" ? instanceParam : "Crops";
 
 // Get solver type from URL
 const solverParam = urlParams.get("method");
-// Default solver is 'input'
-let solver = "input";
+// Default solver is 'heuristic'
+let solver = "heuristic";
 
 if (solverParam) {
   const paramLower = solverParam.toLowerCase();
@@ -28,7 +28,7 @@ if (solverParam) {
 document.addEventListener("DOMContentLoaded", () => {
   const solverSelect = document.getElementById("solver-select");
   if (solverSelect) {
-    // 'solver' variable is correctly set by URL or to 'input' by default
+    // 'solver' variable is correctly set by URL or to 'heuristic' by default
     solverSelect.value = solver;
   }
 
@@ -36,7 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // --- Fetch order from server ---
-async function getOrder(instance, solver = "input") {
+async function getOrder(instance, solver = "heuristic") {
   try {
     const response = await fetch(`/api/order/${instance}?method=${solver}`);
     if (!response.ok) {
