@@ -83,7 +83,7 @@
                 "
               >
                 <a
-                  data-instance="animals"
+                  data-instance="Crops"
                   href="#"
                   style="
                     padding: 8px 10px;
@@ -91,10 +91,10 @@
                     display: block;
                     font-size: 0.9rem;
                   "
-                  >animals</a
+                  >Crops</a
                 >
                 <a
-                  data-instance="sample"
+                  data-instance="EuroVis"
                   href="#"
                   style="
                     padding: 8px 10px;
@@ -102,10 +102,10 @@
                     display: block;
                     font-size: 0.9rem;
                   "
-                  >sample</a
+                  >EuroVis</a
                 >
                 <a
-                  data-instance="paper_example"
+                  data-instance="Music"
                   href="#"
                   style="
                     padding: 8px 10px;
@@ -113,10 +113,10 @@
                     display: block;
                     font-size: 0.9rem;
                   "
-                  >paper_example</a
+                  >Music</a
                 >
                 <a
-                  data-instance="graph_1"
+                  data-instance="HumanBody"
                   href="#"
                   style="
                     padding: 8px 10px;
@@ -124,29 +124,7 @@
                     display: block;
                     font-size: 0.9rem;
                   "
-                  >graph_1</a
-                >
-                <a
-                  data-instance="graph_2"
-                  href="#"
-                  style="
-                    padding: 8px 10px;
-                    text-decoration: none;
-                    display: block;
-                    font-size: 0.9rem;
-                  "
-                  >graph_2</a
-                >
-                <a
-                  data-instance="graph_3"
-                  href="#"
-                  style="
-                    padding: 8px 10px;
-                    text-decoration: none;
-                    display: block;
-                    font-size: 0.9rem;
-                  "
-                  >graph_3</a
+                  >HumanBody</a
                 >
               </div>
             </div>
@@ -298,7 +276,7 @@
         </div>
 
         <div id="save-viz-container" style="position: relative">
-          <button id="saveVizButton">Save Visualization</button>
+          <button id="saveVizButton">Export Vis</button>
 
           <div
             id="save-viz-dropdown"
@@ -380,10 +358,18 @@
             font-size: 0.9rem;
             font-family: var(--font-main);
             font-size: 0.9rem;
-            color: var(--color-secondary);
+            color: var(--cluster-node-color-high);
           "
         >
-          <div class="toggle-container" style="margin-bottom: 12px">
+          <div
+            class="toggle-container"
+            style="
+              margin-bottom: 12px;
+              padding-top: 10px;
+              border-top: 1px solid var(--color-background-medium);
+              margin-top: 10px;
+            "
+          >
             <a>Cluster values:</a>
             <br />
             <label
@@ -393,30 +379,33 @@
                 align-items: center;
                 justify-content: center;
                 width: 100%;
+                margin-top: 7px;
               "
             >
               <span class="toggle-label-left" style="font-weight: normal"
                 >Ratio</span
               >
               <input type="checkbox" id="edge-display-toggle" />
-              <span class="slider"></span>
+              <span class="slider" style="margin-bottom: 4px"></span>
               <span class="toggle-label-right" style="font-weight: normal"
                 >Absolute</span
               >
             </label>
+            <a>Intra-cluster edges:</a>
             <div
-              id="adj-cell-legend-container"
+              id="node-cell-legend-container"
               style="
-                margin-top: 0px;
-                margin-bottom: 3px;
+                margin-top: 4px;
+                margin-bottom: 4px;
                 font-family: var(--font-main);
                 font-size: 0.9rem;
               "
             ></div>
+            <a>Inter-cluster edges:</a>
             <div
-              id="node-cell-legend-container"
+              id="adj-cell-legend-container"
               style="
-                margin-top: 0px;
+                margin-top: 4px;
                 margin-bottom: 12px;
                 font-family: var(--font-main);
                 font-size: 0.9rem;
@@ -430,11 +419,14 @@
               margin-bottom: 12px;
               font-family: var(--font-main);
               font-size: 0.9rem;
+              padding-top: 10px;
+              border-top: 1px solid var(--color-background-medium);
+              margin-top: 10px;
             "
           ></div>
         </div>
         <div id="edge-weight-filter" style="margin-bottom: 12px; display: none">
-          <a>Filter edges by weight:</a>
+          <a>Filter curves by edge weight:</a>
           <div class="slider-container">
             <input
               type="range"
@@ -455,7 +447,7 @@
               display: none;
               max-width: 250px;
               padding-top: 10px;
-              border-top: 1px solid var(--color-secondary);
+              border-top: 1px solid var(--color-background-medium);
               margin-top: 10px;
             "
           >
@@ -552,10 +544,9 @@
 
     <script>
       // Function to handle all visualization downloads
-      // Function to handle all visualization downloads
       function saveVisualization(format) {
         // Directly search for the SVG element on the page
-        const svgElement = document.querySelector("svg");
+        const svgElement = document.querySelector("#main-svg");
 
         if (!svgElement) {
           alert(
@@ -570,7 +561,6 @@
         // Calculate the bounding box of the content for accurate export size
         const bbox = svgElement.getBBox();
 
-        // --- TEMPORARY FIX SETUP ---
         // 1. Store original viewBox/width/height
         const originalViewBox = svgElement.getAttribute("viewBox");
         const originalWidth = svgElement.getAttribute("width");
@@ -596,7 +586,7 @@
 
         // 4. FONT & COLOR FIX: Hardcode computed styles to resolve CSS variable issues
         const styledElements = svgElement.querySelectorAll(
-          "text, rect, path, line, circle, ellipse, polygon, polyline"
+          "text, rect, path, line, circle, ellipse, polygon, polyline, use"
         );
         const originalStyles = [];
 
@@ -619,29 +609,33 @@
           }
 
           // Color Forcing
-          const finalFill = computedStyle.fill;
-          if (
-            usesVarColor &&
-            finalFill &&
-            finalFill !== "none" &&
-            finalFill !== "transparent"
-          ) {
-            stylesToRestore.fill = originalFillAttr;
-            el.setAttribute("fill", finalFill);
+          // 1. Fix Fill (Only if the element actually HAS a fill attribute with a variable)
+          if (originalFillAttr && originalFillAttr.includes("var(")) {
+            const finalFill = computedStyle.fill;
+            if (
+              finalFill &&
+              finalFill !== "none" &&
+              finalFill !== "transparent"
+            ) {
+              stylesToRestore.fill = originalFillAttr;
+              el.setAttribute("fill", finalFill);
+            }
           }
 
-          const finalStroke = computedStyle.stroke;
-          if (
-            usesVarColor &&
-            finalStroke &&
-            finalStroke !== "none" &&
-            finalStroke !== "transparent"
-          ) {
-            stylesToRestore.stroke = originalStrokeAttr;
-            el.setAttribute("stroke", finalStroke);
+          // 2. Fix Stroke (Only if the element HAS a stroke attribute with a variable)
+          if (originalStrokeAttr && originalStrokeAttr.includes("var(")) {
+            const finalStroke = computedStyle.stroke;
+            if (
+              finalStroke &&
+              finalStroke !== "none" &&
+              finalStroke !== "transparent"
+            ) {
+              stylesToRestore.stroke = originalStrokeAttr;
+              el.setAttribute("stroke", finalStroke);
+            }
           }
 
-          // Font Forcing (The original fix for the user's initial problem)
+          // Font Forcing
           if (el.tagName === "text" && usesVarFont) {
             const finalFontFamily = computedStyle.fontFamily;
             if (finalFontFamily) {
@@ -658,7 +652,6 @@
         // --- SERIALIZATION & BLOB CREATION ---
         let svgString = new XMLSerializer().serializeToString(svgElement);
 
-        // CRITICAL FIX: Remove XML declaration to prevent canvas image loading errors for PNG/PDF.
         svgString = svgString.replace(/<\?xml[^>]*\?>/i, "");
 
         const blob = new Blob([svgString], {
@@ -844,7 +837,7 @@
         // Initialization MUST happen inside DOMContentLoaded to ensure elements exist.
 
         const urlParams = new URLSearchParams(window.location.search);
-        const currentInstanceId = urlParams.get("instance") || "animals";
+        const currentInstanceId = urlParams.get("instance") || "Crops";
         let currentTheme = urlParams.get("theme"); // Use let as we may override it below
 
         let isK00lModeActive = false;

@@ -13,6 +13,10 @@
   --font-main: sans-serif;
 }
 
+#diamondShape {
+  stroke: #555;
+}
+
 /* --- 2. 90s THEME VARIABLES (Override) --- */
 .k00l90z-mode {
   /* 90s K00L Font: Monospace/Pixelated look */
@@ -334,15 +338,15 @@ h1 {
 body {
   /* Default Theme Colors */
   --node-color: hsl(210, 60%, 30%);
-  --cell-boundary-color: #888b90;
+  --cell-boundary-color: hsl(0, 0%, 40%);
   --tree-color: #dadbdd;
   --edge-color: hsl(210, 60%, 49%);
   /* --adj-color-low: hsl(210, 60%, 90%);
   --adj-color-high: hsl(210, 60%, 49%); */
-  --adj-color-low: hsl(0, 0%, 90%);
-  --adj-color-high: hsl(0, 0%, 40%);
-  --cluster-node-color-low: hsl(0, 60%, 90%);
-  --cluster-node-color-high: hsl(0, 60%, 40%);
+  --adj-color-low: hsl(20, 90%, 90%);
+  --adj-color-high: hsl(20, 90%, 40%);
+  --cluster-node-color-low: hsl(0, 0%, 90%);
+  --cluster-node-color-high: hsl(0, 0%, 40%);
 }
 
 .edge-label {
@@ -350,8 +354,6 @@ body {
   font-weight: bold;
   /*fill: var(--edge-color);*/
   pointer-events: none;
-  text-shadow: 3px 3px 1px white, -3px -3px 1px white, 3px -3px 1px white,
-    -3px 3px 1px white;
   user-select: none;
 }
 
@@ -382,7 +384,7 @@ body.k00l90z-mode text {
 fieldset {
   display: block;
   padding: 0.2em;
-  border-color: var(--color-secondary);
+  border-color: var(--color-background-medium);
   border-radius: 6px;
   font-weight: bold;
 }
@@ -391,7 +393,7 @@ legend {
   font-family: var(--font-main);
   font-size: 0.9rem;
   font-weight: bold;
-  color: var(--color-secondary);
+  color: var(--color-background-medium);
 }
 
 #edge-display-toggle {
@@ -490,7 +492,7 @@ legend {
   cursor: pointer;
   font-family: var(--font-main);
   font-size: 0.9rem;
-  color: var(--adj-color-high);
+  color: var(--cluster-node-color-high);
   user-select: none;
   margin-top: 5px;
   margin-bottom: 5px;
@@ -508,7 +510,7 @@ legend {
   position: relative;
   width: 36px;
   height: 18px;
-  background-color: var(--adj-color-high);
+  background-color: var(--cluster-node-color-high);
   border-radius: 18px;
   transition: background-color 0.3s;
 }
@@ -533,13 +535,13 @@ legend {
 
 /* Keep the same bright color for both states */
 .toggle-switch input:checked + .slider {
-  background-color: var(--adj-color-high);
+  background-color: var(--cluster-node-color-high);
 }
 
 /* Labels always fully visible */
 .toggle-label-left,
 .toggle-label-right {
-  color: var(--adj-color-high);
+  color: var(--cluster-node-color-high);
   opacity: 1;
 }
 
@@ -562,18 +564,18 @@ legend {
   flex-direction: column;
   font-family: var(--font-main);
   font-size: 0.9rem;
-  color: var(--color-secondary);
+  color: var(--color-background-medium);
 }
 
 #label-size-slider {
   width: auto;
-  accent-color: var(--color-secondary);
+  accent-color: var(--color-background-medium);
   cursor: pointer;
 }
 
 #label-size-value {
   min-width: 40px;
-  color: var(--color-secondary);
+  color: var(--color-background-medium);
 }
 
 /* --- Minimum edge weight Slider --- */
