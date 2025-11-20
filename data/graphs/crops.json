@@ -81,7 +81,8 @@
 
     { "id": "45", "parent": "Forest", "type": "leaf", "label": "Forest", "weight": 0 },
 
-    { "id": "46", "parent": "Crop_Mix", "type": "leaf", "label": "Mixed Crops", "weight": 45 }
+    { "id": "46", "parent": "Crop_Mix", "type": "leaf", "label": "Mixed Crops", "weight": 45 },
+    { "id": "47", "parent": "Orchard_Crop", "type": "leaf", "label": "Orchard Crop" , "weight": 0}
 
   ],
   "edges": [
@@ -201,3 +202,4 @@
 
   ]
 }
+
