@@ -60,6 +60,32 @@ export class HierarchicallyClusteredGraphDrawer {
       d3.selectAll(
         ".leaf-label, .edge-label, .cluster-label, .cluster-node-label"
       ).attr("font-size", size);
+
+      // We use requestAnimationFrame to ensure the browser has re-flowed the text
+      // with the new font size before we measure the bounding box.
+      requestAnimationFrame(() => {
+        d3.selectAll(".leaf-label, .cluster-node-label").each(function () {
+          // Select the text element
+          const textNode = this;
+          // Select the parent group <g>
+          const parentGroup = d3.select(this.parentNode);
+          // Select the sibling rect
+          const bgRect = parentGroup.select(".label-background");
+
+          if (!bgRect.empty()) {
+            // Measure new text dimensions
+            const bbox = textNode.getBBox();
+            const padding = 1; // Matches the padding used in draw()
+
+            // Update rect attributes
+            bgRect
+              .attr("x", bbox.x - padding)
+              .attr("y", bbox.y - padding)
+              .attr("width", bbox.width + padding * 2)
+              .attr("height", bbox.height + padding);
+          }
+        });
+      });
     });
 
     this.edgeWeightThreshold = null;
@@ -200,25 +226,46 @@ export class HierarchicallyClusteredGraphDrawer {
       let minWeight = Infinity;
       let maxWeight = 0;
 
+      let minWeight_slider = Infinity;
+      let maxWeight_slider = 0;
+
       if (this.H && this.H.edges && this.H.edges.length > 0) {
         this.H.edges.forEach((edge) => {
-          // Assume edge weight is accessible via getWeight()
+          const weight = edge.getWeight();
+
+          // 1. Calculate Overall min/max (unconditional on edge type)
+          maxWeight = Math.max(maxWeight, weight);
+          minWeight = Math.min(minWeight, weight);
+
+          // 2. Calculate Slider min/max (conditional on inter-cluster edge type)
           if (edge.source.getParent() != edge.target.getParent()) {
-            const weight = edge.getWeight();
-            if (weight > maxWeight) {
-              maxWeight = weight;
-            }
-            if (weight < minWeight) {
-              minWeight = weight;
-            }
+            maxWeight_slider = Math.max(maxWeight_slider, weight);
+            minWeight_slider = Math.min(minWeight_slider, weight);
           }
         });
       }
 
+      if (minWeight_slider == Infinity) minWeight_slider = minWeight;
+      if (maxWeight_slider == 0) maxWeight_slider = maxWeight;
+
+      this.H.getVertices().forEach((v) => {
+        const w = v.getWeight();
+        if (w != null && !isNaN(w)) {
+          minWeight = Math.min(minWeight, w);
+          maxWeight = Math.max(maxWeight, w);
+        }
+      });
+
+      this.edgeLabelStats = {
+        isNumeric: true,
+        min: minWeight,
+        max: maxWeight,
+      };
+
       // Use the calculated min, defaulting to 0 if no edges exist
-      const min = minWeight === Infinity ? 0 : minWeight;
+      const min = minWeight_slider === Infinity ? 0 : minWeight_slider;
       // Use the calculated max, adding a buffer of +1 to ensure the max weight is reachable on the slider
-      const max = maxWeight > 0 ? maxWeight : 1;
+      const max = maxWeight_slider > 0 ? maxWeight_slider : 1;
 
       if (filterContainer && sliderEl && valueLabel) {
         // Show the filter controls
@@ -253,7 +300,9 @@ export class HierarchicallyClusteredGraphDrawer {
       }
     }
 
-    const colorScale = this.createNumericColorScale();
+    this.globalWeightColorScale = this.createNumericColorScale();
+    const colorScale = this.globalWeightColorScale;
+
     if (!colorScale) return;
 
     // Compute and store color for each edge
@@ -270,6 +319,19 @@ export class HierarchicallyClusteredGraphDrawer {
         edge.edgeColor = color;
       }
     });
+
+    if (this.globalWeightColorScale) {
+      this.H.getVertices().forEach((v) => {
+        const w = v.getWeight();
+        if (w != null && !isNaN(w)) {
+          if (w == 0) {
+            v.nodeColor = "rgb(255,255,255)";
+          } else v.nodeColor = this.globalWeightColorScale(w);
+        } else {
+          v.nodeColor = "var(--node-color)";
+        }
+      });
+    }
 
     this.drawAdjCellColorLegend();
   }
@@ -934,7 +996,8 @@ export class HierarchicallyClusteredGraphDrawer {
       adjCells
         .on("mouseover", listeners.mouseEntersAdjCell)
         .on("mousemove", listeners.mouseEntersAdjCell)
-        .on("mouseleave", listeners.mouseLeavesAdjCell);
+        .on("mouseleave", listeners.mouseLeavesAdjCell)
+        .on("click", listeners.adjCellClicked);
     });
 
     const nodeCells = clusterContainer
@@ -953,7 +1016,10 @@ export class HierarchicallyClusteredGraphDrawer {
     nodeCells
       .append("use")
       .attr("href", "#diamondShape")
-      .attr("fill", nodeColor);
+      .attr("fill", (d) => {
+        if (d.getNodeType() === "Vertex" && d.nodeColor) return d.nodeColor; // unified scale
+        return nodeColor; // default for clusters
+      });
 
     nodeCells
       .append("text")
@@ -1752,7 +1818,10 @@ export class HierarchicallyClusteredGraphDrawer {
     nodeCells
       .append("use")
       .attr("href", "#diamondShape")
-      .attr("fill", nodeColor);
+      .attr("fill", (d) => {
+        if (d.getNodeType() === "Vertex" && d.nodeColor) return d.nodeColor; // unified scale
+        return nodeColor; // default for clusters
+      });
 
     nodeCells
       .on("mouseover", listeners.mouseEntersNodeCell)
@@ -2478,7 +2547,10 @@ export class HierarchicallyClusteredGraphDrawer {
 
       // 1. Color Leaf Nodes with default color
       if (nodeType === "Vertex") {
-        cellGroup.select("use").attr("fill", "var(--node-color)");
+        cellGroup.select("use").attr("fill", (d) => {
+          if (d.getNodeType() === "Vertex" && d.nodeColor) return d.nodeColor; // unified scale
+          return nodeColor; // default for clusters
+        });
       }
       // 2. Color Cluster Nodes with calculated color
       else if (nodeType === "Cluster") {

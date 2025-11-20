@@ -195,7 +195,7 @@ export class HierarchicallyClusteredGraph {
           if (node.type === "cluster") {
             type = NodeType.Cluster;
           }
-          let vertex = new Node(node.id, null, type);
+          let vertex = new Node(node.id, null, type, null);
 
           // STORE LABEL IF PROVIDED
           if (node.label) {
@@ -218,7 +218,12 @@ export class HierarchicallyClusteredGraph {
             if (node.type === "cluster") {
               type = NodeType.Cluster;
             }
-            let vertex = new Node(node.id, nodeMap.get(node.parent), type);
+            let vertex = new Node(
+              node.id,
+              nodeMap.get(node.parent),
+              type,
+              node.weight
+            );
 
             // STORE LABEL IF PROVIDED
             if (node.label) {
@@ -341,10 +346,11 @@ export class HierarchicallyClusteredGraph {
 }
 
 export class Node {
-  constructor(id, parentNode, type) {
+  constructor(id, parentNode, type, weight = null) {
     this.id = id;
     this.parentNode = parentNode;
     this.type = type;
+    this.weight = weight;
     this.children = [];
     this.customLabel = null;
     if (parentNode != null) {
@@ -366,6 +372,10 @@ export class Node {
 
   getID() {
     return this.id;
+  }
+
+  getWeight() {
+    return this.weight;
   }
 
   getParent() {

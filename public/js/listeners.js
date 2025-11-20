@@ -4,28 +4,65 @@ const inclusionColor = "var(--tree-color)"; // Original color from drawer_d3.js 
 
 // 1. State variable at the top level (after imports)
 let lockedNode = null;
+let lockedAdj = null;
 
 // 2. Function to handle node clicks
 export function nodeClicked(event, data) {
-  event.stopPropagation(); // Prevent the click from bubbling to the background
+  event.stopPropagation();
 
   if (lockedNode === data) {
-    // If clicking the currently locked node, unlock it
     lockedNode = null;
     mouseLeavesNodeCell();
   } else {
-    // Lock the new node
+    // If an adjacency cell was locked, unlock it
+    if (lockedAdj !== null) {
+      lockedAdj = null;
+    }
+
     lockedNode = data;
-    // Force the highlight logic immediately (using .call to bind 'this' correctly)
     mouseEntersNodeCell.call(event.currentTarget, event, data);
   }
 }
 
 // 3. Function to handle background clicks
 export function backgroundClicked() {
+  let wasLocked = false;
+
   if (lockedNode !== null) {
     lockedNode = null;
-    mouseLeavesNodeCell(); // Reset to default view
+    mouseLeavesNodeCell();
+    wasLocked = true;
+  }
+
+  if (lockedAdj !== null) {
+    lockedAdj = null;
+    // If we haven't already reset via node leaves, do it here
+    if (!wasLocked) mouseLeavesAdjCell();
+  }
+}
+
+// 4. Function to handle adj cells clicks
+export function adjCellClicked(event, data) {
+  event.stopPropagation(); // Prevent background click
+
+  if (lockedAdj === data) {
+    // If clicking the currently locked cell, unlock it
+    lockedAdj = null;
+    mouseLeavesAdjCell.call(this, event, data);
+  } else {
+    // If a node was locked, unlock it first (mutual exclusivity)
+    if (lockedNode !== null) {
+      lockedNode = null;
+      // We don't call mouseLeavesNodeCell here because the
+      // mouseEntersAdjCell below will handle the "fade all" logic
+    }
+
+    // Lock the new adjacency cell
+    lockedAdj = data;
+
+    // Force the highlight logic immediately
+    // We use .call(event.currentTarget...) to ensure 'this' refers to the DOM element
+    mouseEntersAdjCell.call(event.currentTarget, event, data);
   }
 }
 
@@ -33,7 +70,9 @@ export function mouseEntersNodeCell() {
   const nodeCell = d3.select(this);
   const data = nodeCell.datum();
 
-  if (lockedNode !== null && lockedNode !== data) return;
+  // Block if Node is locked to another, OR if Adj is locked
+  if ((lockedNode !== null && lockedNode !== data) || lockedAdj !== null)
+    return;
 
   // Identify all elements
   const allNodeCells = d3.selectAll("g.node-cell");
@@ -146,7 +185,10 @@ export function mouseEntersNodeCell() {
         cell.attr("fill", finalColor);
       } else if (nodeType === "Vertex") {
         // Apply the default color for leaf nodes
-        cell.attr("fill", "var(--node-color)");
+        cell.attr("fill", (d) => {
+          if (d.getNodeType() === "Vertex" && d.nodeColor) return d.nodeColor; // unified scale
+          return "var(--node-color)"; // default for clusters
+        });
       }
     });
 
@@ -161,7 +203,10 @@ export function mouseEntersNodeCell() {
     ) // Is connected AND is external
     .attr("opacity", 1)
     .selectAll("use")
-    .attr("fill", "var(--node-color)");
+    .attr("fill", (d) => {
+      if (d.getNodeType() === "Vertex" && d.nodeColor) return d.nodeColor; // unified scale
+      return "var(--node-color)"; // default for clusters
+    });
 
   // Step 4: Highlight all relevant edges (incident to a leaf node in the hovered cluster)
   allEdges
@@ -250,153 +295,193 @@ export function mouseEntersNodeCell() {
     edgeLabelsGroup.selectAll(".adj-hover-label").remove();
   }
 
-  // ONLY proceed if it's a Cluster Node (not a leaf)
-  if (data.getNodeType() === "Cluster" && drawer) {
-    const labelStats = drawer.getClusterNodeLabelStats(data);
+  // ONLY proceed if it's a Cluster Node OR a Vertex Node (leaf)
+  if (
+    (data.getNodeType() === "Cluster" || data.getNodeType() === "Vertex") &&
+    drawer
+  ) {
+    let textToShow = null;
+    let labelColor = null;
 
-    if (labelStats) {
-      const textToShow = labelStats.labelText; // "Value: X.XX"
-      const labelColor = labelStats.textColor; // --cluster-node-color-high
+    // --- 1. Determine Label Content and Color based on Node Type ---
+    if (data.getNodeType() === "Vertex") {
+      // Case 1: Leaf Node (Vertex) - Custom label and color
+      if (typeof data.getWeight === "function" && data.getWeight() != null) {
+        const weight = data.getWeight();
 
-      const OFFSET_X = 0; // Final offset after all transforms
-      const OFFSET_Y = 0;
+        // Label: "Weight: X.XX"
+        textToShow = `Weight: ${weight}`;
 
-      // 1. Compute cell center point in local coordinates (used for initial localPoint)
-      const cellNode = event.currentTarget;
-      let localPoint = { x: 0, y: 0 };
-      let screenPoint;
+        // Color: --edge-color
+        const computedStyle = getComputedStyle(document.body);
+        labelColor = computedStyle.getPropertyValue("--edge-color");
+      } else {
+        // Vertex has no valid weight, so do not show any label
+        return;
+      }
+    } else {
+      // Case 2: Cluster Node - Use existing density stats function
+      const labelStats = drawer.getClusterNodeLabelStats(data);
 
+      if (labelStats) {
+        // Use the properties returned by the drawer function for Cluster nodes
+        textToShow = labelStats.labelText;
+        labelColor = labelStats.textColor;
+      } else {
+        // Cluster stats failed, do not show any label
+        return;
+      }
+    }
+
+    // Check if we have valid text to show before proceeding to D3 logic
+    if (!textToShow) {
+      return;
+    }
+
+    // --- 2. Positioning Logic (Unchanged) ---
+
+    const OFFSET_X = 0;
+    const OFFSET_Y = 0;
+
+    // 1. Compute cell center point in local coordinates (used for initial localPoint)
+    const cellNode = event.currentTarget;
+    let localPoint = { x: 0, y: 0 };
+    let screenPoint;
+
+    try {
+      const bbox = cellNode.getBBox();
+      const cx = bbox.x + bbox.width / 2;
+      const cy = bbox.y + bbox.height / 2;
+
+      const pt = cellNode.ownerSVGElement.createSVGPoint();
+      pt.x = cx;
+      pt.y = cy;
+
+      screenPoint = pt.matrixTransform(cellNode.getScreenCTM());
+
+      const groupNode = edgeLabelsGroup.node();
+      const groupCTM = groupNode.getScreenCTM();
+      const inv = groupCTM.inverse();
+      const svgPoint = cellNode.ownerSVGElement.createSVGPoint();
+      svgPoint.x = screenPoint.x;
+      svgPoint.y = screenPoint.y;
+      const transformed = svgPoint.matrixTransform(inv);
+      localPoint.x = transformed.x;
+      localPoint.y = transformed.y;
+    } catch (err) {
+      console.warn(
+        "Could not compute initial screen point for hovered cell:",
+        err
+      );
+      localPoint = { x: 20, y: 20 }; // Fallback to cell center
+    }
+
+    // 2. Compute final label position based on Cluster Ancestor BBox
+    let labelX = localPoint.x + OFFSET_X;
+    let labelY = localPoint.y + OFFSET_Y;
+
+    let domNode = event.currentTarget;
+    while (
+      domNode &&
+      domNode !== document &&
+      !(
+        domNode.classList &&
+        domNode.classList.contains &&
+        domNode.classList.contains("cluster")
+      )
+    ) {
+      domNode = domNode.parentNode;
+    }
+
+    let clusterNode = domNode; // <g class="cluster"> element
+
+    if (domNode) {
       try {
-        const bbox = cellNode.getBBox();
-        const cx = bbox.x + bbox.width / 2;
-        const cy = bbox.y + bbox.height / 2;
+        if (!clusterNode.className) {
+          clusterNode = findElementByDatum(data.getParent());
+        }
+        const svg = clusterNode.ownerSVGElement;
+        if (svg && clusterNode.getBBox && clusterNode.getScreenCTM) {
+          const bbox = clusterNode.getBBox();
 
-        const pt = cellNode.ownerSVGElement.createSVGPoint();
-        pt.x = cx;
-        pt.y = cy;
+          // Right-edge midpoint in cluster local coordinates (5px margin)
+          const localRightX = bbox.x + bbox.width - bbox.width / 4 + 5;
+          const localRightY = bbox.y + bbox.height / 2;
 
-        screenPoint = pt.matrixTransform(cellNode.getScreenCTM());
+          // Transform cluster local point to screen coordinates
+          const pt = svg.createSVGPoint();
+          pt.x = localRightX;
+          pt.y = localRightY;
+          const screenPt = pt.matrixTransform(clusterNode.getScreenCTM());
 
-        const groupNode = edgeLabelsGroup.node();
-        const groupCTM = groupNode.getScreenCTM();
-        const inv = groupCTM.inverse();
-        const svgPoint = cellNode.ownerSVGElement.createSVGPoint();
-        svgPoint.x = screenPoint.x;
-        svgPoint.y = screenPoint.y;
-        const transformed = svgPoint.matrixTransform(inv);
-        localPoint.x = transformed.x;
-        localPoint.y = transformed.y;
+          // Now transform screen coordinates into edgeLabelsGroup local coordinates
+          const groupNode = edgeLabelsGroup.node();
+          if (groupNode && groupNode.getScreenCTM) {
+            const inv = groupNode.getScreenCTM().inverse();
+            const svgPt = svg.createSVGPoint();
+            svgPt.x = screenPt.x;
+            svgPt.y = screenPt.y;
+            const localForGroup = svgPt.matrixTransform(inv);
+
+            // Anchor label to the computed right-edge position
+            labelX = localForGroup.x + OFFSET_X;
+            labelY = localForGroup.y + OFFSET_Y;
+          }
+        }
       } catch (err) {
         console.warn(
-          "Could not compute initial screen point for hovered cell:",
+          "Could not compute cluster right-edge position for node cell label, falling back to cell center:",
           err
         );
-        localPoint = { x: 20, y: 20 }; // Fallback to cell center
       }
-
-      // 2. Compute final label position based on Cluster Ancestor BBox
-      // Fallback coords (initial cell center localPoint), will be replaced if cluster bbox is found
-      let labelX = localPoint.x + OFFSET_X;
-      let labelY = localPoint.y + OFFSET_Y;
-
-      // Walk up from the hovered element to find the nearest ancestor with class "cluster"
-      let domNode = event.currentTarget;
-      while (
-        domNode &&
-        domNode !== document &&
-        !(
-          domNode.classList &&
-          domNode.classList.contains &&
-          domNode.classList.contains("cluster")
-        )
-      ) {
-        domNode = domNode.parentNode;
-      }
-
-      if (domNode && domNode.nodeType === 1) {
-        try {
-          const clusterNode = domNode; // <g class="cluster"> element
-          const svg = clusterNode.ownerSVGElement;
-          if (svg && clusterNode.getBBox && clusterNode.getScreenCTM) {
-            const bbox = clusterNode.getBBox();
-
-            // Right-edge midpoint in cluster local coordinates (5px margin)
-            const localRightX = bbox.x + bbox.width - bbox.width / 4 + 5;
-            const localRightY = bbox.y + bbox.height / 2;
-
-            // Transform cluster local point to screen coordinates
-            const pt = svg.createSVGPoint();
-            pt.x = localRightX;
-            pt.y = localRightY;
-            const screenPt = pt.matrixTransform(clusterNode.getScreenCTM());
-
-            // Now transform screen coordinates into edgeLabelsGroup local coordinates
-            const groupNode = edgeLabelsGroup.node();
-            if (groupNode && groupNode.getScreenCTM) {
-              const inv = groupNode.getScreenCTM().inverse();
-              const svgPt = svg.createSVGPoint();
-              svgPt.x = screenPt.x;
-              svgPt.y = screenPt.y;
-              const localForGroup = svgPt.matrixTransform(inv);
-
-              // Anchor label to the computed right-edge position
-              labelX = localForGroup.x + OFFSET_X;
-              labelY = localForGroup.y + OFFSET_Y;
-            }
-          }
-        } catch (err) {
-          console.warn(
-            "Could not compute cluster right-edge position for node cell label, falling back to cell center:",
-            err
-          );
-        }
-      }
-
-      const lines = textToShow.split("\n");
-
-      const textElement = edgeLabelsGroup
-        .append("text")
-        .attr("class", "edge-label adj-hover-label")
-        .attr("x", labelX)
-        .attr("y", labelY)
-        .attr("text-anchor", "start")
-        .attr("dominant-baseline", "middle")
-        .attr("font-family", "var(--font-main)")
-        .attr("font-weight", "bold")
-        .attr("font-size", window.currentLabelSize || 15)
-        .attr("fill", labelColor)
-        .attr("pointer-events", "none")
-        .style("opacity", 1);
-
-      lines.forEach((line, i) => {
-        textElement
-          .append("tspan")
-          .attr("x", labelX)
-          // Use 'em' unit relative to the current font size
-          .attr("dy", i === 0 ? "0em" : "1.2em")
-          .text(line);
-
-        const bbox = textElement.node().getBBox();
-
-        // Insert a white rect with opacity 0.7 BEFORE the text element (using "text" as the selector)
-        edgeLabelsGroup
-          .insert("rect", "text")
-          .attr("class", "label-background-rect")
-          .attr("x", bbox.x - 3)
-          .attr("y", bbox.y - 2)
-          .attr("width", bbox.width + 5)
-          .attr("height", bbox.height + 4)
-          .attr("rx", 3)
-          .attr("ry", 3)
-          .attr("fill", "white")
-          .attr("opacity", 0.5);
-      });
     }
+
+    // --- 3. Drawing Logic (Unchanged) ---
+
+    const lines = textToShow.split("\n");
+
+    const textElement = edgeLabelsGroup
+      .append("text")
+      .attr("class", "edge-label adj-hover-label")
+      .attr("x", labelX)
+      .attr("y", labelY)
+      .attr("text-anchor", "start")
+      .attr("dominant-baseline", "middle")
+      .attr("font-family", "var(--font-main)")
+      .attr("font-weight", "bold")
+      .attr("font-size", window.currentLabelSize || 15)
+      .attr("fill", labelColor)
+      .attr("pointer-events", "none")
+      .style("opacity", 1);
+
+    lines.forEach((line, i) => {
+      textElement
+        .append("tspan")
+        .attr("x", labelX)
+        .attr("dy", i === 0 ? "0em" : "1.2em")
+        .text(line);
+
+      const bbox = textElement.node().getBBox();
+
+      // Insert a white rect with opacity 0.7 BEFORE the text element (using "text" as the selector)
+      edgeLabelsGroup
+        .insert("rect", "text")
+        .attr("class", "label-background-rect")
+        .attr("x", bbox.x - 3)
+        .attr("y", bbox.y - 2)
+        .attr("width", bbox.width + 5)
+        .attr("height", bbox.height + 4)
+        .attr("rx", 3)
+        .attr("ry", 3)
+        .attr("fill", "white")
+        .attr("opacity", 0.5);
+    });
   }
 }
 
 export function mouseLeavesNodeCell() {
-  if (lockedNode !== null) return;
+  // Block if ANY lock is active
+  if (lockedNode !== null || lockedAdj !== null) return;
 
   // 1. Restore all node cells AND their correct colors
   restoreNodeColoring();
@@ -441,7 +526,8 @@ export function mouseLeavesNodeCell() {
 }
 
 export function mouseEntersAdjCell(event, data) {
-  if (lockedNode !== null) return;
+  // Block if Node is locked, OR if Adj is locked to another
+  if (lockedNode !== null || (lockedAdj !== null && lockedAdj !== data)) return;
 
   let adjCellExtraText = "";
 
@@ -694,12 +780,21 @@ export function mouseEntersAdjCell(event, data) {
 
           d3.select(this).select("use").attr("fill", finalColor);
         } else {
-          d3.select(this).select("use").attr("fill", "var(--node-color)");
+          d3.select(this)
+            .select("use")
+            .attr("fill", (d) => {
+              if (d.getNodeType() === "Vertex" && d.nodeColor)
+                return d.nodeColor; // unified scale
+              return "var(--node-color)"; // default for clusters
+            });
         }
       } else {
-        // Assuming NodeType === 'Vertex'
-        // If it's a Leaf Node, ensure it's set to the default node color (overriding gray)
-        d3.select(this).select("use").attr("fill", "var(--node-color)");
+        d3.select(this)
+          .select("use")
+          .attr("fill", (d) => {
+            if (d.getNodeType() === "Vertex" && d.nodeColor) return d.nodeColor; // unified scale
+            return "var(--node-color)"; // default for clusters
+          });
       }
     });
 
@@ -748,11 +843,18 @@ export function mouseEntersAdjCell(event, data) {
       // Rule 1: Edge-label  first
       let textToShow;
 
-      if (!data.isDirected) {
-        if (data.edgeLabels[0] != "") textToShow = data.edgeLabels[0];
+      if (!isBottommostLevel) {
+        // Always show "Leftmost (Row) - Rightmost (Col)" regardless of hover triangle
+        const sourceText = sourceNode.customLabel || sourceNode.getID();
+        const targetText = targetNode.customLabel || targetNode.getID();
+        textToShow = `${sourceText} — ${targetText}`;
+      } else {
+        if (!data.isDirected) {
+          if (data.edgeLabels[0] != "") textToShow = data.edgeLabels[0];
+          else textToShow = data.edgeLabels[1];
+        } else if (part === "left") textToShow = data.edgeLabels[0];
         else textToShow = data.edgeLabels[1];
-      } else if (part === "left") textToShow = data.edgeLabels[0];
-      else textToShow = data.edgeLabels[1];
+      }
 
       // Rule 2 & 3: If no label, fall back to end-node rules (label -> ID)
       if (!textToShow) {
@@ -760,12 +862,12 @@ export function mouseEntersAdjCell(event, data) {
 
         // --- LOGIC USING MOUSE POSITION ---
         if (data.isDirected) {
-          if (part === "left") {
-            // LEFT part (y < x): Display T -> S
+          if (part === "right") {
+            // RIGHT part (y >= x): Display T -> S
             trueSourceNode = targetNode; // T is the logical source for text
             trueTargetNode = sourceNode; // S is the logical target for text
-          } else if (part === "right") {
-            // RIGHT part (y >= x): Display S -> T
+          } else if (part === "left") {
+            // LEFT part (y < x): Display S -> T
             trueSourceNode = sourceNode; // S is the logical source for text
             trueTargetNode = targetNode; // T is the logical target for text
           }
@@ -835,6 +937,7 @@ export function mouseEntersAdjCell(event, data) {
 
       // remove previous hover labels
       edgeLabelsGroup.selectAll(".adj-hover-label").remove();
+      edgeLabelsGroup.selectAll(".label-background-rect").remove();
 
       // 2) Compute center point of the hovered element in screen coordinates
       const cellNode = d3.select(event.currentTarget).node();
@@ -901,6 +1004,7 @@ export function mouseEntersAdjCell(event, data) {
 
         // Remove previous hover labels
         edgeLabelsGroup.selectAll(".adj-hover-label").remove();
+        edgeLabelsGroup.selectAll(".label-background-rect").remove();
 
         // Fallback coords (cell center), will be replaced if cluster bbox is found
         let labelX = localPoint.x + OFFSET_X;
@@ -1016,7 +1120,8 @@ export function mouseEntersAdjCell(event, data) {
 }
 
 export function mouseLeavesAdjCell() {
-  if (lockedNode !== null) return;
+  // Block if ANY lock is active
+  if (lockedNode !== null || lockedAdj !== null) return;
 
   // === REMOVE HOVER LABEL ===
   d3.select(".edge-labels")
@@ -1046,7 +1151,10 @@ export function mouseLeavesAdjCell() {
     window.HCGDrawer.updateNodeColoring();
   } else {
     // Fallback if drawer not ready
-    d3.selectAll("g.node-cell selectAll use").attr("fill", "var(--node-color)");
+    d3.selectAll("g.node-cell selectAll use").attr("fill", (d) => {
+      if (d.getNodeType() === "Vertex" && d.nodeColor) return d.nodeColor; // unified scale
+      return "var(--node-color)"; // default for clusters
+    });
   }
 
   // 3. Restore all linear edges
@@ -1098,7 +1206,32 @@ export function mouseEntersEdge(
 
     // If not connected to the clicked node, stop here (don't show label)
     if (!isIncident) return;
-  } else {
+  } else if (lockedAdj !== null) {
+    // Get the leaves belonging to the Source and Target clusters of the locked cell
+    const sourceLeaves = new Set(
+      lockedAdj.source.getLeaves().map((n) => n.getID())
+    );
+    const targetLeaves = new Set(
+      lockedAdj.target.getLeaves().map((n) => n.getID())
+    );
+
+    const sID = data.source.getID();
+    const tID = data.target.getID();
+
+    // Check if the hovered edge connects the two locked clusters
+    // (Source -> Target OR Target -> Source)
+    const isRelevantEdge =
+      (sourceLeaves.has(sID) && targetLeaves.has(tID)) ||
+      (targetLeaves.has(sID) && sourceLeaves.has(tID));
+
+    // If the edge is not part of the locked view, stop here (no label)
+    if (!isRelevantEdge) return;
+
+    // Optional: Make the hovered edge slightly thicker to indicate interaction
+    d3.select(event.currentTarget).attr("stroke-width", "4");
+  }
+  // 3. Default: No Locks (Existing "Gray Out" Logic)
+  else {
     const nodeOrder = drawer.nodeOrder;
     if (!nodeOrder || nodeOrder.length === 0) return;
 
@@ -1261,7 +1394,10 @@ export function mouseEntersEdge(
       .filter((d) => d === sourceNode || d === targetNode)
       .attr("opacity", 1)
       .selectAll("use")
-      .attr("fill", "var(--node-color)");
+      .attr("fill", (d) => {
+        if (d.getNodeType() === "Vertex" && d.nodeColor) return d.nodeColor; // unified scale
+        return "var(--node-color)"; // default for clusters
+      });
 
     // c) Highlight the ancestor inclusion bands (i.e., C1-P1, P1-G1, etc.)
     allInclusions
@@ -1388,6 +1524,10 @@ export function mouseEntersEdge(
       }
 
       edgeLabelsGroup.selectAll(".edge-label").remove();
+      edgeLabelsGroup
+        .selectAll(".label-background-rect")
+        .style("opacity", 0)
+        .remove();
 
       edgeLabelsGroup.raise();
 
@@ -1437,12 +1577,14 @@ export function mouseEntersEdge(
 }
 
 export function mouseLeavesEdge(event, edgeLabelsGroup) {
-  // 1. Handle Locked State
   if (lockedNode !== null) {
     // Remove the label
     if (edgeLabelsGroup) {
       edgeLabelsGroup.selectAll(".edge-label").remove();
-      edgeLabelsGroup.selectAll(".label-background-rect").remove();
+      edgeLabelsGroup
+        .selectAll(".label-background-rect")
+        .style("opacity", 0)
+        .remove();
     }
 
     // Restore the edge stroke to the "highlighted" width (3)
@@ -1450,6 +1592,20 @@ export function mouseLeavesEdge(event, edgeLabelsGroup) {
     d3.select(event.currentTarget).attr("stroke-width", 3);
 
     return; // STOP here, do not restore the rest of the graph
+  }
+
+  // Handle Locked Adjacency State
+  if (lockedAdj !== null) {
+    // Just remove the label and exit.
+    // Do NOT restore the graph (allow the adjacency lock to persist).
+    if (edgeLabelsGroup) {
+      edgeLabelsGroup.selectAll(".edge-label").remove();
+      edgeLabelsGroup
+        .selectAll(".label-background-rect")
+        .style("opacity", 0)
+        .remove();
+    }
+    return;
   }
 
   d3.selectAll(".label-background-rect").style("opacity", 0).remove();
@@ -1474,7 +1630,10 @@ export function mouseLeavesEdge(event, edgeLabelsGroup) {
     window.HCGDrawer.updateNodeColoring();
   } else {
     // Fallback if drawer not ready
-    d3.selectAll("g.node-cell selectAll use").attr("fill", "var(--node-color)");
+    d3.selectAll("g.node-cell selectAll use").attr("fill", (d) => {
+      if (d.getNodeType() === "Vertex" && d.nodeColor) return d.nodeColor; // unified scale
+      return "var(--node-color)"; // default for clusters
+    });
   }
 
   // 3. Restore all linear edges
@@ -1500,6 +1659,10 @@ export function mouseLeavesEdge(event, edgeLabelsGroup) {
   // 6. Hide edge label (New Logic)
   if (edgeLabelsGroup) {
     edgeLabelsGroup.selectAll(".edge-label").remove();
+    edgeLabelsGroup
+      .selectAll(".label-background-rect")
+      .style("opacity", 0)
+      .remove();
   }
 
   // 7. Restore the opacity of ALL external node labels
@@ -1529,7 +1692,12 @@ function restoreNodeColoring() {
         const finalColor = window.HCGDrawer.getClusterNodeCalculatedColor(d);
         d3.select(this).select("use").attr("fill", finalColor);
       } else if (nodeType === "Vertex") {
-        d3.select(this).select("use").attr("fill", "var(--node-color)");
+        d3.select(this)
+          .select("use")
+          .attr("fill", (d) => {
+            if (d.getNodeType() === "Vertex" && d.nodeColor) return d.nodeColor; // unified scale
+            return "var(--node-color)"; // default for clusters
+          });
       }
     });
   } else if (
@@ -1542,7 +1710,10 @@ function restoreNodeColoring() {
     // Fallback if drawer not ready
     d3.selectAll("g.node-cell")
       .selectAll("use")
-      .attr("fill", "var(--node-color)");
+      .attr("fill", (d) => {
+        if (d.getNodeType() === "Vertex" && d.nodeColor) return d.nodeColor; // unified scale
+        return "var(--node-color)"; // default for clusters
+      });
   }
 }
 
@@ -1580,4 +1751,36 @@ export function setupEdgeDisplayToggleListener() {
       }
     });
   }
+}
+
+/**
+ * Searches the DOM for the <g class="cluster"> element bound to a specific data object.
+ * The function leverages D3's storage of the bound data object in the element's __data__ property.
+ * * @param {Object} dataObject - The data object to match (e.g., the Node object with id: "Hedge_Gardens_Multiple_2").
+ * @returns {SVGElement | null} The matching <g class="cluster"> DOM element or null if not found.
+ */
+function findElementByDatum(dataObject) {
+  // 1. Select all candidate elements (all <g class="cluster"> elements in the visualization)
+  const candidateElements = d3.selectAll(".cluster").nodes();
+
+  // 2. Iterate and check the bound data
+  for (const element of candidateElements) {
+    const datum = d3.select(element).datum();
+    // The key here is checking if the element's bound data (__data__) is the SAME object
+    if (datum === dataObject) {
+      return element;
+    }
+
+    const labelElement = element.querySelector(".cluster-label");
+    if (labelElement) {
+      // The textContent of the label is the Cluster ID/Name (e.g., "Hedge_Gardens_Multiple_2")
+      const elementLabelText = labelElement.textContent.trim();
+
+      if (elementLabelText === dataObject.id) {
+        return element;
+      }
+    }
+  }
+
+  return null;
 }
