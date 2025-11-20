@@ -43,6 +43,8 @@ export function mouseEntersNodeCell() {
     .selectAll("path.inclusion");
   const allAdjCells = d3.selectAll(".adjacency g.adjacency-cell");
 
+  const isBottommostLevel = data.type == "Vertex";
+
   // Identify all relevant parts
   const leaves = data.getLeaves();
   const leafIDs = new Set(leaves.map((n) => n.getID()));
@@ -61,15 +63,31 @@ export function mouseEntersNodeCell() {
     }
   });
 
-  d3.selectAll(".leaf-label").style("opacity", function () {
-    const id = this.parentNode.getAttribute("data-leaf-id");
-    return leafIDs.has(id) || connectedLeafIDs.has(id) ? 1.0 : 0.2;
-  });
-
-  d3.selectAll(".leaf-labels .label-background").style("opacity", function () {
-    const id = this.parentNode.getAttribute("data-leaf-id");
-    return leafIDs.has(id) || connectedLeafIDs.has(id) ? 0.7 : 0;
-  });
+  if (isBottommostLevel) {
+    d3.selectAll(".leaf-label").style("opacity", function () {
+      const id = this.parentNode.getAttribute("data-leaf-id");
+      return leafIDs.has(id) || connectedLeafIDs.has(id) ? 1.0 : 0.2;
+    });
+    d3.selectAll(".leaf-labels .label-background").style(
+      "opacity",
+      function () {
+        const id = this.parentNode.getAttribute("data-leaf-id");
+        return leafIDs.has(id) || connectedLeafIDs.has(id) ? 0.7 : 0;
+      }
+    );
+  } else {
+    d3.selectAll(".leaf-label").style("opacity", function () {
+      const id = this.parentNode.getAttribute("data-leaf-id");
+      return leafIDs.has(id) ? 1.0 : 0.2;
+    });
+    d3.selectAll(".leaf-labels .label-background").style(
+      "opacity",
+      function () {
+        const id = this.parentNode.getAttribute("data-leaf-id");
+        return leafIDs.has(id) ? 0.7 : 0;
+      }
+    );
+  }
 
   const descendants = [data, ...data.getDescendants()];
   const allRelevantNodes = new Set(descendants);
@@ -136,16 +154,22 @@ export function mouseEntersNodeCell() {
   // These are the leaves connected by an edge but not part of the hovered cluster's leaves
   d3.select(".linear-nodes")
     .selectAll("g.node-cell")
-    .filter((d) => connectedLeafIDs.has(d.getID()) && !leafIDs.has(d.getID())) // Is connected AND is external
+    .filter((d) =>
+      isBottommostLevel
+        ? connectedLeafIDs.has(d.getID()) && !leafIDs.has(d.getID())
+        : null
+    ) // Is connected AND is external
     .attr("opacity", 1)
     .selectAll("use")
     .attr("fill", "var(--node-color)");
 
   // Step 4: Highlight all relevant edges (incident to a leaf node in the hovered cluster)
   allEdges
-    .filter(
-      (d) =>
-        leafIDs.has(d.getSource().getID()) || leafIDs.has(d.getTarget().getID())
+    .filter((d) =>
+      isBottommostLevel
+        ? leafIDs.has(d.getSource().getID()) ||
+          leafIDs.has(d.getTarget().getID())
+        : null
     )
     .attr("opacity", 1)
     .attr("stroke-width", 3)
@@ -214,6 +238,8 @@ export function mouseEntersNodeCell() {
       return relevantClusterIDs.has(id) ? 0.7 : 0;
     }
   );
+
+  d3.selectAll(".label-background-rect").style("opacity", 0).remove();
 
   // --- CLUSTER NODE HOVER LABEL LOGIC ---
   const drawer = window.HCGDrawer;
@@ -478,12 +504,12 @@ export function mouseEntersAdjCell(event, data) {
 
   d3.selectAll(".leaf-label").style("opacity", function () {
     const id = this.parentNode.getAttribute("data-leaf-id");
-    return leafIDs.has(id) || connectedLeafIDs.has(id) ? 1.0 : 0.2;
+    return leafIDs.has(id) ? 1.0 : 0.2;
   });
 
   d3.selectAll(".leaf-labels .label-background").style("opacity", function () {
     const id = this.parentNode.getAttribute("data-leaf-id");
-    return leafIDs.has(id) || connectedLeafIDs.has(id) ? 0.7 : 0;
+    return leafIDs.has(id) ? 0.7 : 0;
   });
 
   // Step 1. FADE EVERYTHING (Initial global fade)
@@ -677,12 +703,6 @@ export function mouseEntersAdjCell(event, data) {
       }
     });
 
-  allNodes
-    .filter((d) => connectedLeafIDs.has(d.id))
-    .attr("opacity", 1)
-    .select("use")
-    .attr("fill", "var(--node-color)");
-
   // h) Highlight only the relevant edges
   allEdges
     .filter((d) => {
@@ -690,9 +710,7 @@ export function mouseEntersAdjCell(event, data) {
       const dTargetID = d.getTarget().getID();
       return (
         (sourceLeaves.has(dSourceID) && targetLeaves.has(dTargetID)) ||
-        (sourceLeaves.has(dTargetID) && targetLeaves.has(dSourceID)) ||
-        (connectedLeafIDs.has(dSourceID) && leafIDs.has(dTargetID)) ||
-        (connectedLeafIDs.has(dTargetID) && leafIDs.has(dSourceID))
+        (sourceLeaves.has(dTargetID) && targetLeaves.has(dSourceID))
       );
     })
     .attr("stroke", (d) => d.edgeColor || "rgb(50, 125, 200)")
