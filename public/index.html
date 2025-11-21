@@ -370,8 +370,38 @@
               margin-top: 10px;
             "
           >
-            <a>Cluster values:</a>
-            <br />
+            <div style="display: flex; align-items: center; gap: 5px">
+              <a>Cluster values:</a>
+              <button
+                id="cluster-values-info-button"
+                title="Info"
+                style="
+                  cursor: pointer;
+                  padding: 0;
+                  border: none;
+                  background: none;
+                  font-weight: bold;
+                  font-size: 1em;
+                  color: inherit;
+                "
+              >
+                ⓘ
+              </button>
+            </div>
+            <span
+              id="cluster-values-inline-info"
+              style="
+                display: none;
+                font-size: 0.85em;
+                font-weight: normal;
+                line-height: 1.2;
+                padding: 3px 0 0 10px;
+                margin-bottom: 5px;
+                border-left: 2px solid var(--cell-boundary-color);
+                white-space: pre-wrap;
+              "
+            >
+            </span>
             <label
               class="toggle-switch"
               style="
@@ -426,7 +456,7 @@
           ></div>
         </div>
         <div id="edge-weight-filter" style="margin-bottom: 12px; display: none">
-          <a>Filter curves by edge weight:</a>
+          <a>Filter edges by weight:</a>
           <div class="slider-container">
             <input
               type="range"
