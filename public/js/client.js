@@ -1,6 +1,9 @@
 import { HierarchicallyClusteredGraph } from "./graph.js";
 import { HierarchicallyClusteredGraphDrawer } from "./drawer_d3.js";
-import { setupEdgeDisplayToggleListener } from "./listeners.js";
+import {
+  setupEdgeDisplayToggleListener,
+  addClusterValueInfoListener,
+} from "./listeners.js";
 
 // --- Get URL parameters ---
 const urlParams = new URLSearchParams(window.location.search);
@@ -204,6 +207,7 @@ async function main() {
 
   setupGoButtonListener();
   setupToggleListener();
+  addClusterValueInfoListener();
 }
 
 // --- Go Button Handler ---

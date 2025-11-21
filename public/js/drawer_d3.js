@@ -226,9 +226,6 @@ export class HierarchicallyClusteredGraphDrawer {
       let minWeight = Infinity;
       let maxWeight = 0;
 
-      let minWeight_slider = Infinity;
-      let maxWeight_slider = 0;
-
       if (this.H && this.H.edges && this.H.edges.length > 0) {
         this.H.edges.forEach((edge) => {
           const weight = edge.getWeight();
@@ -236,17 +233,8 @@ export class HierarchicallyClusteredGraphDrawer {
           // 1. Calculate Overall min/max (unconditional on edge type)
           maxWeight = Math.max(maxWeight, weight);
           minWeight = Math.min(minWeight, weight);
-
-          // 2. Calculate Slider min/max (conditional on inter-cluster edge type)
-          if (edge.source.getParent() != edge.target.getParent()) {
-            maxWeight_slider = Math.max(maxWeight_slider, weight);
-            minWeight_slider = Math.min(minWeight_slider, weight);
-          }
         });
       }
-
-      if (minWeight_slider == Infinity) minWeight_slider = minWeight;
-      if (maxWeight_slider == 0) maxWeight_slider = maxWeight;
 
       this.H.getVertices().forEach((v) => {
         const w = v.getWeight();
@@ -263,9 +251,9 @@ export class HierarchicallyClusteredGraphDrawer {
       };
 
       // Use the calculated min, defaulting to 0 if no edges exist
-      const min = minWeight_slider === Infinity ? 0 : minWeight_slider;
+      const min = minWeight === Infinity ? 0 : minWeight;
       // Use the calculated max, adding a buffer of +1 to ensure the max weight is reachable on the slider
-      const max = maxWeight_slider > 0 ? maxWeight_slider : 1;
+      const max = maxWeight > 0 ? maxWeight : 1;
 
       if (filterContainer && sliderEl && valueLabel) {
         // Show the filter controls
@@ -2167,6 +2155,8 @@ export class HierarchicallyClusteredGraphDrawer {
 
     const threshold = this.edgeWeightThreshold ?? this.edgeLabelStats.min;
 
+    // --- Filter Linear Edges (Edges between leaf nodes) ---
+    // We select all linear edge paths and hide them.
     d3.selectAll(".linear-edges path").each((d, i, nodes) => {
       const edge = d3.select(nodes[i]).datum();
       if (!edge || !edge.getWeight) return;
@@ -2175,6 +2165,81 @@ export class HierarchicallyClusteredGraphDrawer {
       const visible = !isNaN(weight) && weight >= threshold;
 
       d3.select(nodes[i]).attr("display", visible ? null : "none");
+    });
+
+    // --- Filter Adjacency Cells (Edges between leaf nodes, non-diagonal) ---
+    // This handles the edge representations (polygons/triangles) in the bottommost level matrices.
+    d3.selectAll(".adjacency g.adjacency-cell").each(function (d) {
+      // Check if it's a bottom-level cell (source and target are Vertices) and not a diagonal cell (self-loop).
+      if (
+        d.source.getNodeType() === "Vertex" &&
+        d.target.getNodeType() === "Vertex" &&
+        d.source.getID() !== d.target.getID()
+      ) {
+        const cellGroup = d3.select(this);
+
+        // Handle edge s (source) -> t (target)
+        if (d.edge_s_to_t) {
+          const weight = parseFloat(d.edge_s_to_t.getWeight());
+          const belowThreshold = !isNaN(weight) && weight < threshold;
+          const color = belowThreshold ? "white" : d.edge_s_to_t.edgeColor;
+
+          // Select the polygon representing the s->t edge (best-effort selection, often the 3rd child polygon).
+          const sToTPoly = cellGroup.select("polygon:nth-child(3)");
+          if (!sToTPoly.empty()) {
+            sToTPoly.attr("fill", color);
+          }
+
+          // If it's an undirected edge, both d.edge_s_to_t and d.edge_t_to_s either point to the same object or d.edge_t_to_s is null. In this case, both cell polygons must be the same color.
+          if (!d.edge_t_to_s || d.edge_s_to_t === d.edge_t_to_s) {
+            const tToSPoly = cellGroup.select("polygon:nth-child(1)");
+            if (!tToSPoly.empty()) {
+              tToSPoly.attr("fill", color);
+            }
+          }
+        }
+
+        // Handle edge t (target) -> s (source)
+        if (d.edge_t_to_s) {
+          const weight = parseFloat(d.edge_t_to_s.getWeight());
+          const belowThreshold = !isNaN(weight) && weight < threshold;
+          const color = belowThreshold ? "white" : d.edge_t_to_s.edgeColor;
+
+          // Select the polygon representing the t->s edge (best-effort selection, often the 4th child polygon).
+          const tToSPoly = cellGroup.select("polygon:nth-child(3)");
+          if (!tToSPoly.empty()) {
+            tToSPoly.attr("fill", color);
+          }
+
+          // If it's an undirected edge, both d.edge_s_to_t and d.edge_t_to_s either point to the same object or d.edge_t_to_s is null. In this case, both cell polygons must be the same color.
+          if (!d.edge_s_to_t || d.edge_s_to_t === d.edge_t_to_s) {
+            const sTotPoly = cellGroup.select("polygon:nth-child(1)");
+            if (!sTotPoly.empty()) {
+              sTotPoly.attr("fill", color);
+            }
+          }
+        }
+      }
+    });
+
+    // --- Filter Node Cells (Self-loops at bottommost level) ---
+    // This handles the self-loop representation (diamond shape) in the node cells, which use the node's weight.
+    d3.selectAll(".linear-nodes g.node-cell").each((d, i, nodes) => {
+      // Only apply to leaf nodes (Vertices)
+      if (d.getNodeType() === "Vertex" && typeof d.getWeight === "function") {
+        // The node's weight is used as the self-loop weight in this context.
+        const weight = parseFloat(d.getWeight());
+        const belowThreshold = !isNaN(weight) && weight < threshold;
+
+        // The visual element is the <use> tag inside the node-cell group.
+        const nodeElement = d3.select(nodes[i]).select("use");
+
+        if (!nodeElement.empty()) {
+          // Use white if below threshold, otherwise use the pre-computed node color (d.nodeColor).
+          const color = belowThreshold ? "white" : d.nodeColor;
+          nodeElement.attr("fill", color);
+        }
+      }
     });
   }
 

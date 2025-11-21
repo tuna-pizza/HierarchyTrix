@@ -1784,3 +1784,29 @@ function findElementByDatum(dataObject) {
 
   return null;
 }
+
+/**
+ * Adds an event listener to the "Cluster values" info button to toggle inline text visibility.
+ */
+export function addClusterValueInfoListener() {
+  const infoButton = document.getElementById("cluster-values-info-button");
+  const infoTextElement = document.getElementById("cluster-values-inline-info");
+
+  const infoText =
+    "How the value of cluster nodes (edges) are calculated.\n" +
+    "- Ratio: Shows the ratio of actual intra-cluster (inter-cluster) edges to the maximum possible intra-cluster (inter-cluster) edges.\n" +
+    "- Absolute: Shows the raw number of intra-cluster (inter-cluster) edges between the nodes contained within the cluster.";
+
+  if (infoButton && infoTextElement) {
+    // 1. Set the content once
+    infoTextElement.textContent = infoText;
+
+    // 2. Add the click listener to toggle the display style
+    infoButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      // Toggle visibility: 'block' if currently 'none', or 'none' otherwise
+      infoTextElement.style.display =
+        infoTextElement.style.display === "block" ? "none" : "block";
+    });
+  }
+}
