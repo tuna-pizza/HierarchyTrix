@@ -358,7 +358,7 @@
             font-size: 0.9rem;
             font-family: var(--font-main);
             font-size: 0.9rem;
-            color: var(--cluster-node-color-high);
+            color: var(--color-background-medium);
           "
         >
           <div
@@ -374,7 +374,7 @@
               <a>Cluster values:</a>
               <button
                 id="cluster-values-info-button"
-                title="Info"
+                title="info"
                 style="
                   cursor: pointer;
                   padding: 0;
@@ -382,7 +382,7 @@
                   background: none;
                   font-weight: bold;
                   font-size: 1em;
-                  color: inherit;
+                  color: var(--color-background-medium);
                 "
               >
                 ⓘ
@@ -399,6 +399,7 @@
                 margin-bottom: 5px;
                 border-left: 2px solid var(--cell-boundary-color);
                 white-space: pre-wrap;
+                color: var(--color-background-medium);
               "
             >
             </span>
@@ -589,8 +590,19 @@
         const zoomGroup = svgElement.querySelector(".zoom-group");
 
         // Calculate the bounding box of the content for accurate export size
-        const bbox = svgElement.getBBox();
-
+        let bbox;
+        // If the content is inside zoomGroup, measure the content group
+        if (zoomGroup) {
+          // Temporarily reset the transform to get the true, unscaled bounds
+          const originalTransformBeforeMeasure =
+            zoomGroup.getAttribute("transform");
+          zoomGroup.setAttribute("transform", "translate(0,0) scale(1)");
+          bbox = zoomGroup.getBBox();
+          zoomGroup.setAttribute("transform", originalTransformBeforeMeasure); // Restore original transform
+        } else {
+          // Fallback to measuring the entire SVG element
+          bbox = svgElement.getBBox();
+        }
         // 1. Store original viewBox/width/height
         const originalViewBox = svgElement.getAttribute("viewBox");
         const originalWidth = svgElement.getAttribute("width");
@@ -611,7 +623,7 @@
 
         // 3. RESET ZOOM/PAN to default view temporarily for export
         if (zoomGroup) {
-          zoomGroup.setAttribute("transform", "translate(0,0)scale(1)");
+          zoomGroup.setAttribute("transform", "translate(0,0) scale(1)");
         }
 
         // 4. FONT & COLOR FIX: Hardcode computed styles to resolve CSS variable issues

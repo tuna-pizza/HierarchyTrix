@@ -17,6 +17,13 @@
   stroke: #555;
 }
 
+svg text {
+  user-select: none;
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* IE10+/Edge */
+}
+
 /* --- 2. 90s THEME VARIABLES (Override) --- */
 .k00l90z-mode {
   /* 90s K00L Font: Monospace/Pixelated look */
@@ -414,7 +421,7 @@ legend {
 
 #control-panel-container {
   position: absolute;
-  width: 290px;
+  width: 270px;
   right: 20px;
   margin-top: 10px;
   top: initial;
@@ -493,7 +500,7 @@ legend {
   cursor: pointer;
   font-family: var(--font-main);
   font-size: 0.9rem;
-  color: var(--cluster-node-color-high);
+  color: var(--color-background-medium);
   user-select: none;
   margin-top: 5px;
   margin-bottom: 5px;
@@ -511,7 +518,7 @@ legend {
   position: relative;
   width: 36px;
   height: 18px;
-  background-color: var(--cluster-node-color-high);
+  background-color: var(--color-background-medium);
   border-radius: 18px;
   transition: background-color 0.3s;
 }
@@ -536,13 +543,13 @@ legend {
 
 /* Keep the same bright color for both states */
 .toggle-switch input:checked + .slider {
-  background-color: var(--cluster-node-color-high);
+  background-color: var(--color-background-medium);
 }
 
 /* Labels always fully visible */
 .toggle-label-left,
 .toggle-label-right {
-  color: var(--cluster-node-color-high);
+  color: var(--color-background-medium);
   opacity: 1;
 }
 
