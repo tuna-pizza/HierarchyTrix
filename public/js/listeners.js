@@ -5,284 +5,304 @@ const inclusionColor = "var(--tree-color)"; // Original color from drawer_d3.js 
 // 1. State variable at the top level (after imports)
 let lockedNode = null;
 let lockedAdj = null;
+let lockedEdge = null;
+
+// @param {boolean} restoreVisuals - If true, resets opacity/colors to default.
+// Set to false if you are about to immediately apply a new lock.
+function unlockAll(restoreVisuals = true) {
+  lockedNode = null;
+  lockedAdj = null;
+  lockedEdge = null;
+
+  // Always clear tooltips
+  d3.select(".edge-labels").selectAll(".edge-label, .adj-hover-label").remove();
+  d3.selectAll(".label-background-rect").remove();
+
+  // Only restore the graph if we aren't about to highlight something else
+  if (restoreVisuals) {
+    restoreGraphVisuals();
+  }
+}
 
 // 2. Function to handle node clicks
 export function nodeClicked(event, data) {
   event.stopPropagation();
 
-  if (lockedNode === data) {
-    lockedNode = null;
-    mouseLeavesNodeCell();
-  } else {
-    // If an adjacency cell was locked, unlock it
-    if (lockedAdj !== null) {
-      lockedAdj = null;
-    }
+  unlockAll(false);
+  lockedNode = data;
 
-    lockedNode = data;
-    mouseEntersNodeCell.call(event.currentTarget, event, data);
-  }
+  // mark this as coming from a click:
+  event.__fromClick__ = true;
+
+  mouseEntersNodeCell.call(event.currentTarget, event, data);
 }
 
 // 3. Function to handle background clicks
 export function backgroundClicked() {
-  let wasLocked = false;
-
-  if (lockedNode !== null) {
-    lockedNode = null;
-    mouseLeavesNodeCell();
-    wasLocked = true;
-  }
-
-  if (lockedAdj !== null) {
-    lockedAdj = null;
-    // If we haven't already reset via node leaves, do it here
-    if (!wasLocked) mouseLeavesAdjCell();
-  }
+  unlockAll(true);
 }
 
 // 4. Function to handle adj cells clicks
 export function adjCellClicked(event, data) {
   event.stopPropagation(); // Prevent background click
 
-  if (lockedAdj === data) {
-    // If clicking the currently locked cell, unlock it
-    lockedAdj = null;
-    mouseLeavesAdjCell.call(this, event, data);
-  } else {
-    // If a node was locked, unlock it first (mutual exclusivity)
-    if (lockedNode !== null) {
-      lockedNode = null;
-      // We don't call mouseLeavesNodeCell here because the
-      // mouseEntersAdjCell below will handle the "fade all" logic
-    }
+  unlockAll(false);
+  lockedNode = data;
 
-    // Lock the new adjacency cell
-    lockedAdj = data;
+  // mark this as coming from a click:
+  event.__fromClick__ = true;
 
-    // Force the highlight logic immediately
-    // We use .call(event.currentTarget...) to ensure 'this' refers to the DOM element
-    mouseEntersAdjCell.call(event.currentTarget, event, data);
-  }
+  mouseEntersAdjCell.call(event.currentTarget, event, data);
 }
 
-export function mouseEntersNodeCell() {
-  const nodeCell = d3.select(this);
-  const data = nodeCell.datum();
+// 5. Function to handle linear edges clicks
+export function edgeClicked(
+  event,
+  data,
+  drawer,
+  xCoordMap,
+  yCoordMap,
+  edgeLabelsGroup,
+  cellSize
+) {
+  event.stopPropagation();
 
-  // Block if Node is locked to another, OR if Adj is locked
-  if ((lockedNode !== null && lockedNode !== data) || lockedAdj !== null)
-    return;
+  unlockAll(false);
+  lockedNode = data;
 
-  // Identify all elements
-  const allNodeCells = d3.selectAll("g.node-cell");
-  const allEdges = d3.select(".linear-edges").selectAll("path.edge");
-  const allInclusions = d3
-    .select(".cluster-inclusions")
-    .selectAll("path.inclusion");
-  const allAdjCells = d3.selectAll(".adjacency g.adjacency-cell");
+  // mark this as coming from a click:
+  event.__fromClick__ = true;
 
-  const isBottommostLevel = data.type == "Vertex";
-
-  // Identify all relevant parts
-  const leaves = data.getLeaves();
-  const leafIDs = new Set(leaves.map((n) => n.getID()));
-
-  // Set of ALL leaf IDs connected to the cluster (internal + external)
-  const connectedLeafIDs = new Set();
-  allEdges.each((d) => {
-    const sourceID = d.getSource().getID();
-    const targetID = d.getTarget().getID();
-
-    if (leafIDs.has(sourceID)) {
-      connectedLeafIDs.add(targetID);
-    }
-    if (leafIDs.has(targetID)) {
-      connectedLeafIDs.add(sourceID);
-    }
-  });
-
-  if (isBottommostLevel) {
-    d3.selectAll(".leaf-label").style("opacity", function () {
-      const id = this.parentNode.getAttribute("data-leaf-id");
-      return leafIDs.has(id) || connectedLeafIDs.has(id) ? 1.0 : 0.2;
-    });
-    d3.selectAll(".leaf-labels .label-background").style(
-      "opacity",
-      function () {
-        const id = this.parentNode.getAttribute("data-leaf-id");
-        return leafIDs.has(id) || connectedLeafIDs.has(id) ? 0.7 : 0;
-      }
-    );
-  } else {
-    d3.selectAll(".leaf-label").style("opacity", function () {
-      const id = this.parentNode.getAttribute("data-leaf-id");
-      return leafIDs.has(id) ? 1.0 : 0.2;
-    });
-    d3.selectAll(".leaf-labels .label-background").style(
-      "opacity",
-      function () {
-        const id = this.parentNode.getAttribute("data-leaf-id");
-        return leafIDs.has(id) ? 0.7 : 0;
-      }
-    );
-  }
-
-  const descendants = [data, ...data.getDescendants()];
-  const allRelevantNodes = new Set(descendants);
-
-  // --- IDENTIFY ANCESTORS ---
-  // Create a set for all ancestors (parents, grandparents, etc.)
-  const ancestorNodes = new Set();
-  let currentParent = data.getParent();
-  while (currentParent) {
-    ancestorNodes.add(currentParent);
-    currentParent = currentParent.getParent();
-  }
-
-  // Merge ancestor nodes into the set of nodes to be highlighted
-  ancestorNodes.forEach((node) => allRelevantNodes.add(node));
-
-  // Step 1: Fade ALL non-relevant elements
-
-  // a) Fade all *cluster nodes* (but preserve linear nodes and the hovered cluster's internal nodes)
-  allNodeCells
-    .filter((d) => d.getNodeType() !== 0) // Target only cluster nodes
-    .filter((d) => !allRelevantNodes.has(d)) // Exclude the hovered cluster, its descendants, AND its ancestors
-    .attr("opacity", 0.2)
-    .selectAll("use")
-    .attr("fill", "gray");
-
-  // b) Fade all edges
-  allEdges
-    .attr("opacity", 0.2)
-    .attr("stroke", "lightgray")
-    .attr("fill", "lightgray");
-
-  // c) Fade all inclusion bands
-  allInclusions.attr("opacity", 0.2).attr("fill", "lightgray");
-
-  // d) Identify and fade ONLY adjacency cells NOT in a relevant cluster (hovered cluster or any ancestor)
-  // We check against the parent of the adjacency cell's source node.
-  allAdjCells
-    .filter((d) => !allRelevantNodes.has(d.source.getParent()))
-    .attr("opacity", 0.2)
-    .each(function (d) {
-      d3.select(this).select("use").attr("fill", "lightgray");
-    });
-
-  // Step 2: Highlight the hovered node, its descendants, and its ancestors (headers and leaves)
-  allNodeCells
-    .filter((d) => allRelevantNodes.has(d))
-    .attr("opacity", 1) // Restore opacity to 1
-    .each(function (d) {
-      const nodeType = d.getNodeType();
-      const cell = d3.select(this).select("use");
-
-      if (nodeType === "Cluster" && window.HCGDrawer) {
-        // Recalculate and apply the cluster color
-        const finalColor = window.HCGDrawer.getClusterNodeCalculatedColor(d);
-        cell.attr("fill", finalColor);
-      } else if (nodeType === "Vertex") {
-        // Apply the default color for leaf nodes
-        cell.attr("fill", (d) => {
-          if (d.getNodeType() === "Vertex" && d.nodeColor) return d.nodeColor; // unified scale
-          return "var(--node-color)"; // default for clusters
-        });
-      }
-    });
-
-  // Step 3: Highlight the OTHER ENDPOINTS in the linear layout (EXTERNAL NODES)
-  // These are the leaves connected by an edge but not part of the hovered cluster's leaves
-  d3.select(".linear-nodes")
-    .selectAll("g.node-cell")
-    .filter((d) =>
-      isBottommostLevel
-        ? connectedLeafIDs.has(d.getID()) && !leafIDs.has(d.getID())
-        : null
-    ) // Is connected AND is external
-    .attr("opacity", 1)
-    .selectAll("use")
-    .attr("fill", (d) => {
-      if (d.getNodeType() === "Vertex" && d.nodeColor) return d.nodeColor; // unified scale
-      return "var(--node-color)"; // default for clusters
-    });
-
-  // Step 4: Highlight all relevant edges (incident to a leaf node in the hovered cluster)
-  allEdges
-    .filter((d) =>
-      isBottommostLevel
-        ? leafIDs.has(d.getSource().getID()) ||
-          leafIDs.has(d.getTarget().getID())
-        : null
-    )
-    .attr("opacity", 1)
-    .attr("stroke-width", 3)
-    .attr("stroke", (d) => d.edgeColor || "rgb(50, 125, 200)")
-    .attr("fill", (d) => d.edgeColor || "rgb(50, 125, 200)");
-
-  // Step 5: Highlight all relevant inclusion bands (hovered node and all ancestors)
-  allInclusions
-    .filter((d) => allRelevantNodes.has(d.node)) // Check if the band's node is the hovered node or an ancestor
-    .attr("opacity", 1)
-    .attr("fill", inclusionColor);
-
-  // Step 6: Dim background cells in relevant matrices for contrast.
-  allAdjCells
-    .filter(
-      (d) =>
-        // 1. Must be in a relevant matrix (a cluster that is the hovered node, an ancestor, or a descendant)
-        allRelevantNodes.has(d.source.getParent()) &&
-        // 2. Must NOT be on the row/column corresponding to a relevant node (hovered, ancestor, or descendant)
-        !(allRelevantNodes.has(d.source) || allRelevantNodes.has(d.target))
-    )
-    .attr("opacity", 0.2);
-
-  // Step 7: HIGHLIGHT ROWS/COLUMNS OF MATRICES
-  allAdjCells
-    .filter(
-      (d) => allRelevantNodes.has(d.source) || allRelevantNodes.has(d.target)
-    )
-    .attr("opacity", 1)
-    .each(function (d) {
-      const cellColor = d && d.color ? d.color : "lightgray";
-      d3.select(this).select("use").attr("fill", cellColor);
-    });
-
-  // Step 8: Fade all cluster labels except the node's and its ancestors'
-  // 1. Identify all cluster node IDs that should remain visible (hovered node + ancestors)
-  const relevantClusterIDs = new Set(
-    Array.from(allRelevantNodes)
-      .filter((n) => n.getNodeType() !== 0) // Filter to only include cluster nodes
-      .map((n) => String(n.getID()))
+  mouseEntersEdge(
+    event,
+    data,
+    drawer,
+    xCoordMap,
+    yCoordMap,
+    edgeLabelsGroup,
+    cellSize
   );
+}
 
-  // 2. Dim ALL cluster labels
-  d3.selectAll(".cluster-label").style("opacity", 0.2);
+export function mouseEntersNodeCell(event, data) {
+  const isLocked =
+    lockedNode !== null || lockedAdj !== null || lockedEdge !== null;
+  let skipGlobalUpdates = false;
 
-  // 3. Highlight only the labels that match the relevant cluster IDs
-  d3.selectAll(".cluster-label").style("opacity", function () {
-    const labelText = d3.select(this).text().trim();
-    if (relevantClusterIDs.has(labelText)) {
-      return 1.0;
+  if (isLocked && !event.__fromClick__) {
+    const currentOpacity = d3.select(this).attr("opacity");
+    if (currentOpacity && parseFloat(currentOpacity) < 0.5) {
+      return;
+    }
+    skipGlobalUpdates = true;
+  }
+
+  if (!skipGlobalUpdates) {
+    // Identify all elements
+    const allNodeCells = d3.selectAll("g.node-cell");
+    const allEdges = d3.select(".linear-edges").selectAll("path.edge");
+    const allInclusions = d3
+      .select(".cluster-inclusions")
+      .selectAll("path.inclusion");
+    const allAdjCells = d3.selectAll(".adjacency g.adjacency-cell");
+
+    const isBottommostLevel = data.type == "Vertex";
+
+    // Identify all relevant parts
+    const leaves = data.getLeaves();
+    const leafIDs = new Set(leaves.map((n) => n.getID()));
+
+    // Set of ALL leaf IDs connected to the cluster (internal + external)
+    const connectedLeafIDs = new Set();
+    allEdges.each((d) => {
+      const sourceID = d.getSource().getID();
+      const targetID = d.getTarget().getID();
+
+      if (leafIDs.has(sourceID)) {
+        connectedLeafIDs.add(targetID);
+      }
+      if (leafIDs.has(targetID)) {
+        connectedLeafIDs.add(sourceID);
+      }
+    });
+
+    if (isBottommostLevel) {
+      d3.selectAll(".leaf-label").style("opacity", function () {
+        const id = this.parentNode.getAttribute("data-leaf-id");
+        return leafIDs.has(id) || connectedLeafIDs.has(id) ? 1.0 : 0.2;
+      });
+      d3.selectAll(".leaf-labels .label-background").style(
+        "opacity",
+        function () {
+          const id = this.parentNode.getAttribute("data-leaf-id");
+          return leafIDs.has(id) || connectedLeafIDs.has(id) ? 0.7 : 0;
+        }
+      );
     } else {
-      return 0.2;
+      d3.selectAll(".leaf-label").style("opacity", function () {
+        const id = this.parentNode.getAttribute("data-leaf-id");
+        return leafIDs.has(id) ? 1.0 : 0.2;
+      });
+      d3.selectAll(".leaf-labels .label-background").style(
+        "opacity",
+        function () {
+          const id = this.parentNode.getAttribute("data-leaf-id");
+          return leafIDs.has(id) ? 0.7 : 0;
+        }
+      );
     }
-  });
 
-  // Step 9: Highlight relevant cluster node labels (tilted)
-  d3.selectAll(".cluster-node-label").style("opacity", function () {
-    const labelText = d3.select(this).text().trim();
-    return relevantClusterIDs.has(labelText) ? 1.0 : 0.2;
-  });
+    const descendants = [data, ...data.getDescendants()];
+    const allRelevantNodes = new Set(descendants);
 
-  d3.selectAll(".cluster-node-labels .label-background").style(
-    "opacity",
-    function () {
-      const id = this.parentNode.getAttribute("data-cluster-id");
-      return relevantClusterIDs.has(id) ? 0.7 : 0;
+    // --- IDENTIFY ANCESTORS ---
+    // Create a set for all ancestors (parents, grandparents, etc.)
+    const ancestorNodes = new Set();
+    let currentParent = data.getParent();
+    while (currentParent) {
+      ancestorNodes.add(currentParent);
+      currentParent = currentParent.getParent();
     }
-  );
+
+    // Merge ancestor nodes into the set of nodes to be highlighted
+    ancestorNodes.forEach((node) => allRelevantNodes.add(node));
+
+    // Step 1: Fade ALL non-relevant elements
+
+    // a) Fade all *cluster nodes* (but preserve linear nodes and the hovered cluster's internal nodes)
+    allNodeCells
+      .filter((d) => d.getNodeType() !== 0) // Target only cluster nodes
+      .filter((d) => !allRelevantNodes.has(d)) // Exclude the hovered cluster, its descendants, AND its ancestors
+      .attr("opacity", 0.2);
+
+    // b) Fade all edges
+    allEdges.attr("opacity", 0.1);
+
+    // c) Fade all inclusion bands
+    allInclusions.attr("opacity", 0.2);
+
+    // d) Identify and fade ONLY adjacency cells NOT in a relevant cluster (hovered cluster or any ancestor)
+    // We check against the parent of the adjacency cell's source node.
+    allAdjCells
+      .filter((d) => !allRelevantNodes.has(d.source.getParent()))
+      .attr("opacity", 0.2);
+
+    // Step 2: Highlight the hovered node, its descendants, and its ancestors (headers and leaves)
+    allNodeCells
+      .filter((d) => allRelevantNodes.has(d))
+      .attr("opacity", 1) // Restore opacity to 1
+      .each(function (d) {
+        const nodeType = d.getNodeType();
+        const cell = d3.select(this).select("use");
+
+        if (nodeType === "Cluster" && window.HCGDrawer) {
+          // Recalculate and apply the cluster color
+          const finalColor = window.HCGDrawer.getClusterNodeCalculatedColor(d);
+          cell.attr("fill", finalColor);
+        } else if (nodeType === "Vertex") {
+          // Apply the default color for leaf nodes
+          cell.attr("fill", (d) => {
+            if (d.getNodeType() === "Vertex" && d.nodeColor) return d.nodeColor; // unified scale
+            return "var(--node-color)"; // default for clusters
+          });
+        }
+      });
+
+    // Step 3: Highlight the OTHER ENDPOINTS in the linear layout (EXTERNAL NODES)
+    // These are the leaves connected by an edge but not part of the hovered cluster's leaves
+    d3.select(".linear-nodes")
+      .selectAll("g.node-cell")
+      .filter((d) =>
+        isBottommostLevel
+          ? connectedLeafIDs.has(d.getID()) && !leafIDs.has(d.getID())
+          : null
+      ) // Is connected AND is external
+      .attr("opacity", 1)
+      .selectAll("use")
+      .attr("fill", (d) => {
+        if (d.getNodeType() === "Vertex" && d.nodeColor) return d.nodeColor; // unified scale
+        return "var(--node-color)"; // default for clusters
+      });
+
+    // Step 4: Highlight all relevant edges (incident to a leaf node in the hovered cluster)
+    allEdges
+      .filter((d) =>
+        isBottommostLevel
+          ? leafIDs.has(d.getSource().getID()) ||
+            leafIDs.has(d.getTarget().getID())
+          : null
+      )
+      .attr("opacity", 1)
+      .attr("stroke", (d) => d.edgeColor || "rgb(50, 125, 200)")
+      .attr("fill", (d) => d.edgeColor || "rgb(50, 125, 200)");
+
+    // Step 5: Highlight all relevant inclusion bands (hovered node and all ancestors)
+    allInclusions
+      .filter((d) => allRelevantNodes.has(d.node)) // Check if the band's node is the hovered node or an ancestor
+      .attr("opacity", 1)
+      .attr("fill", inclusionColor);
+
+    // Step 6: Dim background cells in relevant matrices for contrast.
+    allAdjCells
+      .filter(
+        (d) =>
+          // 1. Must be in a relevant matrix (a cluster that is the hovered node, an ancestor, or a descendant)
+          allRelevantNodes.has(d.source.getParent()) &&
+          // 2. Must NOT be on the row/column corresponding to a relevant node (hovered, ancestor, or descendant)
+          !(allRelevantNodes.has(d.source) || allRelevantNodes.has(d.target))
+      )
+      .attr("opacity", 0.2);
+
+    // Step 7: HIGHLIGHT ROWS/COLUMNS OF MATRICES
+    allAdjCells
+      .filter(
+        (d) => allRelevantNodes.has(d.source) || allRelevantNodes.has(d.target)
+      )
+      .attr("opacity", 1);
+
+    // Step 8: Fade all cluster labels except the node's and its ancestors'
+    // 1. Identify all cluster node IDs that should remain visible (hovered node + ancestors)
+    const relevantClusterIDs = new Set(
+      Array.from(allRelevantNodes)
+        .filter((n) => n.getNodeType() !== 0) // Filter to only include cluster nodes
+        .map((n) => String(n.getID()))
+    );
+
+    // 2. Dim ALL cluster labels
+    d3.selectAll(".cluster-label").style("opacity", 0.2);
+
+    // 3. Highlight only the labels that match the relevant cluster IDs
+    d3.selectAll(".cluster-label").style("opacity", function () {
+      const labelText = d3.select(this).text().trim();
+      if (relevantClusterIDs.has(labelText)) {
+        return 1.0;
+      } else {
+        return 0.2;
+      }
+    });
+
+    // Step 9: Highlight relevant cluster node labels (tilted)
+    d3.selectAll(".cluster-node-label").style("opacity", function () {
+      const labelText = d3.select(this).text().trim();
+      return relevantClusterIDs.has(labelText) ? 1.0 : 0.2;
+    });
+
+    d3.selectAll(".cluster-node-labels .label-background").style(
+      "opacity",
+      function () {
+        const id = this.parentNode.getAttribute("data-cluster-id");
+        return relevantClusterIDs.has(id) ? 0.7 : 0;
+      }
+    );
+
+    d3.selectAll(".cluster-hit-area").style("pointer-events", function () {
+      const parent = this.parentNode;
+      const label = parent.querySelector(".cluster-label");
+      if (!label) return "none";
+      const id = label.textContent.trim();
+      return relevantClusterIDs.has(id) ? "all" : "none";
+    });
+  }
 
   d3.selectAll(".label-background-rect").style("opacity", 0).remove();
 
@@ -480,54 +500,29 @@ export function mouseEntersNodeCell() {
 }
 
 export function mouseLeavesNodeCell() {
-  // Block if ANY lock is active
-  if (lockedNode !== null || lockedAdj !== null) return;
+  d3.select(".edge-labels")
+    .selectAll(".adj-hover-label, .label-background-rect")
+    .remove();
 
-  // 1. Restore all node cells AND their correct colors
+  if (lockedNode || lockedAdj || lockedEdge) return;
+
   restoreNodeColoring();
 
-  // 2. Restore all adjacency cells
-  d3.selectAll(".adjacency g.adjacency-cell")
-    .attr("opacity", 1)
-    .each(function (d) {
-      const cellColor = d && d.color ? d.color : "lightgray";
-      d3.select(this).select("use").attr("fill", cellColor);
-    });
-
-  // 3. Restore all linear edges
-  d3.select(".linear-edges")
-    .selectAll("path.edge")
-    .attr("opacity", 1)
-    .attr("stroke-width", 2)
-    .attr("stroke", (d) => d.edgeColor || "var(--edge-color)")
-    .attr("fill", (d) => d.edgeColor || "var(--edge-color)");
-
-  // 4. Restore all inclusion bands
-  d3.select(".cluster-inclusions")
-    .selectAll("path.inclusion")
-    .attr("opacity", 1)
-    .attr("fill", inclusionColor);
-
-  // 5. Restore Leaf Labels AND Cluster Node Labels
-  d3.selectAll(".leaf-label").style("opacity", 1.0);
-  d3.selectAll(".leaf-labels .label-background").style("opacity", 0.7);
-
-  d3.selectAll(".cluster-node-label").style("opacity", 1.0);
-  d3.selectAll(".cluster-node-labels .label-background").style("opacity", 0.7);
-
-  d3.selectAll(".cluster-label").style("opacity", 1.0);
-
-  // 5. Hide edge label
-  const edgeLabelsGroup = d3.select(".edge-labels");
-  if (edgeLabelsGroup) {
-    edgeLabelsGroup.selectAll(".adj-hover-label").remove();
-    d3.selectAll(".label-background-rect").style("opacity", 0).remove();
-  }
+  restoreGraphVisuals();
 }
 
 export function mouseEntersAdjCell(event, data) {
-  // Block if Node is locked, OR if Adj is locked to another
-  if (lockedNode !== null || (lockedAdj !== null && lockedAdj !== data)) return;
+  const isLocked =
+    lockedNode !== null || lockedAdj !== null || lockedEdge !== null;
+  let skipGlobalUpdates = false;
+
+  if (isLocked && !event.__fromClick__) {
+    const currentOpacity = d3.select(this).attr("opacity");
+    if (currentOpacity && parseFloat(currentOpacity) < 0.5) {
+      return;
+    }
+    skipGlobalUpdates = true;
+  }
 
   let adjCellExtraText = "";
 
@@ -544,241 +539,256 @@ export function mouseEntersAdjCell(event, data) {
     part = "right";
   }
 
-  // 1. Identify relevant clusters/nodes for all highlights
-  const sourceLeaves = new Set(data.source.getLeaves().map((n) => n.getID()));
-  const targetLeaves = new Set(data.target.getLeaves().map((n) => n.getID()));
-
-  const sourceAndDescendants = [data.source, ...data.source.getDescendants()];
-  const targetAndDescendants = [data.target, ...data.target.getDescendants()];
-  const allRelevantNodes = new Set([
-    // Source, Target, and all their descendants
-    ...sourceAndDescendants,
-    ...targetAndDescendants,
-  ]);
-
-  // Get IDs of source/target and the parent cluster for local matrix comparison
-  const dataSourceID = data.source.getID();
-  const dataTargetID = data.target.getID();
-  const parentCluster = data.source.getParent();
-
-  // Select ALL elements
-  const allAdjCells = d3.selectAll(".adjacency g.adjacency-cell");
-  const allEdges = d3.select(".linear-edges").selectAll("path.edge");
-  const allInclusions = d3
-    .select(".cluster-inclusions")
-    .selectAll("path.inclusion");
-  const allNodes = d3.selectAll("g.node-cell"); // All nodes (cluster and leaf)
-
-  // Identify all relevant parts
-  let leaves = data.source.getLeaves();
-  leaves = leaves.concat(data.target.getLeaves());
-  const leafIDs = new Set(leaves.map((n) => n.getID()));
-
-  // Set of ALL leaf IDs connected to the cluster (internal + external)
-  const connectedLeafIDs = new Set();
-  allEdges.each((d) => {
-    const sourceID = d.getSource().getID();
-    const targetID = d.getTarget().getID();
-
-    if (leafIDs.has(sourceID)) {
-      connectedLeafIDs.add(targetID);
-    }
-    if (leafIDs.has(targetID)) {
-      connectedLeafIDs.add(sourceID);
-    }
-  });
-
-  d3.selectAll(".leaf-label").style("opacity", function () {
-    const id = this.parentNode.getAttribute("data-leaf-id");
-    return leafIDs.has(id) ? 1.0 : 0.2;
-  });
-
-  d3.selectAll(".leaf-labels .label-background").style("opacity", function () {
-    const id = this.parentNode.getAttribute("data-leaf-id");
-    return leafIDs.has(id) ? 0.7 : 0;
-  });
-
-  // Step 1. FADE EVERYTHING (Initial global fade)
-
-  // a) Gray out ALL ADJACENCY CELLS
-  allAdjCells.attr("opacity", 0.2).each(function (d) {
-    const cellColor = d && d.color ? d.color : "lightgray";
-    d3.select(this).select("use").attr("fill", cellColor);
-  });
-
-  // b) Gray out all inclusion bands
-  allInclusions.attr("fill", inclusionColor).attr("opacity", 0.2);
-
-  // c) Gray out all edges
-  allEdges
-    .attr("stroke", "lightgray")
-    .attr("fill", "lightgray")
-    .attr("stroke-width", "2")
-    .attr("opacity", 0.2);
-
-  // d) Gray out all nodes (cluster and leaf)
-  allNodes.attr("opacity", 0.2).selectAll("use").attr("fill", "gray");
-
-  // f) Gray out other cluster labels based on the matrix level ---
   const sourceNode = data.source;
   const targetNode = data.target;
-
-  // detect bottommost matrix: both source and target are clusters with no children
   const sourceIsLeafCluster =
     !sourceNode.children || sourceNode.children.length === 0;
   const targetIsLeafCluster =
     !targetNode.children || targetNode.children.length === 0;
-
   const isBottommostLevel = sourceIsLeafCluster && targetIsLeafCluster;
 
-  // Set 1 (relevantIDs): For Tilted Node Labels. Includes A, B, and descendants, but EXCLUDES M.
-  // This causes M's tilted label to fade (as requested).
-  const relevantIDs = new Set();
+  if (!skipGlobalUpdates) {
+    // 1. Identify relevant clusters/nodes for all highlights
+    const sourceLeaves = new Set(data.source.getLeaves().map((n) => n.getID()));
+    const targetLeaves = new Set(data.target.getLeaves().map((n) => n.getID()));
 
-  // Set 2 (horizontalLabelHighlightIDs): For Horizontal Cluster Labels. Includes M, A, B, and descendants.
-  // This causes M's horizontal label to highlight (as requested).
-  const horizontalLabelHighlightIDs = new Set();
+    const sourceAndDescendants = [data.source, ...data.source.getDescendants()];
+    const targetAndDescendants = [data.target, ...data.target.getDescendants()];
+    const allRelevantNodes = new Set([
+      // Source, Target, and all their descendants
+      ...sourceAndDescendants,
+      ...targetAndDescendants,
+    ]);
 
-  if (parentCluster) {
-    // M's ID is explicitly added to the horizontal set for HIGHLIGHTING the current matrix's name.
-    horizontalLabelHighlightIDs.add(String(parentCluster.getID()));
-  }
+    // Get IDs of source/target and the parent cluster for local matrix comparison
+    const dataSourceID = data.source.getID();
+    const dataTargetID = data.target.getID();
+    const parentCluster = data.source.getParent();
 
-  if (!isBottommostLevel) {
-    // Only run this logic for high-level matrices (Case 2: Cluster-Cluster)
-    const A = data.source;
-    const B = data.target;
+    // Select ALL elements
+    const allAdjCells = d3.selectAll(".adjacency g.adjacency-cell");
+    const allEdges = d3.select(".linear-edges").selectAll("path.edge");
+    const allInclusions = d3
+      .select(".cluster-inclusions")
+      .selectAll("path.inclusion");
+    const allNodes = d3.selectAll("g.node-cell"); // All nodes (cluster and leaf)
 
-    // Add A and descendants to both sets
-    const descendantsOfA = [A, ...A.getDescendants()];
-    descendantsOfA.forEach((node) => {
-      const id = String(node.getID());
-      relevantIDs.add(id);
-      horizontalLabelHighlightIDs.add(id);
+    // Identify all relevant parts
+    let leaves = data.source.getLeaves();
+    leaves = leaves.concat(data.target.getLeaves());
+    const leafIDs = new Set(leaves.map((n) => n.getID()));
+
+    // Set of ALL leaf IDs connected to the cluster (internal + external)
+    const connectedLeafIDs = new Set();
+    allEdges.each((d) => {
+      const sourceID = d.getSource().getID();
+      const targetID = d.getTarget().getID();
+
+      if (leafIDs.has(sourceID)) {
+        connectedLeafIDs.add(targetID);
+      }
+      if (leafIDs.has(targetID)) {
+        connectedLeafIDs.add(sourceID);
+      }
     });
 
-    // Add B and descendants to both sets
-    if (A !== B) {
-      const descendantsOfB = [B, ...B.getDescendants()];
-      descendantsOfB.forEach((node) => {
+    d3.selectAll(".leaf-label").style("opacity", function () {
+      const id = this.parentNode.getAttribute("data-leaf-id");
+      return leafIDs.has(id) ? 1.0 : 0.2;
+    });
+
+    d3.selectAll(".leaf-labels .label-background").style(
+      "opacity",
+      function () {
+        const id = this.parentNode.getAttribute("data-leaf-id");
+        return leafIDs.has(id) ? 0.7 : 0;
+      }
+    );
+
+    // Step 1. FADE EVERYTHING (Initial global fade)
+
+    // a) Fade ALL ADJACENCY CELLS
+    allAdjCells.attr("opacity", 0.2);
+
+    // b) Fade all inclusion bands
+    allInclusions.attr("fill", inclusionColor).attr("opacity", 0.2);
+
+    // c) Fade all edges
+    allEdges.attr("stroke-width", "2").attr("opacity", 0.1);
+
+    // d) Fade all nodes (cluster and leaf)
+    allNodes.attr("opacity", 0.2);
+
+    // f) Fade other cluster labels based on the matrix level ---
+    const sourceNode = data.source;
+    const targetNode = data.target;
+
+    // detect bottommost matrix: both source and target are clusters with no children
+    const sourceIsLeafCluster =
+      !sourceNode.children || sourceNode.children.length === 0;
+    const targetIsLeafCluster =
+      !targetNode.children || targetNode.children.length === 0;
+
+    const isBottommostLevel = sourceIsLeafCluster && targetIsLeafCluster;
+
+    // Set 1 (relevantIDs): For Tilted Node Labels. Includes A, B, and descendants, but EXCLUDES M.
+    // This causes M's tilted label to fade (as requested).
+    const relevantIDs = new Set();
+
+    // Set 2 (horizontalLabelHighlightIDs): For Horizontal Cluster Labels. Includes M, A, B, and descendants.
+    // This causes M's horizontal label to highlight (as requested).
+    const horizontalLabelHighlightIDs = new Set();
+
+    if (parentCluster) {
+      // M's ID is explicitly added to the horizontal set for HIGHLIGHTING the current matrix's name.
+      horizontalLabelHighlightIDs.add(String(parentCluster.getID()));
+    }
+
+    if (!isBottommostLevel) {
+      // Only run this logic for high-level matrices (Case 2: Cluster-Cluster)
+      const A = data.source;
+      const B = data.target;
+
+      // Add A and descendants to both sets
+      const descendantsOfA = [A, ...A.getDescendants()];
+      descendantsOfA.forEach((node) => {
         const id = String(node.getID());
         relevantIDs.add(id);
         horizontalLabelHighlightIDs.add(id);
       });
+
+      // Add B and descendants to both sets
+      if (A !== B) {
+        const descendantsOfB = [B, ...B.getDescendants()];
+        descendantsOfB.forEach((node) => {
+          const id = String(node.getID());
+          relevantIDs.add(id);
+          horizontalLabelHighlightIDs.add(id);
+        });
+      }
     }
-  }
 
-  // 1. Apply to Standard Horizontal Cluster Labels (.cluster-label)
-  d3.selectAll(".cluster-label").style("opacity", function () {
-    const labelText = d3.select(this).text().trim();
-    return horizontalLabelHighlightIDs.has(labelText) ? 1.0 : 0.2;
-  });
-
-  // 2. Apply to New Tilted Cluster Node Labels (.cluster-node-label)
-  d3.selectAll(".cluster-node-label").style("opacity", function () {
-    const labelText = d3.select(this).text().trim();
-    return relevantIDs.has(labelText) ? 1.0 : 0.2;
-  });
-
-  // 3. Apply to New Tilted Cluster Node Backgrounds
-  d3.selectAll(".cluster-node-labels .label-background").style(
-    "opacity",
-    function () {
-      const id = this.parentNode.getAttribute("data-cluster-id");
-      return relevantIDs.has(id) ? 0.7 : 0;
-    }
-  );
-
-  // Step 2. HIGHLIGHTING (Restore opacity/color for relevant elements)
-
-  // a) Highlight all cells belonging to the included (descendant) matrices
-  allAdjCells
-    .filter((d) => allRelevantNodes.has(d.source.getParent()))
-    .attr("opacity", 1)
-    .each(function (d) {
-      d3.select(this).select("use").attr("fill", d.color);
+    // 1. Apply to Standard Horizontal Cluster Labels (.cluster-label)
+    d3.selectAll(".cluster-label").style("opacity", function () {
+      const labelText = d3.select(this).text().trim();
+      return horizontalLabelHighlightIDs.has(labelText) ? 1.0 : 0.2;
     });
 
-  // b) Highlight ONLY the row and column cells within the hovered matrix (Local Matrix)
-  allAdjCells
-    .filter(
-      (d) =>
-        d.source.getParent() === parentCluster &&
-        d.target.getParent() === parentCluster &&
-        (d.source.getID() === dataSourceID ||
-          d.target.getID() === dataTargetID ||
-          d.source.getID() === dataTargetID ||
-          d.target.getID() === dataSourceID)
-    )
-    .attr("opacity", 1)
-    .each(function (d) {
-      d3.select(this).select("use").attr("fill", d.color);
+    // 2. Apply to New Tilted Cluster Node Labels (.cluster-node-label)
+    d3.selectAll(".cluster-node-label").style("opacity", function () {
+      const labelText = d3.select(this).text().trim();
+      return relevantIDs.has(labelText) ? 1.0 : 0.2;
     });
 
-  // c) Highlight the hovered cell itself (ensuring full color/opacity)
-  d3.select(this)
-    .attr("opacity", 1)
-    .selectAll("use")
-    .attr("fill", (d) => d.color);
+    // 3. Apply to New Tilted Cluster Node Backgrounds
+    d3.selectAll(".cluster-node-labels .label-background").style(
+      "opacity",
+      function () {
+        const id = this.parentNode.getAttribute("data-cluster-id");
+        return relevantIDs.has(id) ? 0.7 : 0;
+      }
+    );
 
-  // d) Highlight the included clusters (Inclusion Bands)
-  allInclusions.filter((d) => allRelevantNodes.has(d.node)).attr("opacity", 1);
+    // Step 2. HIGHLIGHTING (Restore opacity/color for relevant elements)
 
-  // e, f, g) Consolidate node highlighting: Leaf nodes get default color, Cluster nodes get calculated color
-  allNodes
-    .filter((d) => allRelevantNodes.has(d)) // Highlight ALL relevant nodes
-    .attr("opacity", 1) // Restore full opacity
-    .each(function (d) {
-      const nodeType = d.getNodeType();
+    // a) Highlight all cells belonging to the included (descendant) matrices
+    allAdjCells
+      .filter((d) => allRelevantNodes.has(d.source.getParent()))
+      .attr("opacity", 1)
+      .each(function (d) {
+        d3.select(this).select("use").attr("fill", d.color);
+      });
 
-      if (nodeType === "Cluster") {
-        // Check for Cluster
-        // Restore calculated color for Cluster Nodes (override 'gray' fade)
-        if (
-          window.HCGDrawer &&
-          typeof window.HCGDrawer.H.getIntraClusterStats === "function"
-        ) {
-          const computedStyle = getComputedStyle(document.body);
-          let colorLow =
-            computedStyle
-              .getPropertyValue("--cluster-node-color-low")
-              ?.trim() || "#ffffff";
-          let colorHigh =
-            computedStyle
-              .getPropertyValue("--cluster-node-color-high")
-              ?.trim() || "#1e90ff";
+    // b) Highlight ONLY the row and column cells within the hovered matrix (Local Matrix)
+    allAdjCells
+      .filter(
+        (d) =>
+          d.source.getParent() === parentCluster &&
+          d.target.getParent() === parentCluster &&
+          (d.source.getID() === dataSourceID ||
+            d.target.getID() === dataTargetID ||
+            d.source.getID() === dataTargetID ||
+            d.target.getID() === dataSourceID)
+      )
+      .attr("opacity", 1)
+      .each(function (d) {
+        d3.select(this).select("use").attr("fill", d.color);
+      });
 
-          const scale = d3
-            .scaleLinear()
-            .range([colorLow, colorHigh])
-            .clamp(true);
+    // c) Highlight the hovered cell itself (ensuring full color/opacity)
+    d3.select(this)
+      .attr("opacity", 1)
+      .selectAll("use")
+      .attr("fill", (d) => d.color);
 
-          const toggle = document.getElementById("edge-display-toggle");
-          const isAbsolute = toggle ? toggle.checked : false;
+    // d) Highlight the included clusters (Inclusion Bands)
+    allInclusions
+      .filter((d) => allRelevantNodes.has(d.node))
+      .attr("opacity", 1);
 
-          let maxEdges = 0;
-          if (isAbsolute) {
-            window.HCGDrawer.H.getNodes().forEach((n) => {
-              if (n.getNodeType() === "Cluster") {
-                const stats = window.HCGDrawer.H.getIntraClusterStats(n);
-                if (stats.actualEdges > maxEdges) maxEdges = stats.actualEdges;
-              }
-            });
-            scale.domain([0, Math.max(maxEdges, 1)]);
+    // e, f, g) Consolidate node highlighting: Leaf nodes get default color, Cluster nodes get calculated color
+    allNodes
+      .filter((d) => allRelevantNodes.has(d)) // Highlight ALL relevant nodes
+      .attr("opacity", 1) // Restore full opacity
+      .each(function (d) {
+        const nodeType = d.getNodeType();
+
+        if (nodeType === "Cluster") {
+          if (
+            window.HCGDrawer &&
+            typeof window.HCGDrawer.H.getIntraClusterStats === "function"
+          ) {
+            const computedStyle = getComputedStyle(document.body);
+            let colorLow =
+              computedStyle
+                .getPropertyValue("--cluster-node-color-low")
+                ?.trim() || "#ffffff";
+            let colorHigh =
+              computedStyle
+                .getPropertyValue("--cluster-node-color-high")
+                ?.trim() || "#1e90ff";
+
+            const scale = d3
+              .scaleLinear()
+              .range([colorLow, colorHigh])
+              .clamp(true);
+
+            const toggle = document.getElementById("edge-display-toggle");
+            const isAbsolute = toggle ? toggle.checked : false;
+
+            let maxEdges = 0;
+            if (isAbsolute) {
+              window.HCGDrawer.H.getNodes().forEach((n) => {
+                if (n.getNodeType() === "Cluster") {
+                  const stats = window.HCGDrawer.H.getIntraClusterStats(n);
+                  if (stats.actualEdges > maxEdges)
+                    maxEdges = stats.actualEdges;
+                }
+              });
+              scale.domain([0, Math.max(maxEdges, 1)]);
+            } else {
+              scale.domain([0, 1]);
+            }
+
+            const stats = window.HCGDrawer.H.getIntraClusterStats(d);
+            const value = isAbsolute ? stats.actualEdges : stats.ratio;
+            let finalColor = scale(value);
+
+            // Apply zero-value override
+            if (value === 0) {
+              finalColor = "rgb(255,255,255)";
+            }
+
+            d3.select(this).select("use").attr("fill", finalColor);
           } else {
-            scale.domain([0, 1]);
+            d3.select(this)
+              .select("use")
+              .attr("fill", (d) => {
+                if (d.getNodeType() === "Vertex" && d.nodeColor)
+                  return d.nodeColor; // unified scale
+                return "var(--node-color)"; // default for clusters
+              });
           }
-
-          const stats = window.HCGDrawer.H.getIntraClusterStats(d);
-          const value = isAbsolute ? stats.actualEdges : stats.ratio;
-          let finalColor = scale(value);
-
-          // Apply zero-value override
-          if (value === 0) {
-            finalColor = "rgb(255,255,255)";
-          }
-
-          d3.select(this).select("use").attr("fill", finalColor);
         } else {
           d3.select(this)
             .select("use")
@@ -788,30 +798,33 @@ export function mouseEntersAdjCell(event, data) {
               return "var(--node-color)"; // default for clusters
             });
         }
-      } else {
-        d3.select(this)
-          .select("use")
-          .attr("fill", (d) => {
-            if (d.getNodeType() === "Vertex" && d.nodeColor) return d.nodeColor; // unified scale
-            return "var(--node-color)"; // default for clusters
-          });
-      }
-    });
+      });
 
-  // h) Highlight only the relevant edges
-  allEdges
-    .filter((d) => {
-      const dSourceID = d.getSource().getID();
-      const dTargetID = d.getTarget().getID();
-      return (
-        (sourceLeaves.has(dSourceID) && targetLeaves.has(dTargetID)) ||
-        (sourceLeaves.has(dTargetID) && targetLeaves.has(dSourceID))
-      );
-    })
-    .attr("stroke", (d) => d.edgeColor || "rgb(50, 125, 200)")
-    .attr("fill", (d) => d.edgeColor || "rgb(50, 125, 200)")
-    .attr("stroke-width", 3)
-    .attr("opacity", 1);
+    // h) Highlight only the relevant edges
+    allEdges
+      .filter((d) => {
+        const dSourceID = d.getSource().getID();
+        const dTargetID = d.getTarget().getID();
+        return (
+          (sourceLeaves.has(dSourceID) && targetLeaves.has(dTargetID)) ||
+          (sourceLeaves.has(dTargetID) && targetLeaves.has(dSourceID))
+        );
+      })
+      .attr("stroke", (d) => d.edgeColor || "rgb(50, 125, 200)")
+      .attr("fill", (d) => d.edgeColor || "rgb(50, 125, 200)")
+      .attr("opacity", 1);
+
+    const relevantClusterIDs = new Set();
+    relevantClusterIDs.add(data.source.parentNode.id);
+    allRelevantNodes.forEach((n) => relevantClusterIDs.add(String(n.getID())));
+    // Also include parent matrices if needed, but start with relevant nodes
+    d3.selectAll(".cluster-hit-area").style("pointer-events", function () {
+      const parent = this.parentNode;
+      const label = parent.querySelector(".cluster-label");
+      if (!label) return "none";
+      return relevantClusterIDs.has(label.textContent.trim()) ? "all" : "none";
+    });
+  }
 
   // === SHOW EDGE LABEL ON HOVER (only for bottommost clusters) ===
   try {
@@ -1120,9 +1133,6 @@ export function mouseEntersAdjCell(event, data) {
 }
 
 export function mouseLeavesAdjCell() {
-  // Block if ANY lock is active
-  if (lockedNode !== null || lockedAdj !== null) return;
-
   // === REMOVE HOVER LABEL ===
   d3.select(".edge-labels")
     .selectAll(".adj-hover-label")
@@ -1133,53 +1143,10 @@ export function mouseLeavesAdjCell() {
 
   d3.selectAll(".label-background-rect").style("opacity", 0).remove();
 
-  // 1. Restore all adjacency cells
-  d3.selectAll(".adjacency g.adjacency-cell")
-    .attr("opacity", 1)
-    .each(function (d) {
-      const cellColor = d && d.color ? d.color : "lightgray";
-      d3.select(this).select("use").attr("fill", cellColor);
-    });
+  if (lockedNode || lockedAdj || lockedEdge) return;
 
-  // 2. Restore ALL nodes (cluster and leaf)
-  d3.selectAll("g.node-cell").attr("opacity", 1);
-  // Re-apply the correct coloring logic
-  if (
-    window.HCGDrawer &&
-    typeof window.HCGDrawer.updateNodeColoring === "function"
-  ) {
-    window.HCGDrawer.updateNodeColoring();
-  } else {
-    // Fallback if drawer not ready
-    d3.selectAll("g.node-cell selectAll use").attr("fill", (d) => {
-      if (d.getNodeType() === "Vertex" && d.nodeColor) return d.nodeColor; // unified scale
-      return "var(--node-color)"; // default for clusters
-    });
-  }
-
-  // 3. Restore all linear edges
-  d3.select(".linear-edges")
-    .selectAll("path.edge")
-    .attr("opacity", 1)
-    .attr("stroke", (d) => d.edgeColor || "var(--edge-color)")
-    .attr("stroke-width", 2)
-    .attr("fill", (d) => d.edgeColor || "var(--edge-color)");
-
-  // 4. Restore all inclusion bands
-  d3.select(".cluster-inclusions")
-    .selectAll("path.inclusion")
-    .attr("opacity", 1)
-    .attr("fill", inclusionColor);
-
-  // 5. restore labels and rects
-  d3.selectAll(".leaf-label").style("opacity", 1.0);
-  d3.selectAll(".leaf-labels .label-background").style("opacity", 0.7);
-
-  d3.selectAll(".cluster-node-label").style("opacity", 1.0);
-  d3.selectAll(".cluster-node-labels .label-background").style("opacity", 0.7);
-
-  // 6. restore cluster labels that may have been dimmed on adjacency hover
-  d3.selectAll(".cluster-label").style("opacity", 1.0);
+  restoreNodeColoring();
+  restoreGraphVisuals();
 }
 
 export function mouseEntersEdge(
@@ -1191,61 +1158,30 @@ export function mouseEntersEdge(
   edgeLabelsGroup,
   cellSize
 ) {
-  // 1. Handle Locked State
-  if (lockedNode !== null) {
-    // Use IDs to check if the edge connects to the locked node (or its descendants)
-    const lockedLeafIDs = new Set(lockedNode.getLeaves().map((n) => n.getID()));
-    const sourceID = data.source.getID();
-    const targetID = data.target.getID();
+  const isLocked =
+    lockedNode !== null || lockedAdj !== null || lockedEdge !== null;
+  let skipGlobalUpdates = false;
 
-    // The edge is incident if its Source OR Target is in the locked set
-    const isIncident =
-      lockedLeafIDs.has(sourceID) || lockedLeafIDs.has(targetID);
-
-    d3.select(event.currentTarget).attr("stroke-width", "4");
-
-    // If not connected to the clicked node, stop here (don't show label)
-    if (!isIncident) return;
-  } else if (lockedAdj !== null) {
-    // Get the leaves belonging to the Source and Target clusters of the locked cell
-    const sourceLeaves = new Set(
-      lockedAdj.source.getLeaves().map((n) => n.getID())
-    );
-    const targetLeaves = new Set(
-      lockedAdj.target.getLeaves().map((n) => n.getID())
-    );
-
-    const sID = data.source.getID();
-    const tID = data.target.getID();
-
-    // Check if the hovered edge connects the two locked clusters
-    // (Source -> Target OR Target -> Source)
-    const isRelevantEdge =
-      (sourceLeaves.has(sID) && targetLeaves.has(tID)) ||
-      (targetLeaves.has(sID) && sourceLeaves.has(tID));
-
-    // If the edge is not part of the locked view, stop here (no label)
-    if (!isRelevantEdge) return;
-
-    // Optional: Make the hovered edge slightly thicker to indicate interaction
-    d3.select(event.currentTarget).attr("stroke-width", "4");
+  if (isLocked && !event.__fromClick__) {
+    const currentOpacity = d3.select(event.currentTarget).attr("opacity");
+    if (currentOpacity && parseFloat(currentOpacity) < 0.5) {
+      return;
+    }
+    skipGlobalUpdates = true;
   }
-  // 3. Default: No Locks (Existing "Gray Out" Logic)
-  else {
-    const nodeOrder = drawer.nodeOrder;
-    if (!nodeOrder || nodeOrder.length === 0) return;
 
-    // 1. Get the string IDs of the source and target for safe comparison
+  if (!skipGlobalUpdates) {
+    // --- 1. Standard Edge Highlight Logic ---
+
+    // Fade labels
     const sourceNodeID = String(data.source.getID());
     const targetNodeID = String(data.target.getID());
 
-    // 2. Gray out all the nodes labels (except the end-nodes)
     d3.selectAll(".leaf-label").style("opacity", function () {
       const id = this.parentNode.getAttribute("data-leaf-id");
       if (id === sourceNodeID || id === targetNodeID) return 1.0;
       return 0.2;
     });
-
     d3.selectAll(".leaf-labels .label-background").style(
       "opacity",
       function () {
@@ -1255,123 +1191,48 @@ export function mouseEntersEdge(
       }
     );
 
-    const sourceNode = data.getSource();
-    const targetNode = data.getTarget();
-
-    // 1. Define selections
     const allAdjCells = d3.selectAll(".adjacency g.adjacency-cell");
     const allEdges = d3.select(".linear-edges").selectAll("path.edge");
     const allInclusions = d3
       .select(".cluster-inclusions")
       .selectAll("path.inclusion");
-    const allNodes = d3.selectAll("g.node-cell"); // All nodes (cluster and leaf)
+    const allNodes = d3.selectAll("g.node-cell");
 
-    // 2. FADE EVERYTHING
+    // Fade Everything
     allAdjCells.attr("opacity", 0.2);
     allInclusions.attr("opacity", 0.2).attr("fill", inclusionColor);
-    allEdges
-      .attr("opacity", 0.2)
-      .attr("stroke", "lightgray")
-      .attr("stroke-width", "2")
-      .attr("fill", "lightgray");
-    allNodes.attr("opacity", 0.2).selectAll("use").attr("fill", "gray");
+    allEdges.attr("opacity", 0.1).attr("stroke-width", "2");
+    allNodes.attr("opacity", 0.2);
 
-    // 3. IDENTIFY ANCESTORS
+    // Identify Ancestors for Context
     const ancestorNodes = new Set();
-    let currentSource = sourceNode;
-    let currentTarget = targetNode;
+    let currentSource = data.getSource();
+    let currentTarget = data.getTarget();
 
-    // // OPTION 1
-    // Trace ancestors up the tree. This set includes the immediate parent clusters.
-    let ancestorsSource = new Array();
-    let ancestorsTarget = new Array();
-    while (currentSource.getParent()) {
-      ancestorsSource.push(currentSource);
+    // (Simple ancestor trace for highlighting)
+    while (currentSource) {
+      ancestorNodes.add(currentSource);
       currentSource = currentSource.getParent();
     }
-    while (currentTarget.getParent()) {
-      ancestorsTarget.push(currentTarget);
+    while (currentTarget) {
+      ancestorNodes.add(currentTarget);
       currentTarget = currentTarget.getParent();
     }
-    // a) Add nodes from Source path until a node in the Target's ancestors is found
-    let node = sourceNode.getParent();
-    ancestorNodes.add(node);
-    let sourceReachedLCA = false;
-    while (node && !sourceReachedLCA) {
-      if (ancestorsTarget.includes(node)) {
-        // Stop adding nodes once the LCA (or an ancestor of the LCA) is found
-        sourceReachedLCA = true;
-        currentSource = node;
-      } else ancestorNodes.add(node);
-      node = node.getParent();
-    }
-    // b) Add nodes from Target path until a node in the Source's ancestors is found
-    node = targetNode.getParent();
-    ancestorNodes.add(node);
-    let targetReachedLCA = false;
-    while (node && !targetReachedLCA) {
-      // The Set handles duplicates, so adding a common ancestor (like the LCA) twice is fine
 
-      if (ancestorsSource.includes(node)) {
-        // Stop adding nodes once the LCA (or an ancestor of the LCA) is found
-        targetReachedLCA = true;
-        currentTarget = node;
-      } else ancestorNodes.add(node);
-      node = node.getParent();
-    }
-    // // END OPTION 1
-
-    // OPTION 2
-    // while (currentSource != currentTarget) {
-    //   ancestorNodes.add(currentSource);
-    //   ancestorNodes.add(currentTarget);
-    //   if (currentSource.getParent()) currentSource = currentSource.getParent();
-    //   else break;
-    //   if (currentTarget.getParent()) currentTarget = currentTarget.getParent();
-    //   else break;
-    // }
-    // END OPTION 2
-
-    // Apply grey-out/highlight logic to cluster labels
+    // Highlight Labels
     const relevantIDs = new Set();
-
-    // Add the two lowest-level clusters (u and v) that contain the edge.
     relevantIDs.add(data.source.getID());
     relevantIDs.add(data.target.getID());
-
-    // Add all ancestor matrices collected during the traversal.
     ancestorNodes.forEach((n) => relevantIDs.add(n.getID()));
 
-    if (currentSource) {
-      relevantIDs.add(currentSource.getID());
-    }
-    if (currentTarget) {
-      relevantIDs.add(currentTarget.getID());
-    }
-
-    // Apply grey-out/highlight logic to cluster labels
     d3.selectAll(".cluster-label").style("opacity", function () {
-      // Get the unique cluster ID from the label text (which is assumed to be the ID)
       const labelText = d3.select(this).text().trim();
-      // Check if the label's ID is in the set of relevant IDs
-      if (relevantIDs.has(labelText)) {
-        return 1.0;
-      } else {
-        // Grey-out all other labels
-        return 0.2;
-      }
+      return relevantIDs.has(labelText) ? 1.0 : 0.2;
     });
-
-    // Apply grey-out/highlight logic to cluster node labels
-    // Next two lines are to not highlight too  much
-    relevantIDs.delete(currentSource.getID());
-    relevantIDs.delete(currentTarget.getID());
-
     d3.selectAll(".cluster-node-label").style("opacity", function () {
       const labelText = d3.select(this).text().trim();
       return relevantIDs.has(labelText) ? 1.0 : 0.2;
     });
-
     d3.selectAll(".cluster-node-labels .label-background").style(
       "opacity",
       function () {
@@ -1380,18 +1241,15 @@ export function mouseEntersEdge(
       }
     );
 
-    // 4. HIGHLIGHT RELEVANT ELEMENTS
-
-    // a) Highlight the hovered edge
+    // Highlight Specific Elements
     d3.select(event.currentTarget)
       .attr("opacity", 1)
       .attr("stroke", data.edgeColor || "var(--edge-color)")
-      .attr("stroke-width", "4")
+      .attr("stroke-width", "3")
       .attr("fill", data.edgeColor || "var(--edge-color)");
 
-    // b) Highlight the endpoint leaf nodes (linear layout/hierarchy view)
     allNodes
-      .filter((d) => d === sourceNode || d === targetNode)
+      .filter((d) => d === data.getSource() || d === data.getTarget())
       .attr("opacity", 1)
       .selectAll("use")
       .attr("fill", (d) => {
@@ -1399,13 +1257,12 @@ export function mouseEntersEdge(
         return "var(--node-color)"; // default for clusters
       });
 
-    // c) Highlight the ancestor inclusion bands (i.e., C1-P1, P1-G1, etc.)
     allInclusions
       .filter((d) => ancestorNodes.has(d.node))
       .attr("opacity", 1)
       .attr("fill", inclusionColor);
 
-    // d) HIGHLIGHT the rows/columns corresponding to the ancestor nodes.
+    // Highlight Adj Cells for context
     allAdjCells
       .filter(
         (d) =>
@@ -1416,68 +1273,34 @@ export function mouseEntersEdge(
           d.target == data.target ||
           d.target == data.source
       )
-      .attr("opacity", 1)
-      .each(function (d) {
-        // Ensure the full color is applied, overriding the dimming
-        const cellColor = d && d.color ? d.color : "lightgray";
-        d3.select(this).select("use").attr("fill", cellColor);
-      });
+      .attr("opacity", 1);
 
-    // e) Highlight ONLY the ancestor cluster headers (not the other leaf nodes).
+    // Highlight Ancestor Cluster Nodes
     allNodes
-      .filter((d) => d.getNodeType() !== 0 && ancestorNodes.has(d)) // Filter for non-leaf nodes that are in the ancestor set
+      .filter((d) => d.getNodeType() !== 0 && ancestorNodes.has(d))
       .attr("opacity", 1)
       .each(function (d) {
-        // Inline logic to re-calculate and apply color, overriding the 'gray' fade
+        // (Reuse cluster color logic)
         if (
           window.HCGDrawer &&
-          typeof window.HCGDrawer.H.getIntraClusterStats === "function"
+          typeof window.HCGDrawer.getClusterNodeCalculatedColor === "function"
         ) {
-          const computedStyle = getComputedStyle(document.body);
-          let colorLow =
-            computedStyle
-              .getPropertyValue("--cluster-node-color-low")
-              ?.trim() || "#ffffff";
-          let colorHigh =
-            computedStyle
-              .getPropertyValue("--cluster-node-color-high")
-              ?.trim() || "#1e90ff";
-
-          const toggle = document.getElementById("edge-display-toggle");
-          const isAbsolute = toggle ? toggle.checked : false;
-
-          // Use the correct scale (d3.scaleLinear)
-          const scale = d3
-            .scaleLinear()
-            .range([colorLow, colorHigh])
-            .clamp(true);
-
-          let maxEdges = 0;
-          if (isAbsolute) {
-            window.HCGDrawer.H.getNodes().forEach((n) => {
-              if (n.getNodeType() === "Cluster") {
-                const stats = window.HCGDrawer.H.getIntraClusterStats(n);
-                if (stats.actualEdges > maxEdges) maxEdges = stats.actualEdges;
-              }
-            });
-            scale.domain([0, Math.max(maxEdges, 1)]);
-          } else {
-            scale.domain([0, 1]);
-          }
-
-          const stats = window.HCGDrawer.H.getIntraClusterStats(d);
-          const value = isAbsolute ? stats.actualEdges : stats.ratio;
-          let finalColor = scale(value);
-
-          // Apply zero-value override
-          if (value === 0) {
-            finalColor = "rgb(255,255,255)";
-          }
-
-          d3.select(this).select("use").attr("fill", finalColor);
+          d3.select(this)
+            .select("use")
+            .attr("fill", window.HCGDrawer.getClusterNodeCalculatedColor(d));
         }
       });
+
+    d3.selectAll(".cluster-hit-area").style("pointer-events", function () {
+      const parent = this.parentNode;
+      const label = parent.querySelector(".cluster-label");
+      if (!label) return "none";
+      return relevantIDs.has(label.textContent.trim()) ? "all" : "none";
+    });
   }
+
+  d3.select(event.currentTarget).attr("stroke-width", "3");
+
   // First, check for an existing edge label
   let labelText = data.getLabel();
 
@@ -1577,27 +1400,12 @@ export function mouseEntersEdge(
 }
 
 export function mouseLeavesEdge(event, edgeLabelsGroup) {
-  if (lockedNode !== null) {
-    // Remove the label
-    if (edgeLabelsGroup) {
-      edgeLabelsGroup.selectAll(".edge-label").remove();
-      edgeLabelsGroup
-        .selectAll(".label-background-rect")
-        .style("opacity", 0)
-        .remove();
-    }
-
-    // Restore the edge stroke to the "highlighted" width (3)
-    // instead of the "default" width (2)
-    d3.select(event.currentTarget).attr("stroke-width", 3);
-
-    return; // STOP here, do not restore the rest of the graph
+  if (event && event.currentTarget) {
+    d3.select(event.currentTarget).attr("stroke-width", "2");
   }
 
-  // Handle Locked Adjacency State
-  if (lockedAdj !== null) {
-    // Just remove the label and exit.
-    // Do NOT restore the graph (allow the adjacency lock to persist).
+  if (lockedNode !== null || lockedAdj !== null || lockedEdge !== null) {
+    // Remove the label
     if (edgeLabelsGroup) {
       edgeLabelsGroup.selectAll(".edge-label").remove();
       edgeLabelsGroup
@@ -1609,71 +1417,37 @@ export function mouseLeavesEdge(event, edgeLabelsGroup) {
   }
 
   d3.selectAll(".label-background-rect").style("opacity", 0).remove();
+  if (edgeLabelsGroup) edgeLabelsGroup.selectAll(".edge-label").remove();
 
-  // 2. Handle Unlocked State (Restore everything)
+  restoreNodeColoring();
+  restoreGraphVisuals();
+}
 
-  // 1. Restore all adjacency cells
-  d3.selectAll(".adjacency g.adjacency-cell")
-    .attr("opacity", 1)
-    .each(function (d) {
-      const cellColor = d && d.color ? d.color : "lightgray";
-      d3.select(this).select("use").attr("fill", cellColor);
-    });
-
-  // 2. Restore ALL nodes (cluster and leaf)
-  d3.selectAll("g.node-cell").attr("opacity", 1);
-  // Re-apply the correct coloring logic
-  if (
-    window.HCGDrawer &&
-    typeof window.HCGDrawer.updateNodeColoring === "function"
-  ) {
-    window.HCGDrawer.updateNodeColoring();
-  } else {
-    // Fallback if drawer not ready
-    d3.selectAll("g.node-cell selectAll use").attr("fill", (d) => {
-      if (d.getNodeType() === "Vertex" && d.nodeColor) return d.nodeColor; // unified scale
-      return "var(--node-color)"; // default for clusters
-    });
-  }
-
-  // 3. Restore all linear edges
+function restoreGraphVisuals() {
+  // 1. Adj Cells
+  d3.selectAll(".adjacency g.adjacency-cell").attr("opacity", 1);
+  // 2. Nodes
+  restoreNodeColoring();
+  // 3. Edges
   d3.select(".linear-edges")
     .selectAll("path.edge")
     .attr("opacity", 1)
     .attr("stroke", (d) => d.edgeColor || "var(--edge-color)")
     .attr("stroke-width", 2)
     .attr("fill", (d) => d.edgeColor || "var(--edge-color)");
-
-  // 4. Restore all inclusions
+  // 4. Inclusions
   d3.select(".cluster-inclusions")
     .selectAll("path.inclusion")
     .attr("opacity", 1)
     .attr("fill", inclusionColor);
-
-  // 5. Restore tree cells
-  d3.selectAll(".tree-cell")
-    .attr("opacity", 1)
-    .selectAll("use")
-    .attr("fill", "var(--tree-color)");
-
-  // 6. Hide edge label (New Logic)
-  if (edgeLabelsGroup) {
-    edgeLabelsGroup.selectAll(".edge-label").remove();
-    edgeLabelsGroup
-      .selectAll(".label-background-rect")
-      .style("opacity", 0)
-      .remove();
-  }
-
-  // 7. Restore the opacity of ALL external node labels
+  // 5. Labels
   d3.selectAll(".leaf-label").style("opacity", 1.0);
   d3.selectAll(".leaf-labels .label-background").style("opacity", 0.7);
-
   d3.selectAll(".cluster-node-label").style("opacity", 1.0);
   d3.selectAll(".cluster-node-labels .label-background").style("opacity", 0.7);
-
-  // 8. restore cluster labels that may have been dimmed on adjacency hover
   d3.selectAll(".cluster-label").style("opacity", 1.0);
+
+  d3.selectAll(".cluster-hit-area").style("pointer-events", "all");
 }
 
 function restoreNodeColoring() {
@@ -1793,13 +1567,15 @@ export function addClusterValueInfoListener() {
   const infoTextElement = document.getElementById("cluster-values-inline-info");
 
   const infoText =
-    "How the value of cluster nodes (edges) are calculated.\n" +
-    "- Ratio: Shows the ratio of actual intra-cluster (inter-cluster) edges to the maximum possible intra-cluster (inter-cluster) edges.\n" +
-    "- Absolute: Shows the raw number of intra-cluster (inter-cluster) edges between the nodes contained within the cluster.";
+    'How the value of cluster <span style="font-weight:bold;color:var(--cell-boundary-color);">nodes</span> (<span style="font-weight:bold;color:var(--adj-color-high);">edges</span>) are calculated based on the <span style="color:var(--edge-color)">edges</span> contained within the cluster.\n' +
+    '<span style="font-weight:bold;">Ratio</span>: The ratio of actual <span style="color:var(--edge-color)">intra-cluster</span> (<span style="color:var(--edge-color)">inter-cluster</span>) edges to the maximum possible <span style="color:var(--edge-color)">intra-cluster</span> (<span style="color:var(--edge-color)">inter-cluster</span>) edges.\n' +
+    '<span style="font-weight:bold;">Absolute</span>: The raw number of <span style="color:var(--edge-color)">intra-cluster</span> (<span style="color:var(--edge-color)">inter-cluster</span>) edges.';
 
   if (infoButton && infoTextElement) {
     // 1. Set the content once
-    infoTextElement.textContent = infoText;
+    infoTextElement.innerHTML = infoText;
+
+    infoTextElement.style.textAlign = "justify";
 
     // 2. Add the click listener to toggle the display style
     infoButton.addEventListener("click", (event) => {

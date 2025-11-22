@@ -618,8 +618,20 @@ export class HierarchicallyClusteredGraphDrawer {
       .style("cursor", "pointer");
 
     // Add hover events for cluster statistics
+    // Add hover events for cluster statistics AND CLICK for background reset
     clusterHitArea
       .on("mouseover", (event) => {
+        // --- Only show stats if the cluster is relevant (visible) ---
+        // We check the computed opacity of the sibling label.
+        // If it's faded (opacity ~0.2), we ignore the hover.
+        const parentGroup = d3.select(event.currentTarget.parentNode);
+        const label = parentGroup.select(".cluster-label");
+        const currentOpacity = label.style("opacity");
+
+        if (currentOpacity && parseFloat(currentOpacity) < 0.5) {
+          return;
+        }
+
         const stats = this.calculateClusterStatistics(cluster);
         const [x, y] = d3.pointer(event, document.body);
         this.showClusterStatsPopup(cluster, stats, x, y);
@@ -644,7 +656,8 @@ export class HierarchicallyClusteredGraphDrawer {
             .style("left", x + 15 + "px")
             .style("top", y - 10 + "px");
         }
-      });
+      })
+      .on("click", listeners.backgroundClicked);
 
     // Build adjacencyData and attach the underlying Edge's label/color if any
     const adjacencyData = [];
@@ -938,6 +951,7 @@ export class HierarchicallyClusteredGraphDrawer {
         .attr("text-anchor", "middle")
         .attr("alignment-baseline", "middle")
         .attr("pointer-events", "none")
+        .style("user-select", "none")
         .text((d) => {
           // Access the flag indicating if the graph has numeric edge weights
           const isNumeric =
@@ -1018,6 +1032,7 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("text-anchor", "middle")
       .attr("alignment-baseline", "middle")
       .attr("pointer-events", "none")
+      .style("user-select", "none")
       .text((d) => {
         const id = d.getID();
         if (isNaN(id)) {
@@ -1781,7 +1796,21 @@ export class HierarchicallyClusteredGraphDrawer {
 
       .on("mouseleave", (event) =>
         listeners.mouseLeavesEdge(event, edgeLabelsGroup)
-      );
+      )
+      .on("click", (event, d) => {
+        const edgeColor = this.edgeColors ? this.edgeColors.get(d) : null;
+        d.edgeColor = edgeColor;
+
+        listeners.edgeClicked(
+          event,
+          d,
+          this,
+          xCoordMap,
+          yCoordMap,
+          edgeLabelsGroup,
+          cellSize
+        );
+      });
 
     this.filterEdgesByWeight();
 
@@ -1825,6 +1854,7 @@ export class HierarchicallyClusteredGraphDrawer {
       .attr("text-anchor", "middle")
       .attr("alignment-baseline", "middle")
       .attr("pointer-events", "none")
+      .style("user-select", "none")
       .text((d) => d.getID());
 
     // 5. Draw Cluster Inclusions
@@ -2760,7 +2790,8 @@ export class HierarchicallyClusteredGraphDrawer {
 
   getClusterNodeCalculatedColor(nodeData) {
     // Use string literal 'Cluster' as per graph.js snippet
-    if (nodeData.getNodeType() !== "Cluster") return "var(--node-color)";
+    if (nodeData.getNodeType() !== "Cluster" && nodeData.nodeColor)
+      return nodeData.nodeColor;
     if (!this.H || typeof this.H.getIntraClusterStats !== "function")
       return "var(--node-color)";
 
